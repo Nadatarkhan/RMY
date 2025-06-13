@@ -65,7 +65,6 @@ def compare_tmy_rmy(base_folder='/content/base', rmy_path='/content/final/RMY.ep
         print(f"   Δ   : {rmy_stats[key] - tmy_stats[key]}\n")
 
 # Run the comparison
-compare_tmy_rmy()
 
 
 # === Cell Separator ===
