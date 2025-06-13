@@ -113,14 +113,11 @@ def apply_gnn_detection(df):
     extreme_days = daily_z[daily_z > threshold]
     return list(pd.to_datetime(extreme_days.index).year)
 
-def calculate_event_stats(heatwave_df, base_df):
-    if heatwave_df.empty:
         return pd.DataFrame(), pd.DataFrame(), None
 
     events = []
     stats = {}
 
-    for _, row in heatwave_df.iterrows():
         s_idx, e_idx = row['Start'], row['End']
         spell = base_df.iloc[s_idx:e_idx+1]
         year = int(spell.iloc[0]['YEAR'])
@@ -347,21 +344,11 @@ def create_custom_colormap():
 
 # Function to visualize heatwave and cold spell events on a timeline
     # Read the CSV files for heatwaves and cold spells
-    heatwave_df = pd.read_csv(heatwave_csv)
-    coldspell_df = pd.read_csv(coldspell_csv)
 
     # Convert 'begin_date' to datetime format
-    heatwave_df['begin_date'] = pd.to_datetime(heatwave_df['begin_date'], format='%d/%m/%Y')
-    coldspell_df['begin_date'] = pd.to_datetime(coldspell_df['begin_date'], format='%d/%m/%Y')
 
     # Extract year, month, and day for plotting
-    heatwave_df['year'] = heatwave_df['begin_date'].dt.year
-    heatwave_df['month'] = heatwave_df['begin_date'].dt.month
-    heatwave_df['day'] = heatwave_df['begin_date'].dt.day
 
-    coldspell_df['year'] = coldspell_df['begin_date'].dt.year
-    coldspell_df['month'] = coldspell_df['begin_date'].dt.month
-    coldspell_df['day'] = coldspell_df['begin_date'].dt.day
 
     # Create custom colormaps for heatwaves and cold spells
     heatwave_cmap, coldspell_cmap = create_custom_colormap()
@@ -369,7 +356,6 @@ def create_custom_colormap():
     fig, ax = plt.subplots(figsize=(20, 15))  # Updated from plt.figure()
 
     # Get unique years
-    unique_years = sorted(set(heatwave_df['year'].unique()) | set(coldspell_df['year'].unique()))
 
     # Plot horizontal lines for each year
     for i, year in enumerate(unique_years):
@@ -380,23 +366,17 @@ def create_custom_colormap():
         ax.axvline(x=month, color='lightgray', linestyle='--', linewidth=0.7)
 
     # Adjust the normalization to better reflect the range of the data in the colormap
-    #heatwave_norm = mcolors.Normalize(vmin=heatwave_df['avg_heat_index'].min(), vmax=heatwave_df['avg_heat_index'].max())
     # Set a fixed normalization range for heat index (85°C to 125°C)
     heatwave_norm = mcolors.Normalize(vmin=85, vmax=125)
 
-    heatwave_df['clipped_index'] = heatwave_df['avg_heat_index'].clip(85, 125)
 
-    if 'avg_wind_chill' in coldspell_df.columns:
-        coldspell_norm = mcolors.Normalize(vmin=coldspell_df['avg_wind_chill'].min(), vmax=coldspell_df['avg_wind_chill'].max())
         wind_chill_column = 'avg_wind_chill'
     else:
-        coldspell_norm = mcolors.Normalize(vmin=coldspell_df['avg_wind_speed'].min(), vmax=coldspell_df['avg_wind_speed'].max())
         wind_chill_column = 'avg_wind_speed'
 
     circle_size_factor = 50
 
 
-    for i, row in heatwave_df.iterrows():
         year_index = unique_years.index(row['year'])
         month_day = row['month'] + row['day'] / 30
         ax.scatter(month_day, year_index,
@@ -406,7 +386,6 @@ def create_custom_colormap():
                    color=heatwave_cmap(heatwave_norm(row['clipped_index'])),
                    alpha=0.7, edgecolors='black', linewidth=0.5)
 
-    for i, row in coldspell_df.iterrows():
         year_index = unique_years.index(row['year'])
         month_day = row['month'] + row['day'] / 30
         ax.scatter(month_day, year_index,
@@ -424,7 +403,6 @@ def create_custom_colormap():
     cbar_coldspell = fig.colorbar(coldspell_sm, ax=ax, orientation='horizontal', pad=0.08, shrink=0.8, aspect=40)
 
     cbar_heatwave.set_label('Heatwave Average Heat Index (°C)',fontsize=14)
-    cbar_coldspell.set_label('Cold Spell Wind Chill (°C)' if 'avg_wind_chill' in coldspell_df.columns else 'Cold Spell Wind Speed (m/s)',fontsize=14)
 
     sizes = [1, 3, 5, 7]
     labels = [f'{size} days' for size in sizes]
@@ -478,21 +456,14 @@ import scipy.stats as stats
 
 # --- Load data ---
 # --- Extract and label ---
-for df in (heatwave_df, coldspell_df):
     df['begin_date'] = pd.to_datetime(df['begin_date'], format='%d/%m/%Y')
     df['year'] = df['begin_date'].dt.year
     df['month'] = df['begin_date'].dt.month
     df['day'] = df['begin_date'].dt.day
 
-heatwave_df['event_type'] = 'Heatwave'
-coldspell_df['event_type'] = 'Coldspell'
-heatwave_df['intensity'] = heatwave_df['avg_heat_index']
-coldspell_df['intensity'] = coldspell_df['avg_wind_chill'] if 'avg_wind_chill' in coldspell_df.columns else coldspell_df['avg_wind_speed']
 
 # --- Combine & preprocess ---
 events_df = pd.concat([
-    heatwave_df[['year', 'month', 'day', 'duration', 'intensity', 'event_type']],
-    coldspell_df[['year', 'month', 'day', 'duration', 'intensity', 'event_type']]
 ], ignore_index=True)
 events_df['month_day'] = events_df['month'] + events_df['day'] / 30
 events_df.sort_values(['year', 'month', 'day'], inplace=True)
