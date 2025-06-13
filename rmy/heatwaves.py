@@ -63,7 +63,7 @@ def identify_heatwaves_static(df, method='ensemble', tmin_th=20, tmax_th=35, max
 
     return pd.DataFrame(waves, columns=['Start', 'End']) if waves else pd.DataFrame(columns=['Start', 'End'])
 
-
+#fixed
 def identify_evt_extremes(df, quantile_threshold=0.95, min_duration=3):
     """
     Identify extreme heatwave events using EVT (Peaks Over Threshold).
