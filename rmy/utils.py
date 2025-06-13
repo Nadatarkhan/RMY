@@ -1,4 +1,3 @@
-pip install plotly scipy
 
 # === Cell Separator ===
 
