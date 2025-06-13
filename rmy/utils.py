@@ -3,7 +3,6 @@ import numpy as np
 from datetime import datetime, timedelta
 from pathlib import Path
 
-# Standard EPW columns
 epw_columns = [
     'year', 'month', 'day', 'hour', 'minute', 'data_source_unct', 'temp_air',
     'temp_dew', 'relative_humidity', 'atmospheric_pressure', 'etr', 'etrn',
@@ -36,12 +35,15 @@ def calculate_heat_index(t, rh):
 def match_extreme_days(event_df, base_df, n_hours=24):
     matched_days = []
     for _, row in event_df.iterrows():
-        day = pd.to_datetime(row['begin_date'])
+        day = pd.to_datetime(row['begin_date'], format='%d/%m/%Y')
         match = base_df[
             (base_df['month'] == day.month) &
             (base_df['hour'] == 12)
         ].copy()
-        match['abs_diff'] = (match['temp_air'] - base_df.loc[(base_df['month'] == day.month) & (base_df['hour'] == 12), 'temp_air'].mean()).abs()
+        match['abs_diff'] = (match['temp_air'] - base_df.loc[
+            (base_df['month'] == day.month) & (base_df['hour'] == 12),
+            'temp_air'
+        ].mean()).abs()
         if not match.empty:
             best_match = match.sort_values('abs_diff').iloc[0]
             matched_day = base_df[
@@ -59,7 +61,7 @@ def smooth_transition(df, window=3):
 
 def replace_event_days(base_df, insert_df, event_dates):
     new_df = base_df.copy()
-    insert_dates = pd.to_datetime(event_dates)
+    insert_dates = pd.to_datetime(event_dates, format='%d/%m/%Y')
     for insert_date in insert_dates:
         mask = (new_df['month'] == insert_date.month) & (new_df['day'] == insert_date.day)
         if mask.sum() == 24:
