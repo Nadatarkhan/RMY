@@ -43,6 +43,15 @@ This timeline visualizes detected heatwaves and cold spells across multiple year
 
 ## Usage
 
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Nadatarkhan/RMY/blob/main/examples/example_usage.ipynb)
+
+The notebook assumes the following directory structure:
+- `EPWs/` for the full AMY files
+- `base/` for the single TMY file
+- `final/` as the output directory where the generated RMY EPW will be saved.
+
+
+
 See the notebook in `examples/example_usage.ipynb` for a full walk-through.
 
 ## Requirements
