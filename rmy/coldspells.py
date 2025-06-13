@@ -1,12 +1,3 @@
-#Folder for 15 EPWs from past years
-os.mkdir('/content/EPWs')
-
-#Folders for output tmys
-os.mkdir('/content/hotspells')
-os.mkdir('/content/coldspells')
-os.mkdir('/content/base')
-os.mkdir('/content/final')
-
 
 # === Cell Separator ===
 
