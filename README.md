@@ -2,9 +2,7 @@
 
 Anomaly-driven generation of Representative Meteorological Year (RMY) weather files with embedded extreme events, including **heatwaves** and **cold spells**. This method preserves core TMY characteristics while adding realistic severe climate conditions to support robust design evaluations.
 
----
-
-## 🚀 Quick Start
+## Quick Start
 
 Install required packages:
 ```bash
@@ -16,9 +14,7 @@ Then run the following from the repo root:
 python rmy_generation.py
 ```
 
----
-
-## 📂 Repository Structure
+## Repository Structure
 
 ```
 RMY/
@@ -29,19 +25,19 @@ RMY/
 │   ├── utils.py
 │   └── rmy_generation.py
 ├── examples/
-│   └── RMY_Generation_Colab.ipynb  ← Google Colab-compatible example
+│   └── RMY_Generation_Colab.ipynb
 ├── EPWs/
-│   ├── base/           ← Contains 1 TMY EPW file
-│   └── epws/           ← Contains multiple AMY EPW files
-├── final/              ← Where the RMY outputs are saved
+│   ├── base/
+│   └── epws/
+├── final/
+├── images/
+│   └── event_timeline.png
 ├── README.md
 ├── LICENSE
 └── requirements.txt
 ```
 
----
-
-## 🧪 Usage Guidance
+## Usage Guidance
 
 You can run the full RMY pipeline via:
 
@@ -54,33 +50,27 @@ Make sure your folder structure matches:
 - `EPWs/epws/` → contains full set of AMY EPWs
 - `final/` → RMY weather file + event summaries will be saved here
 
----
-
-### 🔧 Try it on Google Colab
+## Try it on Google Colab
 
 Run the full pipeline interactively on Google Colab:
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Nadatarkhan/RMY/blob/main/examples/RMY_Generation_Colab.ipynb)
 
----
+## Sample Output
 
-## 📸 Sample Output
+This timeline shows detected heatwaves and cold spells across years:
 
-![Sample](https://github.com/Nadatarkhan/RMY/blob/main/examples/sample_output.png)
+![Event Timeline](images/event_timeline.png)
 
----
-
-## 📖 Citation
+## Citation
 
 If you use this method, please cite:
 
-> **Tarkhan, N., Crawley, D., Lawrie, L., & Reinhart, C.**  
-> Generation of representative meteorological years through anomaly-based detection of extreme events.  
-> *Journal of Building Performance Simulation*, 2025.  
-> [https://doi.org/10.1080/19401493.2025.2499687](https://doi.org/10.1080/19401493.2025.2499687)
+Tarkhan, N., Crawley, D., Lawrie, L., & Reinhart, C.  
+*Generation of representative meteorological years through anomaly-based detection of extreme events.*  
+Journal of Building Performance Simulation, 2025.  
+[https://doi.org/10.1080/19401493.2025.2499687](https://doi.org/10.1080/19401493.2025.2499687)
 
----
+## License
 
-## 📜 License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License. See the LICENSE file for details.
