@@ -10,16 +10,6 @@ os.mkdir('/content/final')
 
 # === Cell Separator ===
 
-!rm -rf /content/base/*
-!rm -rf /content/peak/*
-!rm -rf /content/final/*
-!rm -rf /content/comparison/*
-!rm -rf /content/combined/*
-!rm -rf /content/Results/*
-!rm -rf /content/coldspells/base/*
-
-# === Cell Separator ===
-
 import os
 import pandas as pd
 import numpy as np
