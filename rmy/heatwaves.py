@@ -245,6 +245,9 @@ def save_final_outputs(output_dir, base_stats, base_events, all_stats, all_event
     peak_events.to_csv(os.path.join(output_dir, "heatwave_events_peak.csv"), index=False)
     peak_stats.to_csv(os.path.join(output_dir, "heatwave_stats_peak.csv"), index=False)
 
+def run_full_pipeline(epw_dir, base_dir, output_dir):
+    print(f" Starting hybrid method on EPWs in {epw_dir}")
+
     # Load and process base EPW
     base_files = [f for f in os.listdir(base_dir) if f.endswith('.epw')]
     if not base_files:
@@ -326,6 +329,8 @@ def save_final_outputs(output_dir, base_stats, base_events, all_stats, all_event
     save_final_outputs(output_dir, base_stats, base_events, epw_stats, epw_events, peak_stats, peak_events)
     print("✅ Saved all 6 heat wave output CSVs")
 
+
+run_full_pipeline('/content/EPWs', '/content/base', '/content/hotspells')
 
 
 # === Cell Separator ===
@@ -465,8 +470,6 @@ def visualize_extreme_events(heatwave_csv, coldspell_csv):
 
 # Example usage:
 heatwave_csv = '/content/hotspells/heatwave_events.csv'
-coldspell_csv = '/content/coldspells/coldspells_events.csv'
-
 visualize_extreme_events(heatwave_csv, coldspell_csv)
 
 
@@ -480,10 +483,6 @@ import scipy.stats as stats
 
 # --- Load data ---
 heatwave_csv = '/content/hotspells/heatwave_events.csv'
-coldspell_csv = '/content/coldspells/coldspells_events.csv'
-heatwave_df = pd.read_csv(heatwave_csv)
-coldspell_df = pd.read_csv(coldspell_csv)
-
 # --- Extract and label ---
 for df in (heatwave_df, coldspell_df):
     df['begin_date'] = pd.to_datetime(df['begin_date'], format='%d/%m/%Y')
