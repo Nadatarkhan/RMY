@@ -10,7 +10,6 @@ os.mkdir('/content/final')
 
 # === Cell Separator ===
 
-!rm -rf /content/EPWs/*
 !rm -rf /content/hotspells/*
 !rm -rf /content/coldspells/*
 !rm -rf /content/base/*
