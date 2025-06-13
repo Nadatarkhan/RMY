@@ -223,7 +223,7 @@ def save_final_outputs_cold_safe(output_dir, base_stats, base_events, all_stats,
 
 # === MAIN DRIVER ===
 def run_full_pipeline_cold(epw_dir, base_dir, output_dir):
-    print(f" Starting cold spell detection on EPWs in {epw_dir}")
+    print(f" Starting cold spell detection on EPWs in {base_dir}")
 
     base_files = [f for f in os.listdir(base_dir) if f.endswith('.epw')]
     if not base_files:
