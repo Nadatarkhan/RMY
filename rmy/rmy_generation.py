@@ -1,3 +1,5 @@
+from heatwaves import run_full_pipeline
+from coldspells import run_full_pipeline_cold
 import os
 import numpy as np
 import pandas as pd
@@ -631,8 +633,8 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 base_epw_folder = Path('/content/base')
 all_epw_folder = Path('/content/EPWs')
 output_epw_path = Path('/content/final/RMY.epw')
-coldspell_stats_path = Path(str(Path(output_dir) / 'coldspells' / 'coldspells_stats_peak.csv')
-heatwave_stats_path = Path(str(Path(output_dir) / 'hotspells' / 'heatwave_stats_peak.csv')
+coldspell_stats_path = Path(output_dir) / 'coldspells' / 'coldspells_stats_peak.csv'
+heatwave_stats_path = Path(output_dir) / 'hotspells' / 'heatwave_stats_peak.csv'
 
 def read_epw_file(epw_file_path):
     return pd.read_csv(epw_file_path, header=None, skiprows=8, sep=',', names=[
