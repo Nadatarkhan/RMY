@@ -620,7 +620,7 @@ def run_full_pipeline_cold(epw_dir, base_dir, output_dir):
     print("✅ Saved all 6 cold spell output CSVs.")
 
 
-run_full_pipeline_cold('/content/EPWs', '/content/base', '/content/coldspells')
+run_full_pipeline_cold(epw_dir, base_dir, output_dir)
 
 
 # === Cell Separator ===
