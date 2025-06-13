@@ -631,8 +631,8 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 base_epw_folder = Path('/content/base')
 all_epw_folder = Path('/content/EPWs')
 output_epw_path = Path('/content/final/RMY.epw')
-coldspell_stats_path = Path('/data/coldspells/coldspells_stats_peak.csv')
-heatwave_stats_path = Path('/data/hotspells/heatwave_stats_peak.csv')
+coldspell_stats_path = Path(str(Path(output_dir) / 'coldspells' / 'coldspells_stats_peak.csv')
+heatwave_stats_path = Path(str(Path(output_dir) / 'hotspells' / 'heatwave_stats_peak.csv')
 
 def read_epw_file(epw_file_path):
     return pd.read_csv(epw_file_path, header=None, skiprows=8, sep=',', names=[
@@ -744,10 +744,10 @@ cold_peak = find_epw_by_year(get_peak_year(coldspell_stats_path), all_epw_folder
 peak_heat = read_epw_file(heat_peak)
 peak_cold = read_epw_file(cold_peak)
 
-heat_base = safe_load_events('/data/hotspells/heatwave_events_base.csv', ['begin_date','end_date','duration','avg_tmax','std_tmax','max_tmax'])
-heat_peak_df = safe_load_events('/data/hotspells/heatwave_events_peak.csv', ['begin_date','end_date','duration','avg_tmax','std_tmax','max_tmax'])
-cold_base = safe_load_events('/data/coldspells/base/coldspells_events_base.csv', ['begin_date','end_date','duration','avg_tmin','std_tmin','min_tmin'])
-cold_peak_df = safe_load_events('/data/coldspells/coldspells_events_peak.csv', ['begin_date','end_date','duration','avg_tmin','std_tmin','min_tmin'])
+heat_base = safe_load_events(str(Path(output_dir) / 'hotspells' / 'heatwave_events_base.csv', ['begin_date','end_date','duration','avg_tmax','std_tmax','max_tmax'])
+heat_peak_df = safe_load_events(str(Path(output_dir) / 'hotspells' / 'heatwave_events_peak.csv', ['begin_date','end_date','duration','avg_tmax','std_tmax','max_tmax'])
+cold_base = safe_load_events(str(Path(output_dir) / 'coldspells' / 'base/coldspells_events_base.csv', ['begin_date','end_date','duration','avg_tmin','std_tmin','min_tmin'])
+cold_peak_df = safe_load_events(str(Path(output_dir) / 'coldspells' / 'coldspells_events_peak.csv', ['begin_date','end_date','duration','avg_tmin','std_tmin','min_tmin'])
 
 mh, uh = match_events(heat_base, heat_peak_df)
 mc, uc = match_events(cold_base, cold_peak_df)
