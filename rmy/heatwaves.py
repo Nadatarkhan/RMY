@@ -346,7 +346,6 @@ def create_custom_colormap():
     return heatwave_cmap, coldspell_cmap
 
 # Function to visualize heatwave and cold spell events on a timeline
-def visualize_extreme_events(heatwave_csv, coldspell_csv):
     # Read the CSV files for heatwaves and cold spells
     heatwave_df = pd.read_csv(heatwave_csv)
     coldspell_df = pd.read_csv(coldspell_csv)
@@ -467,8 +466,6 @@ def visualize_extreme_events(heatwave_csv, coldspell_csv):
     plt.show()
 
 # Example usage:
-heatwave_csv = '/content/hotspells/heatwave_events.csv'
-visualize_extreme_events(heatwave_csv, coldspell_csv)
 
 
 # === Cell Separator ===
@@ -480,7 +477,6 @@ import numpy as np
 import scipy.stats as stats
 
 # --- Load data ---
-heatwave_csv = '/content/hotspells/heatwave_events.csv'
 # --- Extract and label ---
 for df in (heatwave_df, coldspell_df):
     df['begin_date'] = pd.to_datetime(df['begin_date'], format='%d/%m/%Y')
