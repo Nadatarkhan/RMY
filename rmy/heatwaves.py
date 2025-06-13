@@ -63,7 +63,7 @@ def identify_heatwaves_static(df, method='ensemble', tmin_th=20, tmax_th=35, max
 
     return pd.DataFrame(waves, columns=['Start', 'End']) if waves else pd.DataFrame(columns=['Start', 'End'])
 
-#fixed
+
 def identify_evt_extremes(df, quantile_threshold=0.95, min_duration=3):
     """
     Identify extreme heatwave events using EVT (Peaks Over Threshold).
@@ -113,55 +113,7 @@ def apply_gnn_detection(df):
     extreme_days = daily_z[daily_z > threshold]
     return list(pd.to_datetime(extreme_days.index).year)
 
-        return pd.DataFrame(), pd.DataFrame(), None
-
-    events = []
-    stats = {}
-
-        s_idx, e_idx = row['Start'], row['End']
-        spell = base_df.iloc[s_idx:e_idx+1]
-        year = int(spell.iloc[0]['YEAR'])
-        duration = e_idx - s_idx + 1
-        avg_tmax = round(spell['Tmax (oC)'].mean(), 1)
-        std_tmax = round(spell['Tmax (oC)'].std(), 1)
-        max_tmax = round(spell['Tmax (oC)'].max(), 1)
-        avg_hi = round(calculate_heat_index(spell['Tmax (oC)'], spell['Humidity (%)']).mean(), 1)
-
-        bdate = datetime(year, int(spell.iloc[0]['MONTH']), int(spell.iloc[0]['DAY']))
-        edate = datetime(year, int(spell.iloc[-1]['MONTH']), int(spell.iloc[-1]['DAY']))
-
-        events.append({
-            'begin_date': bdate.strftime('%d/%m/%Y'),
-            'end_date': edate.strftime('%d/%m/%Y'),
-            'duration': duration,
-            'avg_tmax': avg_tmax,
-            'std_tmax': std_tmax,
-            'max_tmax': max_tmax,
-            'avg_heat_index': avg_hi,
-            'year': year
-        })
-
-        if year not in stats:
-            stats[year] = {'hwn': 0, 'hwf': 0, 'hwd': 0, 'hwdm': [], 'hwaa': -np.inf}
-        stats[year]['hwn'] += 1
-        stats[year]['hwf'] += duration
-        stats[year]['hwd'] = max(stats[year]['hwd'], duration)
-        stats[year]['hwdm'].append(duration)
-        stats[year]['hwaa'] = max(stats[year]['hwaa'], max_tmax)
-
-    for y in stats:
-        stats[y]['hwdm'] = np.mean(stats[y]['hwdm'])
-
-    stats_df = pd.DataFrame.from_dict(stats, orient='index', columns=['hwn', 'hwf', 'hwd', 'hwdm', 'hwaa']).reset_index().rename(columns={'index': 'year'}).sort_values(by='year')
-    stats_df['year'] = stats_df['year'].astype(int)
-    stats_df['severity'] = stats_df['hwf'] * stats_df['hwaa']
-    events_df = pd.DataFrame(events).sort_values(by='begin_date')
-
-    peak_year = int(stats_df.loc[stats_df['severity'].idxmax()]['year'])
-    #print(f" Highest severity year: {peak_year}")
-
-    return stats_df, events_df, peak_year
-
+def calculate_event_stats(heatwave_df, base_df):
 def process_file(epw_path, gnn_years=None, apply_gnn=True):
     #print(f" Processing file: {epw_path}")
     epw_df = pd.read_csv(epw_path, skiprows=8, header=None, names=[
@@ -242,6 +194,7 @@ def save_final_outputs(output_dir, base_stats, base_events, all_stats, all_event
     peak_events.to_csv(os.path.join(output_dir, "heatwave_events_peak.csv"), index=False)
     peak_stats.to_csv(os.path.join(output_dir, "heatwave_stats_peak.csv"), index=False)
 
+def run_full_pipeline(epw_dir, base_dir, output_dir):
     print(f" Starting hybrid method on EPWs in {epw_dir}")
 
     # Load and process base EPW
@@ -326,5 +279,185 @@ def save_final_outputs(output_dir, base_stats, base_events, all_stats, all_event
     print("✅ Saved all 6 heat wave output CSVs")
 
 
+run_full_pipeline('/content/EPWs', '/content/base', '/content/hotspells')
 
 
+# === Cell Separator ===
+
+import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
+import pandas as pd
+
+# Function to create custom colormaps for heatwaves and cold spells
+def create_custom_colormap():
+    heatwave_colors = ['#F7DDE1', '#EBAFB9', '#DC7284', '#CF3952', '#B22C42']  # Heatwaves color scheme
+    coldspell_colors = ['#b3e7f2', '#80d2e6', '#4dbeda', '#1aaacb', '#0086b3']  # Custom blue shades for cold spells
+    heatwave_cmap = mcolors.LinearSegmentedColormap.from_list('heatwave_cmap', heatwave_colors)
+    coldspell_cmap = mcolors.LinearSegmentedColormap.from_list('coldspell_cmap', coldspell_colors)
+    return heatwave_cmap, coldspell_cmap
+
+def visualize_extreme_events(heatwave_csv, coldspell_csv):
+    # Read the CSV files for heatwaves and cold spells
+def read_epw_file(epw_file_path):
+    return pd.read_csv(epw_file_path, header=None, skiprows=8, sep=',', names=[
+        'year', 'month', 'day', 'hour', 'minute', 'data_source_unct', 'temp_air', 'temp_dew', 'relative_humidity',
+        'atmospheric_pressure', 'etr', 'etrn', 'ghi_infrared', 'ghi', 'dni', 'dhi', 'global_hor_illum',
+        'direct_normal_illum', 'diffuse_horizontal_illum', 'zenith_luminance', 'wind_direction', 'wind_speed',
+        'total_sky_cover', 'opaque_sky_cover', 'visibility', 'ceiling_height', 'present_weather_observation',
+        'present_weather_codes', 'precipitable_water', 'aerosol_optical_depth', 'snow_depth',
+        'days_since_last_snowfall', 'albedo', 'liquid_precipitation_depth', 'liquid_precipitation_quantity'
+    ])
+
+def get_peak_year(stats_csv):
+    return int(pd.read_csv(stats_csv).iloc[0]['year'])
+
+def find_epw_by_year(year, epw_folder):
+    for fname in os.listdir(epw_folder):
+        if fname.endswith('.epw') and str(year) in fname:
+            return os.path.join(epw_folder, fname)
+    raise FileNotFoundError(f"No EPW found for year {year} in {epw_folder}")
+
+def interpolate_smooth_transitions(df, indices, columns):
+    for col in columns:
+        series = df.loc[indices, col].infer_objects(copy=False)
+        df.loc[indices, col] = series.interpolate()
+    return df
+
+def match_events(base_df, peak_df):
+    matched, unmatched = [], peak_df.copy()
+    if base_df.empty: return matched, unmatched
+    for _, base in base_df.iterrows():
+        best, min_diff = None, float('inf')
+        for idx, peak in unmatched.iterrows():
+            if base['begin_date'].month == peak['begin_date'].month and base['begin_date'].day == peak['begin_date'].day:
+                diff = abs(base['duration'] - peak['duration'])
+                if diff < min_diff:
+                    best, min_diff = idx, diff
+        if best is not None:
+            matched.append((base, unmatched.loc[best]))
+            unmatched = unmatched.drop(best)
+    return matched, unmatched
+
+def integrate_events(df, matched, unmatched, peak_epw, label):
+    all_events = matched + [(None, e) for e in unmatched.itertuples()]
+    replaced = set()
+    for base, peak in all_events:
+        for d in pd.date_range(start=peak.begin_date, end=peak.end_date, freq='D'):
+            slice_peak = peak_epw[(peak_epw['month'] == d.month) & (peak_epw['day'] == d.day)].copy()
+            if slice_peak.empty: continue
+            idx = df[(df['month'] == d.month) & (df['day'] == d.day)].index
+            smoothing_idx = list(range(max(0, idx.min()-8), min(len(df), idx.max()+9)))
+            df = interpolate_smooth_transitions(df, smoothing_idx, slice_peak.columns.drop(['year', 'month', 'day', 'hour', 'minute']))
+            for _, row in slice_peak.iterrows():
+                row_idx = df[(df['month'] == row['month']) & (df['day'] == row['day']) & (df['hour'] == row['hour'])].index
+                df.loc[row_idx] = row.values
+                replaced.add(f"{int(row['month']):02d}-{int(row['day']):02d}")
+            df = interpolate_smooth_transitions(df, smoothing_idx, slice_peak.columns.drop(['year', 'month', 'day', 'hour', 'minute']))
+    print(f"{label} events integrated. Days replaced: {len(replaced)}")
+    return df, replaced
+
+def calculate_monthly_avg_conditions(df, months):
+    return df[df['month'].isin(months)].groupby('month')[['temp_air', 'relative_humidity']].mean()
+
+def find_days_to_adjust_avg(epw_files, targets, months, cond):
+    days, sources = {m: [] for m in months}, {m: [] for m in months}
+    for epw in epw_files:
+        df = read_epw_file(epw)
+        for m in months:
+            for d in range(1, 32):
+                day = df[(df['month'] == m) & (df['day'] == d)]
+                if not day.empty and cond(day, targets.loc[m]):
+                    days[m].append(day)
+                    sources[m].append(epw)
+                if sum(len(v) for v in days.values()) >= 40:
+                    return days, sources
+    return days, sources
+
+def integrate_days(df, days, replaced, sources, targets, months):
+    inserted = set()
+    for m in months:
+        for i, day_df in enumerate(days[m]):
+            if len(inserted) >= 30: break
+            for _, row in day_df.iterrows():
+                tag = f"{int(row['month']):02d}-{int(row['day']):02d}"
+                if tag in replaced or tag in inserted: continue
+                idx = df[(df['month'] == row['month']) & (df['day'] == row['day'])].index
+                smoothing_idx = list(range(max(0, idx.min()-8), min(len(df), idx.max()+9)))
+                df = interpolate_smooth_transitions(df, smoothing_idx, day_df.columns.drop(['year', 'month', 'day', 'hour', 'minute']))
+                df.loc[idx] = day_df.values
+                inserted.add(tag)
+    return df, inserted
+
+def safe_load_events(path, cols):
+    try: return pd.read_csv(path, parse_dates=['begin_date', 'end_date'], dayfirst=True)
+    except: return pd.DataFrame(columns=cols)
+
+# --- Begin process ---
+base_epw_path = list(base_epw_folder.glob('*.epw'))[0]
+#header = [next(open(base_epw_path)) for _ in range(8)]
+# Read and store header lines safely
+with open(base_epw_path, 'r') as f:
+    header = [f.readline() for _ in range(8)]
+
+
+base_epw = read_epw_file(base_epw_path)
+epw_list = list(all_epw_folder.glob('*.epw'))
+
+heat_peak = find_epw_by_year(get_peak_year(heatwave_stats_path), all_epw_folder)
+cold_peak = find_epw_by_year(get_peak_year(coldspell_stats_path), all_epw_folder)
+peak_heat = read_epw_file(heat_peak)
+peak_cold = read_epw_file(cold_peak)
+
+heat_base = safe_load_events('/content/hotspells/heatwave_events_base.csv', ['begin_date','end_date','duration','avg_tmax','std_tmax','max_tmax'])
+heat_peak_df = safe_load_events('/content/hotspells/heatwave_events_peak.csv', ['begin_date','end_date','duration','avg_tmax','std_tmax','max_tmax'])
+cold_base = safe_load_events('/content/coldspells/base/coldspells_events_base.csv', ['begin_date','end_date','duration','avg_tmin','std_tmin','min_tmin'])
+cold_peak_df = safe_load_events('/content/coldspells/coldspells_events_peak.csv', ['begin_date','end_date','duration','avg_tmin','std_tmin','min_tmin'])
+
+mh, uh = match_events(heat_base, heat_peak_df)
+mc, uc = match_events(cold_base, cold_peak_df)
+
+#old
+final, rh = integrate_events(base_epw.copy(), mh, uh, peak_heat, 'Heatwave')
+final, rc = integrate_events(final, mc, uc, peak_cold, 'Coldspell')
+
+#NEW
+# Step 1: Integrate Heatwaves on the base EPW
+#heat_intermediate, rh = integrate_events(base_epw.copy(), mh, uh, peak_heat, 'Heatwave')
+
+# Step 2: Use heat-adjusted file as input for coldspell integration
+#final, rc = integrate_events(heat_intermediate.copy(), mc, uc, peak_cold, 'Coldspell')
+
+
+# Adjust monthly averages***************************************************
+
+#Southern Hemisphere
+#summer = [12, 1, 2]
+#winter = [6, 7, 8]
+
+#Northern Hemisphere
+summer = [6, 7, 8]
+winter = [12, 1, 2]
+
+
+base_summer = calculate_monthly_avg_conditions(base_epw, summer)
+base_winter = calculate_monthly_avg_conditions(base_epw, winter)
+
+s_condition = lambda df, t: df['temp_air'].mean() < t['temp_air'] and df['relative_humidity'].mean() < t['relative_humidity']
+w_condition = lambda df, t: df['temp_air'].mean() > t['temp_air'] and df['relative_humidity'].mean() > t['relative_humidity']
+
+sdays, sfiles = find_days_to_adjust_avg(epw_list, base_summer, summer, s_condition)
+wdays, wfiles = find_days_to_adjust_avg(epw_list, base_winter, winter, w_condition)
+
+final, ins_s = integrate_days(final, sdays, rh, sfiles, base_summer, summer)
+final, ins_w = integrate_days(final, wdays, rc, wfiles, base_winter, winter)
+
+# Write final EPW
+with open(output_epw_path, 'w', newline='') as file:
+    for line in header:
+        file.write(line if line.endswith('\n') else line + '\n')
+    final.to_csv(file, index=False, header=False, float_format='%g', na_rep='999')
+
+
+print(f"✅ Final RMY saved to: {output_epw_path}")
+print(f"📂 Heatwave Peak EPW used: {heat_peak}")
+print(f"📂 Coldspell Peak EPW used: {cold_peak}")
