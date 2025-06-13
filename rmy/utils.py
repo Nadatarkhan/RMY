@@ -2,7 +2,6 @@
 # === Cell Separator ===
 
 import os
-!pip install pandas scipy statsmodels
 import os.path
 from os import path
 #!pip install pandas==1.3.4  # Replace with the appropriate version as needed- this is the one that is compatible
