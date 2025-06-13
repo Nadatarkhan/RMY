@@ -1,22 +1,3 @@
-#Folder for 15 EPWs from past years
-os.mkdir('epw_dir')
-
-#Folders for output tmys
-os.mkdir('/content/hotspells')
-os.mkdir('/content/coldspells')
-os.mkdir('base_dir')
-os.mkdir('output_dir')
-
-
-# === Cell Separator ===
-
-!rm -rf base_dir/*
-!rm -rf /content/peak/*
-!rm -rf output_dir/*
-!rm -rf /content/comparison/*
-!rm -rf /content/combined/*
-!rm -rf /content/Results/*
-!rm -rf /content/coldspells/base/*
 
 # === Cell Separator ===
 
@@ -305,7 +286,7 @@ def run_full_pipeline_cold(epw_dir, base_dir, output_dir):
     print("✅ Saved all 6 cold spell output CSVs.")
 
 
-run_full_pipeline_cold('epw_dir', 'base_dir', '/content/coldspells')
+run_full_pipeline_cold('/content/EPWs', '/content/base', '/content/coldspells')
 
 
 # === Cell Separator ===
@@ -640,9 +621,9 @@ import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 # --- Setup paths ---
-base_epw_folder = Path('base_dir')
-all_epw_folder = Path('epw_dir')
-output_epw_path = Path('output_dir/RMY.epw')
+base_epw_folder = Path('/content/base')
+all_epw_folder = Path('/content/EPWs')
+output_epw_path = Path('/content/final/RMY.epw')
 coldspell_stats_path = Path('/content/coldspells/coldspells_stats_peak.csv')
 heatwave_stats_path = Path('/content/hotspells/heatwave_stats_peak.csv')
 
