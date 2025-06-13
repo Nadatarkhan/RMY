@@ -1,23 +1,9 @@
-import os
-import os.path
-from os import path
-#!pip install pandas==1.3.4  # Replace with the appropriate version as needed- this is the one that is compatible
 import pandas as pd
 import numpy as np
-from matplotlib.patches import Patch
-from scipy.stats import genextreme as gev
+from datetime import datetime, timedelta
+from pathlib import Path
 
-import matplotlib.font_manager as fm
-from scipy.stats import genpareto
-
-# === Cell Separator ===
-
-import os
-import pandas as pd
-
-import pandas as pd
-
-# === Shared EPW column names ===
+# Standard EPW columns
 epw_columns = [
     'year', 'month', 'day', 'hour', 'minute', 'data_source_unct', 'temp_air',
     'temp_dew', 'relative_humidity', 'atmospheric_pressure', 'etr', 'etrn',
@@ -30,36 +16,60 @@ epw_columns = [
     'liquid_precipitation_depth', 'liquid_precipitation_quantity'
 ]
 
-def load_epw(epw_path):
-    return pd.read_csv(epw_path, skiprows=8, header=None, names=epw_columns)
+def load_epw(path):
+    return pd.read_csv(path, skiprows=8, header=None, names=epw_columns)
 
-def load_epw_daily_stats(epw_path):
-    df = pd.read_csv(epw_path, skiprows=8, header=None)
-    df.columns = ['year', 'month', 'day', 'hour', 'minute', 'data_source_unct', 'temp_air',
-                  'temp_dew', 'relative_humidity', 'atmospheric_pressure', 'etr', 'etrn',
-                  'ghi_infrared', 'ghi', 'dni', 'dhi', 'global_hor_illum',
-                  'direct_normal_illum', 'diffuse_horizontal_illum', 'zenith_luminance',
-                  'wind_direction', 'wind_speed', 'total_sky_cover', 'opaque_sky_cover',
-                  'visibility', 'ceiling_height', 'present_weather_observation',
-                  'present_weather_codes', 'precipitable_water', 'aerosol_optical_depth',
-                  'snow_depth', 'days_since_last_snowfall', 'albedo',
-                  'liquid_precipitation_depth', 'liquid_precipitation_quantity']
+def extract_original_header(epw_path):
+    with open(epw_path, 'r') as f:
+        return [next(f) for _ in range(8)]
 
-    df['temp_air'] = pd.to_numeric(df['temp_air'], errors='coerce')
-    daily = df.groupby(['year', 'month', 'day'])['temp_air'].agg(['max', 'min']).reset_index()
+def save_epw(df, original_header_lines, output_path):
+    with open(output_path, 'w') as f:
+        for line in original_header_lines:
+            f.write(line)
+        df.to_csv(f, index=False, header=False)
 
-    max_temp = daily['max'].max()
-    min_temp = daily['min'].min()
-    days_above_35 = (daily['max'] > 30).sum()
-    days_below_0 = (daily['min'] < 0).sum()
+def calculate_heat_index(t, rh):
+    hi = 0.5 * (t + 61.0 + ((t-68.0)*1.2) + (rh*0.094))
+    return hi
 
-    return {
-        'max_temp': max_temp,
-        'min_temp': min_temp,
-        'days_above_35C': days_above_35,
-        'days_below_0C': days_below_0
-    }
+def match_extreme_days(event_df, base_df, n_hours=24):
+    matched_days = []
+    for _, row in event_df.iterrows():
+        day = pd.to_datetime(row['begin_date'])
+        match = base_df[
+            (base_df['month'] == day.month) &
+            (base_df['hour'] == 12)
+        ].copy()
+        match['abs_diff'] = (match['temp_air'] - base_df.loc[(base_df['month'] == day.month) & (base_df['hour'] == 12), 'temp_air'].mean()).abs()
+        if not match.empty:
+            best_match = match.sort_values('abs_diff').iloc[0]
+            matched_day = base_df[
+                (base_df['year'] == best_match['year']) &
+                (base_df['month'] == best_match['month']) &
+                (base_df['day'] == best_match['day'])
+            ]
+            matched_days.append(matched_day)
+    if matched_days:
+        return pd.concat(matched_days)
+    return pd.DataFrame(columns=base_df.columns)
 
+def smooth_transition(df, window=3):
+    return df.rolling(window=window, min_periods=1, center=True).mean()
 
-# === Cell Separator ===
+def replace_event_days(base_df, insert_df, event_dates):
+    new_df = base_df.copy()
+    insert_dates = pd.to_datetime(event_dates)
+    for insert_date in insert_dates:
+        mask = (new_df['month'] == insert_date.month) & (new_df['day'] == insert_date.day)
+        if mask.sum() == 24:
+            new_df.loc[mask, :] = insert_df.loc[mask, :].values
+    return new_df
 
+def seasonal_adjustment(final_df, original_df, variable='temp_air'):
+    for month in range(1, 13):
+        original_avg = original_df[original_df['month'] == month][variable].mean()
+        final_avg = final_df[final_df['month'] == month][variable].mean()
+        diff = original_avg - final_avg
+        final_df.loc[final_df['month'] == month, variable] += diff
+    return final_df
