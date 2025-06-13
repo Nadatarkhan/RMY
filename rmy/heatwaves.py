@@ -245,7 +245,6 @@ def save_final_outputs(output_dir, base_stats, base_events, all_stats, all_event
     peak_events.to_csv(os.path.join(output_dir, "heatwave_events_peak.csv"), index=False)
     peak_stats.to_csv(os.path.join(output_dir, "heatwave_stats_peak.csv"), index=False)
 
-def run_full_pipeline(epw_dir, base_dir, output_dir):
     print(f" Starting hybrid method on EPWs in {epw_dir}")
 
     # Load and process base EPW
@@ -330,7 +329,6 @@ def run_full_pipeline(epw_dir, base_dir, output_dir):
     print("✅ Saved all 6 heat wave output CSVs")
 
 
-run_full_pipeline('/content/EPWs', '/content/base', '/content/hotspells')
 
 
 # === Cell Separator ===
