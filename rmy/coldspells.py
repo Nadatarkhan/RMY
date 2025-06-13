@@ -285,8 +285,9 @@ def run_full_pipeline_cold(epw_dir, base_dir, output_dir):
     save_final_outputs_cold_safe(output_dir, base_stats, base_events, epw_stats, epw_events, peak_stats, peak_events)
     print("✅ Saved all 6 cold spell output CSVs.")
 
+if __name__ == "__main__":
+    run_full_pipeline_cold('/content/EPWs', '/content/base', '/content/coldspells')
 
-run_full_pipeline_cold('/content/EPWs', '/content/base', '/content/coldspells')
 
 
 # === Cell Separator ===
