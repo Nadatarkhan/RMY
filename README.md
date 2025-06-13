@@ -53,7 +53,12 @@ pip install -r requirements.txt
 
 ## Citation
 
-If you use this tool, please cite the preprint (linked here when publicly available).
+If you use this tool, please cite the following publication:
+
+**Tarkhan, N., Crawley, D. B., Lawrie, L. K., & Reinhart, C. (2025).**  
+*Generation of representative meteorological years through anomaly-based detection of extreme events.*  
+Journal of Building Performance Simulation.  
+[https://doi.org/10.1080/19401493.2025.2499687](https://www.tandfonline.com/doi/full/10.1080/19401493.2025.2499687?src=exp-la)
 
 ## License
 
