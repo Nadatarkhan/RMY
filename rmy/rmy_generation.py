@@ -245,8 +245,6 @@ def save_final_outputs(output_dir, base_stats, base_events, all_stats, all_event
     peak_events.to_csv(os.path.join(output_dir, "heatwave_events_peak.csv"), index=False)
     peak_stats.to_csv(os.path.join(output_dir, "heatwave_stats_peak.csv"), index=False)
 
-def run_full_pipeline(epw_dir, base_dir, output_dir):
-    print(f" Starting hybrid method on EPWs in {epw_dir}")
 
     # Load and process base EPW
     base_files = [f for f in os.listdir(base_dir) if f.endswith('.epw')]
@@ -330,7 +328,6 @@ def run_full_pipeline(epw_dir, base_dir, output_dir):
     print("✅ Saved all 6 heat wave output CSVs")
 
 
-run_full_pipeline('/content/EPWs', '/content/base', '/content/hotspells')
 
 
 # === Cell Separator ===
@@ -556,8 +553,6 @@ def save_final_outputs_cold_safe(output_dir, base_stats, base_events, all_stats,
 
 
 # === MAIN DRIVER ===
-def run_full_pipeline_cold(epw_dir, base_dir, output_dir):
-    print(f" Starting cold spell detection on EPWs in {epw_dir}")
 
     base_files = [f for f in os.listdir(base_dir) if f.endswith('.epw')]
     if not base_files:
@@ -620,7 +615,6 @@ def run_full_pipeline_cold(epw_dir, base_dir, output_dir):
     print("✅ Saved all 6 cold spell output CSVs.")
 
 
-run_full_pipeline_cold(epw_dir, base_dir, output_dir)
 
 
 # === Cell Separator ===
@@ -859,3 +853,19 @@ def compare_tmy_rmy(base_folder='/content/base', rmy_path='/content/final/RMY.ep
 
 # Run the comparison
 compare_tmy_rmy()
+
+
+# === RMY Wrapper ===
+def run_full_rmy_pipeline(epw_dir, base_dir, output_dir):
+    os.makedirs(epw_dir, exist_ok=True)
+    os.makedirs(base_dir, exist_ok=True)
+    os.makedirs(output_dir, exist_ok=True)
+
+    print("\n🚀 Running full RMY pipeline...")
+    heat_output = os.path.join(output_dir, "hotspells")
+    cold_output = os.path.join(output_dir, "coldspells")
+
+    run_full_pipeline(epw_dir, base_dir, heat_output)
+    run_full_pipeline_cold(epw_dir, base_dir, cold_output)
+
+    print("\n✅ RMY pipeline complete.")
