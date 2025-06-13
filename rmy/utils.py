@@ -1,13 +1,6 @@
 
 # === Cell Separator ===
 
-!pip install torch torchvision torch-geometric
-!pip install matplotlib
-!pip install ladybug-core
-!pip install ladybug-pandas
-
-# === Cell Separator ===
-
 import os
 !pip install pandas scipy statsmodels
 import os.path
