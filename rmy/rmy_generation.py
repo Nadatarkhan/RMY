@@ -335,323 +335,292 @@ run_full_pipeline('/content/EPWs', '/content/base', '/content/hotspells')
 
 # === Cell Separator ===
 
-import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
+import os
 import pandas as pd
-
-# Function to create custom colormaps for heatwaves and cold spells
-def create_custom_colormap():
-    heatwave_colors = ['#F7DDE1', '#EBAFB9', '#DC7284', '#CF3952', '#B22C42']  # Heatwaves color scheme
-    coldspell_colors = ['#b3e7f2', '#80d2e6', '#4dbeda', '#1aaacb', '#0086b3']  # Custom blue shades for cold spells
-    heatwave_cmap = mcolors.LinearSegmentedColormap.from_list('heatwave_cmap', heatwave_colors)
-    coldspell_cmap = mcolors.LinearSegmentedColormap.from_list('coldspell_cmap', coldspell_colors)
-    return heatwave_cmap, coldspell_cmap
-
-# Function to visualize heatwave and cold spell events on a timeline
-def visualize_extreme_events(heatwave_csv, coldspell_csv):
-    # Read the CSV files for heatwaves and cold spells
-    heatwave_df = pd.read_csv(heatwave_csv)
-    coldspell_df = pd.read_csv(coldspell_csv)
-
-    # Convert 'begin_date' to datetime format
-    heatwave_df['begin_date'] = pd.to_datetime(heatwave_df['begin_date'], format='%d/%m/%Y')
-    coldspell_df['begin_date'] = pd.to_datetime(coldspell_df['begin_date'], format='%d/%m/%Y')
-
-    # Extract year, month, and day for plotting
-    heatwave_df['year'] = heatwave_df['begin_date'].dt.year
-    heatwave_df['month'] = heatwave_df['begin_date'].dt.month
-    heatwave_df['day'] = heatwave_df['begin_date'].dt.day
-
-    coldspell_df['year'] = coldspell_df['begin_date'].dt.year
-    coldspell_df['month'] = coldspell_df['begin_date'].dt.month
-    coldspell_df['day'] = coldspell_df['begin_date'].dt.day
-
-    # Create custom colormaps for heatwaves and cold spells
-    heatwave_cmap, coldspell_cmap = create_custom_colormap()
-
-    fig, ax = plt.subplots(figsize=(20, 15))  # Updated from plt.figure()
-
-    # Get unique years
-    unique_years = sorted(set(heatwave_df['year'].unique()) | set(coldspell_df['year'].unique()))
-
-    # Plot horizontal lines for each year
-    for i, year in enumerate(unique_years):
-        ax.hlines(y=i, xmin=1, xmax=13, color='gray', alpha=0.5, linestyle='--')
-
-    # Add vertical dashed lines between months and after December
-    for month in range(1, 14):  # Include 13 to add line after December
-        ax.axvline(x=month, color='lightgray', linestyle='--', linewidth=0.7)
-
-    # Adjust the normalization to better reflect the range of the data in the colormap
-    #heatwave_norm = mcolors.Normalize(vmin=heatwave_df['avg_heat_index'].min(), vmax=heatwave_df['avg_heat_index'].max())
-    # Set a fixed normalization range for heat index (85°C to 125°C)
-    heatwave_norm = mcolors.Normalize(vmin=85, vmax=125)
-
-    heatwave_df['clipped_index'] = heatwave_df['avg_heat_index'].clip(85, 125)
-
-    if 'avg_wind_chill' in coldspell_df.columns:
-        coldspell_norm = mcolors.Normalize(vmin=coldspell_df['avg_wind_chill'].min(), vmax=coldspell_df['avg_wind_chill'].max())
-        wind_chill_column = 'avg_wind_chill'
-    else:
-        coldspell_norm = mcolors.Normalize(vmin=coldspell_df['avg_wind_speed'].min(), vmax=coldspell_df['avg_wind_speed'].max())
-        wind_chill_column = 'avg_wind_speed'
-
-    circle_size_factor = 50
-
-
-    for i, row in heatwave_df.iterrows():
-        year_index = unique_years.index(row['year'])
-        month_day = row['month'] + row['day'] / 30
-        ax.scatter(month_day, year_index,
-                   s=row['duration'] * circle_size_factor,
-                   #color=heatwave_cmap(heatwave_norm(row['avg_heat_index'])),
-                   # Cap heat index normalization between 85 and 125
-                   color=heatwave_cmap(heatwave_norm(row['clipped_index'])),
-                   alpha=0.7, edgecolors='black', linewidth=0.5)
-
-    for i, row in coldspell_df.iterrows():
-        year_index = unique_years.index(row['year'])
-        month_day = row['month'] + row['day'] / 30
-        ax.scatter(month_day, year_index,
-                   s=row['duration'] * circle_size_factor,
-                   color=coldspell_cmap(coldspell_norm(row[wind_chill_column])),
-                   alpha=0.7, edgecolors='black', linewidth=0.5)
-
-    heatwave_sm = plt.cm.ScalarMappable(cmap=heatwave_cmap, norm=heatwave_norm)
-    coldspell_sm = plt.cm.ScalarMappable(cmap=coldspell_cmap, norm=coldspell_norm)
-    heatwave_sm.set_array([])
-    coldspell_sm.set_array([])
-
-    # Shift heatwave bar closer to coldspell bar by reducing pad
-    cbar_heatwave = fig.colorbar(heatwave_sm, ax=ax, orientation='horizontal', pad=0.0001, shrink=0.8, aspect=40)
-    cbar_coldspell = fig.colorbar(coldspell_sm, ax=ax, orientation='horizontal', pad=0.08, shrink=0.8, aspect=40)
-
-    cbar_heatwave.set_label('Heatwave Average Heat Index (°C)',fontsize=14)
-    cbar_coldspell.set_label('Cold Spell Wind Chill (°C)' if 'avg_wind_chill' in coldspell_df.columns else 'Cold Spell Wind Speed (m/s)',fontsize=14)
-
-    sizes = [1, 3, 5, 7]
-    labels = [f'{size} days' for size in sizes]
-    handles = [ax.scatter([], [], s=size * circle_size_factor, color='gray', alpha=0.5, edgecolors='black', label=label)
-               for size, label in zip(sizes, labels)]
-
-    # Removed bounding box from legend
-    legend = ax.legend(
-        handles=handles,
-        scatterpoints=1,
-        frameon=False,
-        labelspacing=1,
-        title='Event Duration',
-        loc='center left',
-        bbox_to_anchor=(1.05, 0.5),
-        fontsize=14  # label font size
-    )
-
-    # Now set the title font size explicitly
-    legend.get_title().set_fontsize(16)
-
-
-    ax.set_xlim(0.8, 13.2)
-    ax.set_ylim(-1, len(unique_years))
-    ax.set_yticks(ticks=range(len(unique_years)))
-    ax.set_yticklabels(unique_years, fontsize=16)
-    ax.set_xticks(ticks=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
-    ax.set_xticklabels(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], fontsize=16)
-
-    ax.set_xlabel('Month', fontsize=16)
-    ax.set_ylabel('Year', fontsize=16)
-    ax.set_title('Extreme Event Explorer: Heatwaves and Cold Spells Timeline')
-
-    for spine in ax.spines.values():
-        spine.set_visible(False)
-
-    plt.tight_layout()
-    plt.show()
-
-# Example usage:
-heatwave_csv = '/content/hotspells/heatwave_events.csv'
-coldspell_csv = '/content/coldspells/coldspells_events.csv'
-
-visualize_extreme_events(heatwave_csv, coldspell_csv)
-
-
-# === Cell Separator ===
-
-import pandas as pd
-import plotly.graph_objects as go
-import matplotlib.colors as mcolors
 import numpy as np
-import scipy.stats as stats
+from datetime import datetime
+from pathlib import Path
 
-# --- Load data ---
-heatwave_csv = '/content/hotspells/heatwave_events.csv'
-coldspell_csv = '/content/coldspells/coldspells_events.csv'
-heatwave_df = pd.read_csv(heatwave_csv)
-coldspell_df = pd.read_csv(coldspell_csv)
-
-# --- Extract and label ---
-for df in (heatwave_df, coldspell_df):
-    df['begin_date'] = pd.to_datetime(df['begin_date'], format='%d/%m/%Y')
-    df['year'] = df['begin_date'].dt.year
-    df['month'] = df['begin_date'].dt.month
-    df['day'] = df['begin_date'].dt.day
-
-heatwave_df['event_type'] = 'Heatwave'
-coldspell_df['event_type'] = 'Coldspell'
-heatwave_df['intensity'] = heatwave_df['avg_heat_index']
-coldspell_df['intensity'] = coldspell_df['avg_wind_chill'] if 'avg_wind_chill' in coldspell_df.columns else coldspell_df['avg_wind_speed']
-
-# --- Combine & preprocess ---
-events_df = pd.concat([
-    heatwave_df[['year', 'month', 'day', 'duration', 'intensity', 'event_type']],
-    coldspell_df[['year', 'month', 'day', 'duration', 'intensity', 'event_type']]
-], ignore_index=True)
-events_df['month_day'] = events_df['month'] + events_df['day'] / 30
-events_df.sort_values(['year', 'month', 'day'], inplace=True)
-
-# Map years to indices to remove gaps
-unique_years = sorted(events_df['year'].unique())
-year_to_index = {yr: idx for idx, yr in enumerate(unique_years)}
-events_df['year_index'] = events_df['year'].map(year_to_index)
-
-# --- Color setup ---
-hw_colors = ['#F7DDE1','#EBAFB9','#DC7284','#CF3952','#B22C42']
-cs_colors = ['#b3e7f2','#80d2e6','#4dbeda','#1aaacb','#0086b3']
-hw_cmap = mcolors.LinearSegmentedColormap.from_list('hw', hw_colors)
-cs_cmap = mcolors.LinearSegmentedColormap.from_list('cs', cs_colors)
-
-hw_norm = mcolors.Normalize(vmin=events_df.query("event_type=='Heatwave'")['intensity'].min(),
-                            vmax=events_df.query("event_type=='Heatwave'")['intensity'].max())
-cs_norm = mcolors.Normalize(vmin=events_df.query("event_type=='Coldspell'")['intensity'].min(),
-                            vmax=events_df.query("event_type=='Coldspell'")['intensity'].max())
-
-events_df['color'] = events_df.apply(lambda row:
-    mcolors.to_hex(hw_cmap(hw_norm(row['intensity']))) if row['event_type'] == 'Heatwave'
-    else mcolors.to_hex(cs_cmap(cs_norm(row['intensity']))), axis=1)
-
-# --- KDE setup ---
-hw_all = events_df.query("event_type=='Heatwave'")['intensity']
-cs_all = events_df.query("event_type=='Coldspell'")['intensity']
-xs_hw_all = np.linspace(hw_all.min() - 2, hw_all.max() + 2, 200)
-xs_cs_all = np.linspace(cs_all.min() - 2, cs_all.max() + 2, 200)
-kde_hw_all = stats.gaussian_kde(hw_all)(xs_hw_all)
-kde_cs_all = stats.gaussian_kde(cs_all)(xs_cs_all)
-max_hw_pdf = kde_hw_all.max() * 1.6
-max_cs_pdf = kde_cs_all.max() * 1.5
-
-# --- Yearlines ---
-background_yearlines = [
-    go.Scatter(
-        x=[0.8, 13.2], y=[i, i],
-        mode='lines', line=dict(color='lightgrey', width=1, dash='dash'),
-        showlegend=False, hoverinfo='none',
-        xaxis="x", yaxis="y"
-    ) for i in range(len(unique_years))
+# === Shared EPW column names ===
+epw_columns = [
+    'year', 'month', 'day', 'hour', 'minute', 'data_source_unct', 'temp_air',
+    'temp_dew', 'relative_humidity', 'atmospheric_pressure', 'etr', 'etrn',
+    'ghi_infrared', 'ghi', 'dni', 'dhi', 'global_hor_illum',
+    'direct_normal_illum', 'diffuse_horizontal_illum', 'zenith_luminance',
+    'wind_direction', 'wind_speed', 'total_sky_cover', 'opaque_sky_cover',
+    'visibility', 'ceiling_height', 'present_weather_observation',
+    'present_weather_codes', 'precipitable_water', 'aerosol_optical_depth',
+    'snow_depth', 'days_since_last_snowfall', 'albedo',
+    'liquid_precipitation_depth', 'liquid_precipitation_quantity'
 ]
 
-# --- Frames ---
-frames = []
-all_past = pd.DataFrame()
+# === DAILY AGGREGATION ===
+def calculate_daily_tmin_tmax(epw_data):
+    epw_data['temp_air'] = pd.to_numeric(epw_data['temp_air'], errors='coerce')
+    epw_data['wind_speed'] = pd.to_numeric(epw_data['wind_speed'], errors='coerce')
+    daily = epw_data.groupby(['year', 'month', 'day']).agg({
+        'temp_air': ['min', 'max'],
+        'wind_speed': 'mean'
+    }).reset_index()
+    daily.columns = ['YEAR', 'MONTH', 'DAY', 'Tmin (oC)', 'Tmax (oC)', 'Wind Speed (m/s)']
+    return daily
 
-for yr in unique_years:
-    df_year = events_df[events_df['year'] == yr]
-    all_past = pd.concat([all_past, df_year], ignore_index=True)
+# === DETECTION METHOD ===
+def identify_cold_spells(df, method='ensemble', z_thresh=0.7, tmin_thres=-7, wind_speed_thres=2, window=30, max_duration=21):
+    if method == 'temperature':
+        condition = df['Tmin (oC)'] < tmin_thres
+    elif method == 'percentile':
+        condition = df['Tmin (oC)'] < df['Tmin (oC)'].quantile(0.1)
+    elif method == 'ensemble':
+        cond1 = df['Tmin (oC)'] < tmin_thres
+        cond2 = df['Tmin (oC)'] < df['Tmin (oC)'].quantile(0.1)
+        condition = cond1 | cond2
+    elif method == 'gnn':
+        df['z'] = (df['Tmin (oC)'] - df['Tmin (oC)'].rolling(window).mean()) / df['Tmin (oC)'].rolling(window).std()
+        df['z'] = df['z'].fillna(0)
+        df['is_winter'] = df['MONTH'].isin([12, 1, 2])
+        condition = (df['z'] < -z_thresh) & (df['Wind Speed (m/s)'] > wind_speed_thres) & df['is_winter']
+    else:
+        raise ValueError("Invalid method")
 
-    past_hw = all_past.query("event_type=='Heatwave'")['intensity']
-    past_cs = all_past.query("event_type=='Coldspell'")['intensity']
-    pdf_hw = stats.gaussian_kde(past_hw)(xs_hw_all) if len(past_hw) > 1 else np.zeros_like(xs_hw_all)
-    pdf_cs = stats.gaussian_kde(past_cs)(xs_cs_all) if len(past_cs) > 1 else np.zeros_like(xs_cs_all)
+    spells = []
+    grouped = condition.groupby((condition != condition.shift()).cumsum()).cumsum()
+    for start in grouped[grouped == 1].index:
+        end = start
+        while end + 1 < len(grouped) and grouped[end + 1] > 0:
+            end += 1
+        duration = end - start + 1
+        if 3 <= duration <= max_duration:
+            spells.append((start, end))
 
-    # Peak values
-    peak_hw_x = xs_hw_all[np.argmax(pdf_hw)]
-    peak_hw_y = np.max(pdf_hw)
-    peak_cs_x = xs_cs_all[np.argmax(pdf_cs)]
-    peak_cs_y = np.max(pdf_cs)
+    return pd.DataFrame(spells, columns=['Start', 'End']) if spells else pd.DataFrame(columns=['Start', 'End'])
 
-    frames.append(go.Frame(
-        data=[
-            *background_yearlines,
-            go.Scatter(
-                x=all_past['month_day'], y=all_past['year_index'],
-                mode='markers',
-                marker=dict(size=all_past['duration'] * 2.7, color=all_past['color'], opacity=0.7,
-                            line=dict(color='black', width=0.5)),
-                customdata=np.stack([all_past['event_type'], all_past['intensity'], all_past['duration']], axis=1),
-                hovertemplate="<b>%{customdata[0]}</b><br>Year: %{y}<br>Intensity: %{customdata[1]}<br>Duration: %{customdata[2]} days<extra></extra>",
-                showlegend=False,
-                xaxis="x", yaxis="y"
-            ),
-            # Heatwave KDEs
-            go.Scatter(x=xs_hw_all, y=kde_hw_all, mode='lines', line=dict(color='#CF3952', width=3),
-                       fill='tozeroy', fillcolor='rgba(207,57,82,0.05)', xaxis="x2", yaxis="y2", showlegend=False),
-            go.Scatter(x=xs_hw_all, y=pdf_hw, mode='lines', line=dict(color='#CF3952', width=2, dash='dash'),
-                       xaxis="x2", yaxis="y2", showlegend=False),
-            go.Scatter(x=[peak_hw_x, peak_hw_x], y=[0, peak_hw_y], mode='lines',
-                       line=dict(color='gray', width=2, dash='dot'), xaxis="x2", yaxis="y2", showlegend=False),
-            go.Scatter(x=[peak_hw_x], y=[peak_hw_y], text=[f"{peak_hw_x:.1f}"], mode='text',
-                       textposition='top center', xaxis="x2", yaxis="y2", showlegend=False, hoverinfo='skip'),
-            # Coldspell KDEs
-            go.Scatter(x=xs_cs_all, y=kde_cs_all, mode='lines', line=dict(color='#1aaacb', width=3),
-                       fill='tozeroy', fillcolor='rgba(26,170,203,0.05)', xaxis="x3", yaxis="y3", showlegend=False),
-            go.Scatter(x=xs_cs_all, y=pdf_cs, mode='lines', line=dict(color='#1aaacb', width=2, dash='dash'),
-                       xaxis="x3", yaxis="y3", showlegend=False),
-            go.Scatter(x=[peak_cs_x, peak_cs_x], y=[0, peak_cs_y], mode='lines',
-                       line=dict(color='gray', width=2, dash='dot'), xaxis="x3", yaxis="y3", showlegend=False),
-            go.Scatter(x=[peak_cs_x], y=[peak_cs_y], text=[f"{peak_cs_x:.1f}"], mode='text',
-                       textposition='top center', xaxis="x3", yaxis="y3", showlegend=False, hoverinfo='skip'),
-        ], name=str(yr)
-    ))
+from scipy.stats import genpareto
 
-# --- Colorbars ---
-cb_hw = go.Scatter(x=[None], y=[None], mode='markers', marker=dict(
-    colorscale=hw_colors, showscale=True, cmin=hw_norm.vmin, cmax=hw_norm.vmax, color=[hw_norm.vmin],
-    colorbar=dict(orientation='h', x=0.275, len=0.55, xanchor='center', yanchor='top', y=-0.12, title="Heat Index (°C)")
-), showlegend=False, hoverinfo='none')
-cb_cs = go.Scatter(x=[None], y=[None], mode='markers', marker=dict(
-    colorscale=cs_colors, showscale=True, cmin=cs_norm.vmin, cmax=cs_norm.vmax, color=[cs_norm.vmin],
-    colorbar=dict(orientation='h', x=0.275, len=0.55, xanchor='center', yanchor='top', y=-0.24, title="Wind Chill (°C or m/s)")
-), showlegend=False, hoverinfo='none')
+def identify_evt_cold_extremes(df, quantile_threshold=0.05, min_duration=3):
+    """
+    Identify cold spells using EVT (POT) approach based on Tmin.
+    """
+    tmin_series = df['Tmin (oC)'].dropna()
+    threshold = tmin_series.quantile(quantile_threshold)
+    excesses = -(tmin_series[tmin_series < threshold] - threshold)  # flip tail for cold
 
-# --- Layout ---
-layout = go.Layout(
-    title="Extreme Event Explorer: Heatwaves & Coldspells Timeline",
-    width=1400, height=1000,
-    plot_bgcolor='white',
-    margin=dict(b=300),
-    xaxis=dict(domain=[0, 0.55], title="Month", tickmode='array',
-               tickvals=list(range(1, 13)), ticktext=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
-               range=[0.8, 13.2], linecolor='black'),
-    yaxis=dict(domain=[0, 1], title="Year", tickvals=list(range(len(unique_years))),
-               ticktext=[str(y) for y in unique_years], range=[-0.5, len(unique_years)-0.5], linecolor='black'),
-    xaxis2=dict(domain=[0.65, 1], title="Heatwave Intensity (°C)", linecolor='black', anchor='y2'),
-    yaxis2=dict(domain=[0.55, 1], title="Density (PDF)", linecolor='black', range=[0, max_hw_pdf], anchor='x2'),
-    xaxis3=dict(domain=[0.65, 1], title="Coldspell Intensity (°C or m/s)", linecolor='black', anchor='y3'),
-    yaxis3=dict(domain=[0, 0.45], title="Density (PDF)", linecolor='black', range=[0, max_cs_pdf], anchor='x3'),
-    annotations=[dict(
-        text="Solid = all-years PDF · Dashed = PDF(all past)",
-        showarrow=False, xref="paper", yref="paper",
-        x=0.85, y=1.07, font=dict(size=12)
-    )],
-    showlegend=False,
-    updatemenus=[dict(
-        type="buttons", direction="left", pad={"r": 10, "t": 10}, x=0.1, xanchor="right", y=-0.06, yanchor="top",
-        buttons=[
-            dict(label="Play", method="animate",
-                 args=[None, {"frame": {"duration": 600, "redraw": False}, "fromcurrent": True}]),
-            dict(label="Pause", method="animate",
-                 args=[[None], {"frame": {"duration": 0, "redraw": False}, "mode": "immediate"}])
-        ]
-    )]
-)
+    if len(excesses) < 5:
+        return pd.DataFrame(columns=['Start', 'End'])  # Not enough data
 
-# --- Build figure ---
-fig = go.Figure(
-    data=[*frames[0].data, cb_hw, cb_cs],
-    layout=layout,
-    frames=frames
-)
+    c, loc, scale = genpareto.fit(excesses, floc=0)
 
-fig.show()
+    # Define return level (e.g., 98th percentile in lower tail)
+    return_level = threshold - genpareto.ppf(0.98, c, loc=0, scale=scale)
+
+    # Flag days below return level
+    condition = df['Tmin (oC)'] < return_level
+    condition = condition.fillna(False)
+
+    spells = []
+    grouped = condition.groupby((condition != condition.shift()).cumsum()).cumsum()
+    for start in grouped[grouped == 1].index:
+        end = start
+        while end + 1 < len(grouped) and condition.iloc[end + 1]:
+            end += 1
+        duration = end - start + 1
+        if duration >= min_duration:
+            spells.append((start, end))
+
+    return pd.DataFrame(spells, columns=['Start', 'End']) if spells else pd.DataFrame(columns=['Start', 'End'])
+
+
+
+# === EVENT + STATS ===
+def calculate_coldspell_stats(events_df, base_df):
+    stats, events = {}, []
+    for _, row in events_df.iterrows():
+        s_idx, e_idx = row['Start'], row['End']
+        period = base_df.iloc[s_idx:e_idx + 1]
+        year = int(period.iloc[0]['YEAR'])
+        duration = e_idx - s_idx + 1
+        avg_tmin = round(period['Tmin (oC)'].mean(), 1)
+        std_tmin = round(period['Tmin (oC)'].std(), 1)
+        min_tmin = round(period['Tmin (oC)'].min(), 1)
+        avg_ws = round(period['Wind Speed (m/s)'].mean(), 1)
+        bdate = datetime(year, int(period.iloc[0]['MONTH']), int(period.iloc[0]['DAY']))
+        edate = datetime(year, int(period.iloc[-1]['MONTH']), int(period.iloc[-1]['DAY']))
+        events.append({
+            'begin_date': bdate.strftime('%d/%m/%Y'),
+            'end_date': edate.strftime('%d/%m/%Y'),
+            'duration': duration,
+            'avg_tmin': avg_tmin,
+            'std_tmin': std_tmin,
+            'min_tmin': min_tmin,
+            'avg_wind_speed': avg_ws,
+            'year': year
+        })
+        if year not in stats:
+            stats[year] = {'cwn': 0, 'cwf': 0, 'cwd': 0, 'cwdm': [], 'cwaa': np.inf, 'avg_wind_speed': []}
+        stats[year]['cwn'] += 1
+        stats[year]['cwf'] += duration
+        stats[year]['cwd'] = max(stats[year]['cwd'], duration)
+        stats[year]['cwdm'].append(duration)
+        stats[year]['cwaa'] = min(stats[year]['cwaa'], min_tmin)
+        stats[year]['avg_wind_speed'].append(avg_ws)
+    for y in stats:
+        stats[y]['cwdm'] = np.mean(stats[y]['cwdm'])
+        stats[y]['avg_wind_speed'] = np.mean(stats[y]['avg_wind_speed'])
+    stats_df = pd.DataFrame.from_dict(stats, orient='index').reset_index().rename(columns={'index': 'year'})
+    stats_df['severity'] = stats_df['cwf'] * stats_df['cwaa']
+    events_df_final = pd.DataFrame(events).sort_values(by='begin_date')
+    return stats_df, events_df_final
+
+# === PROCESS FILE ===
+def process_file_cold(epw_path, methods=['ensemble', 'gnn', 'evt']):
+    try:
+        epw_df = pd.read_csv(epw_path, skiprows=8, header=None, names=epw_columns)
+    except Exception as e:
+        print(f" Could not read EPW file {epw_path}: {e}")
+        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+
+    daily_df = calculate_daily_tmin_tmax(epw_df)
+    daily_df = daily_df[(daily_df["Tmin (oC)"] != -9999) & (daily_df["Tmax (oC)"] != -9999)]
+
+    if daily_df.empty:
+        print(f" No valid daily data in {epw_path}. Skipping.")
+        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+
+    combined_events = []
+    all_stats = []
+
+    for method in methods:
+        try:
+            if method == 'evt':
+                events_df = identify_evt_cold_extremes(daily_df.copy())
+            else:
+                events_df = identify_cold_spells(daily_df.copy(), method=method)
+
+            if events_df.empty:
+                continue
+
+            stats_df, events_full = calculate_coldspell_stats(events_df, daily_df.copy())
+            combined_events.append(events_full)
+            all_stats.append(stats_df)
+
+        except Exception as e:
+            print(f" Error in method '{method}' for {epw_path}: {e}")
+
+    if not combined_events or not all_stats:
+        print(f" No cold spells detected using any method in {epw_path}.")
+        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+
+    all_events_df = pd.concat(combined_events).drop_duplicates().sort_values('begin_date').reset_index(drop=True)
+
+    all_stats_df = pd.concat(all_stats).groupby('year').agg({
+        'cwn': 'sum',
+        'cwf': 'sum',
+        'cwd': 'max',
+        'cwdm': 'mean',
+        'cwaa': 'min',
+        'avg_wind_speed': 'mean',
+        'severity': 'min'
+    }).reset_index()
+
+    if all_stats_df.empty:
+        print(f" Cold spell stats were empty after aggregation in {epw_path}.")
+        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+
+    peak_year = all_stats_df.loc[all_stats_df['severity'].idxmin()]['year']
+    peak_events = all_events_df[all_events_df['year'] == peak_year]
+    peak_stats = all_stats_df[all_stats_df['year'] == peak_year]
+
+    return all_stats_df, all_events_df, peak_stats, peak_events
+
+
+
+# === SAVE OUTPUTS ===
+
+def save_final_outputs_cold_safe(output_dir, base_stats, base_events, all_stats, all_events, peak_stats, peak_events):
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+
+    def safe_save(df, filename):
+        path = Path(output_dir) / filename
+        if df is not None and not df.empty:
+            df.to_csv(path, index=False)
+            #print(f" Saved: {path}")
+        else:
+            print(f" Skipped empty file: {path}")
+
+    safe_save(base_events, "coldspells_events_base.csv")
+    safe_save(base_stats, "coldspells_stats_base.csv")
+    safe_save(all_events, "coldspells_events.csv")
+    safe_save(all_stats, "coldspells_stats.csv")
+    safe_save(peak_events, "coldspells_events_peak.csv")
+    safe_save(peak_stats, "coldspells_stats_peak.csv")
+
+
+# === MAIN DRIVER ===
+def run_full_pipeline_cold(epw_dir, base_dir, output_dir):
+    print(f" Starting cold spell detection on EPWs in {epw_dir}")
+
+    base_files = [f for f in os.listdir(base_dir) if f.endswith('.epw')]
+    if not base_files:
+        raise FileNotFoundError("No base EPW file found.")
+    base_path = os.path.join(base_dir, base_files[0])
+    print(f" Processing base EPW file: {base_path}")
+    try:
+        base_stats, base_events, _, _ = process_file_cold(base_path, methods=['temperature'])
+    except Exception as e:
+        print(f" Base file processing failed: {e}")
+        base_stats, base_events = pd.DataFrame(), pd.DataFrame()
+
+    all_stats_list = []
+    all_events_list = []
+
+    for epw_file in sorted(os.listdir(epw_dir)):
+        if not epw_file.endswith(".epw"):
+            continue
+        epw_path = os.path.join(epw_dir, epw_file)
+        print(f" Processing file: {epw_path}")
+        try:
+            stats_df, events_df, _, _ = process_file_cold(epw_path, methods=['ensemble', 'gnn', 'evt'])
+            if not stats_df.empty:
+                all_stats_list.append(stats_df)
+            if not events_df.empty:
+                all_events_list.append(events_df)
+        except Exception as e:
+            print(f" Failed on {epw_file}: {e}")
+
+    epw_stats = pd.concat(all_stats_list, ignore_index=True) if all_stats_list else pd.DataFrame()
+    epw_events = pd.concat(all_events_list, ignore_index=True) if all_events_list else pd.DataFrame()
+
+    if not epw_stats.empty:
+        #Recomputing for consistency
+        epw_stats['severity'] = epw_stats['cwf'] * epw_stats['cwaa']
+        peak_year = int(epw_stats.loc[epw_stats['severity'].idxmin()]['year'])
+        peak_events = epw_events[epw_events['year'] == peak_year]
+        peak_stats = epw_stats[epw_stats['year'] == peak_year]
+
+        print("\n Severity scores across all years:")
+        for _, row in epw_stats[['year', 'severity']].sort_values('year').iterrows():
+            print(f"   - Year {int(row['year'])}: Severity = {row['severity']:.2f}")
+
+        print("\n Ensemble method run complete.")
+        print(f" Peak severity year identified: {peak_year}")
+
+        print("\n Event Stats for Peak Year:")
+        for col in ['cwn', 'cwf', 'cwd', 'cwdm', 'cwaa', 'severity']:
+            val = peak_stats.iloc[0][col]
+            print(f"   - {col}: {val:.2f}" if isinstance(val, (float, int)) else f"   - {col}: {val}")
+        print()
+
+    else:
+        print(" No cold spells detected in EPWs.")
+        peak_stats = pd.DataFrame()
+        peak_events = pd.DataFrame()
+
+
+    save_final_outputs_cold_safe(output_dir, base_stats, base_events, epw_stats, epw_events, peak_stats, peak_events)
+    print("✅ Saved all 6 cold spell output CSVs.")
+
+
+run_full_pipeline_cold('/content/EPWs', '/content/base', '/content/coldspells')
 
 
 # === Cell Separator ===
@@ -834,3 +803,59 @@ with open(output_epw_path, 'w', newline='') as file:
 print(f"✅ Final RMY saved to: {output_epw_path}")
 print(f"📂 Heatwave Peak EPW used: {heat_peak}")
 print(f"📂 Coldspell Peak EPW used: {cold_peak}")
+
+
+# === Cell Separator ===
+
+import os
+import pandas as pd
+
+def load_epw_daily_stats(epw_path):
+    df = pd.read_csv(epw_path, skiprows=8, header=None)
+    df.columns = ['year', 'month', 'day', 'hour', 'minute', 'data_source_unct', 'temp_air',
+                  'temp_dew', 'relative_humidity', 'atmospheric_pressure', 'etr', 'etrn',
+                  'ghi_infrared', 'ghi', 'dni', 'dhi', 'global_hor_illum',
+                  'direct_normal_illum', 'diffuse_horizontal_illum', 'zenith_luminance',
+                  'wind_direction', 'wind_speed', 'total_sky_cover', 'opaque_sky_cover',
+                  'visibility', 'ceiling_height', 'present_weather_observation',
+                  'present_weather_codes', 'precipitable_water', 'aerosol_optical_depth',
+                  'snow_depth', 'days_since_last_snowfall', 'albedo',
+                  'liquid_precipitation_depth', 'liquid_precipitation_quantity']
+
+    df['temp_air'] = pd.to_numeric(df['temp_air'], errors='coerce')
+    daily = df.groupby(['year', 'month', 'day'])['temp_air'].agg(['max', 'min']).reset_index()
+
+    max_temp = daily['max'].max()
+    min_temp = daily['min'].min()
+    days_above_35 = (daily['max'] > 30).sum()
+    days_below_0 = (daily['min'] < 0).sum()
+
+    return {
+        'max_temp': max_temp,
+        'min_temp': min_temp,
+        'days_above_35C': days_above_35,
+        'days_below_0C': days_below_0
+    }
+
+def compare_tmy_rmy(base_folder='/content/base', rmy_path='/content/final/RMY.epw'):
+    # Find TMY file in base folder
+    tmy_path = next((os.path.join(base_folder, f) for f in os.listdir(base_folder) if f.endswith('.epw')), None)
+
+    if not tmy_path or not os.path.exists(rmy_path):
+        print("❌ Missing TMY or RMY file.")
+        return
+
+    print(f"🔎 Comparing:\n- TMY: {tmy_path}\n- RMY: {rmy_path}")
+
+    tmy_stats = load_epw_daily_stats(tmy_path)
+    rmy_stats = load_epw_daily_stats(rmy_path)
+
+    print("\n📊 Comparison Summary:")
+    for key in tmy_stats:
+        print(f"{key}:")
+        print(f"   TMY: {tmy_stats[key]}")
+        print(f"   RMY: {rmy_stats[key]}")
+        print(f"   Δ   : {rmy_stats[key] - tmy_stats[key]}\n")
+
+# Run the comparison
+compare_tmy_rmy()

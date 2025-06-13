@@ -4,44 +4,56 @@ Anomaly-driven generation of Representative Meteorological Year (RMY) weather fi
 
 ## Overview
 
-This repository provides a set of tools to extract extreme climate events and integrate them into typical meteorological year weather files. The method combines multiple anomaly detection techniques to identify impactful events and supports both heat and cold extremes.
+This repository provides tools to detect and integrate extreme climate events into typical meteorological year (TMY) weather files. It uses a combination of static thresholds, percentile detection, GNN-style anomaly detection, and Extreme Value Theory (EVT) to create robust event-driven RMY files.
 
 ## Features
 
-- Static and percentile-based threshold detection
-- GNN-style anomaly detection
-- Extreme Value Theory (EVT) using Peaks Over Threshold (POT)
-- Event statistics including frequency, duration, and intensity
-- Compatible with EnergyPlus `.epw` files
-- Outputs ready-to-use CSV summaries
+- Multi-method detection of heatwaves and cold spells
+- Integration of extreme days into a base TMY to generate a new RMY
+- Seasonal averaging and mild-day insertion for balance
+- Compatible with EnergyPlus `.epw` weather files
+- Outputs ready-to-use CSV summaries and RMY EPW
 
 ## Structure
 
 ```
 RMY_Github/
 ├── rmy/
-│   ├── heatwaves.py
 │   ├── coldspells.py
+│   ├── heatwaves.py
+│   ├── rmy_generation.py
 │   ├── utils.py
+│   └── __init__.py
 ├── examples/
 │   └── example_usage.ipynb
 ├── data/
-├── README.md
+│   └── .gitignore
+├── images/
+│   └── event_timeline.png
+├── requirements.txt
 ├── LICENSE
-└── requirements.txt
+└── README.md
 ```
+
+## Example Output
+
+This timeline visualizes detected heatwaves and cold spells across multiple years:
+
+![Extreme Event Explorer Timeline](images/event_timeline.png)
 
 ## Usage
 
-See `examples/example_usage.ipynb` for how to apply the detection methods to `.epw` files.
+See the notebook in `examples/example_usage.ipynb` for a full walk-through.
 
 ## Requirements
-
-Install required packages:
 
 ```bash
 pip install -r requirements.txt
 ```
+
+## Citation
+
+If you use this tool, please cite the preprint (linked here when publicly available).
 
 ## License
 
