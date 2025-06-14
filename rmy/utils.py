@@ -26,6 +26,17 @@ def read_epw_file(epw_file_path):
     ])
 
 
+def find_epw_by_year(year, epw_folder):
+    """
+    Locate the EPW file that contains the specified year in its filename.
+    """
+    for fname in os.listdir(epw_folder):
+        if fname.endswith('.epw') and str(year) in fname:
+            return os.path.join(epw_folder, fname)
+    raise FileNotFoundError(f"No EPW found for year {year} in {epw_folder}")
+
+
+
 def load_epw(path):
     return pd.read_csv(path, skiprows=8, header=None, names=epw_columns)
 
