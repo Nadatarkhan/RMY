@@ -35,6 +35,9 @@ def identify_heatwaves_static(df, method='ensemble', tmin_th=20, tmax_th=35, max
         return combined
     elif method == 'percentile':
     elif method == 'temperature':
+        for i, df in enumerate(epw_data.values()):
+            flagged = flag_temperature_events(df, threshold=threshold_temp)
+            temp_detected.append(flagged)
     else:
         raise ValueError("Invalid method")
 
