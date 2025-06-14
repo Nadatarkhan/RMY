@@ -11,7 +11,7 @@ pip install -r requirements.txt
 
 Then run the following from the repo root:
 ```bash
-python rmy_generation.py
+from rmy import run_full_rmy_pipeline
 ```
 
 ## Repository Structure
@@ -26,7 +26,7 @@ RMY/
 │   └── rmy_generation.py
 ├── examples/
 │   └── RMY_Generation_Colab.ipynb
-├── EPWs/
+├── data/
 │   ├── base/
 │   └── epws/
 ├── final/
@@ -42,7 +42,7 @@ RMY/
 You can run the full RMY pipeline via:
 
 ```bash
-python rmy_generation.py
+from rmy import run_full_rmy_pipeline
 ```
 
 Make sure your folder structure matches:
@@ -74,3 +74,32 @@ Journal of Building Performance Simulation, 2025.
 ## License
 
 This project is licensed under the MIT License. See the LICENSE file for details.
+
+## 📁 Folder Structure
+
+- `/content/base/` → contains the base TMY EPW file (only 1 file)
+- `/content/EPWs/` → contains all AMY EPW files for detection
+- `/content/hotspells/` → output folder for detected heatwave events
+- `/content/coldspells/` → output folder for detected cold spell events
+- `/content/final/` → final output RMY EPW file and summary CSVs
+
+## 🔄 Workflow Summary
+
+1. Detect peak heatwaves and cold spells across 15+ years of EPW files.
+2. Match extreme events to base-year dates using overlap logic.
+3. Replace those dates with extreme-event days from the most severe year, using smoothing.
+4. Rebalance monthly averages by inserting non-extreme days to maintain realism.
+5. Output:
+   - RMY file with embedded extremes
+   - Summary CSVs for heatwaves and cold spells
+
+
+![RMY Workflow](images/Fig1.png)
+## ⚙️ Methods Used
+
+The event detection pipeline includes:
+- **Static Thresholding**: Identifies extremes based on fixed temperature or percentile thresholds.
+- **GNN-Based Anomaly Detection**: Flags events using graph-based representations of temporal temperature anomalies.
+- **Extreme Value Theory (EVT)**: Extracts statistically rare extremes using Peaks Over Threshold (POT) modeling.
+
+Each method is used in a complementary ensemble to identify the most severe year and characteristic events.
