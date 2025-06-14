@@ -29,6 +29,11 @@ def read_epw_file(epw_file_path):
 def load_epw(path):
     return pd.read_csv(path, skiprows=8, header=None, names=epw_columns)
 
+def get_peak_year(stats_csv):
+    """Extract the peak year from the event stats CSV."""
+    return int(pd.read_csv(stats_csv).iloc[0]['year'])
+
+
 def extract_original_header(epw_path):
     with open(epw_path, 'r') as f:
         return [next(f) for _ in range(8)]
