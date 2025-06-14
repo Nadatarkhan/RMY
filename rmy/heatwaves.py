@@ -34,7 +34,13 @@ def identify_heatwaves_static(df, method='ensemble', tmin_th=20, tmax_th=35, max
         combined = pd.concat([df1, df2]).drop_duplicates().reset_index(drop=True)
         return combined
     elif method == 'percentile':
+        for i, df in enumerate(epw_data.values()):
+            flagged = flag_percentile_events(df, percentile=percentile, min_duration=min_duration)
+            percentile_detected.append(flagged)
     elif method == 'temperature':
+        for i, df in enumerate(epw_data.values()):
+            flagged = flag_temperature_events(df, threshold=threshold_temp)
+            temp_detected.append(flagged)
         for i, df in enumerate(epw_data.values()):
             flagged = flag_temperature_events(df, threshold=threshold_temp)
             temp_detected.append(flagged)
