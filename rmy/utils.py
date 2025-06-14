@@ -142,7 +142,14 @@ def match_extreme_days(event_df, base_df, n_hours=24):
     return pd.DataFrame(columns=base_df.columns)
 
 def smooth_transition(df, window=3):
-    return df.rolling(window=window, min_periods=1, center=True).mean()
+    df_cleaned = df.copy()
+
+    # Ensure all values are numeric, coercing errors to NaN
+    for col in df_cleaned.columns:
+        df_cleaned[col] = pd.to_numeric(df_cleaned[col], errors='coerce')
+
+    return df_cleaned.rolling(window=window, min_periods=1, center=True).mean()
+
 
 def replace_event_days(base_df, insert_df, event_dates):
     new_df = base_df.copy()
