@@ -1,6 +1,6 @@
 # RMY: Representative Meteorological Year Generator
 
-Anomaly-driven generation of Representative Meteorological Year (RMY) weather files with embedded extreme events, including heatwaves and cold spells. This method preserves core TMY characteristics while adding realistic severe climate conditions to support robust design evaluations.
+Anomaly-driven generation of Representative Meteorological Year (RMY) weather files with embedded extreme events, including **heatwaves** and **cold spells**. This method preserves core TMY characteristics while adding realistic severe climate conditions to support robust resilience evaluations, and produces standard EPW outputs that can be used across all major building simulation platforms.
 
 ## 📁 Folder Structure
 
@@ -11,7 +11,7 @@ Anomaly-driven generation of Representative Meteorological Year (RMY) weather fi
 - `/content/final/` → final output RMY EPW file and summary CSVs
 
 
-## ⚙️ Methods Used
+## Methods Used
 
 The event detection pipeline includes:
 - **Static Thresholding**: Identifies extremes based on fixed temperature or percentile thresholds.
@@ -20,7 +20,7 @@ The event detection pipeline includes:
 
 Each method is used in a complementary ensemble to identify the most severe year and characteristic events.
 
-## 🔄 Workflow Summary
+## Workflow Summary
 
 1. Detect peak heatwaves and cold spells across 15+ years of EPW files.
 2. Match extreme events to base-year dates using overlap logic.
@@ -33,9 +33,6 @@ Each method is used in a complementary ensemble to identify the most severe year
 
 ![RMY Workflow](images/Fig1.png)
 
-# RMY: Representative Meteorological Year Generator
-
-Anomaly-driven generation of Representative Meteorological Year (RMY) weather files with embedded extreme events, including **heatwaves** and **cold spells**. This method preserves core TMY characteristics while adding realistic severe climate conditions to support robust design evaluations.
 
 ## Quick Start
 
