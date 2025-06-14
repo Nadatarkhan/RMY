@@ -4,8 +4,8 @@ import pandas as pd
 from datetime import datetime
 import warnings
 from scipy.stats import genpareto
-    warnings.filterwarnings("ignore", category=UserWarning, message="Parsing dates.*")
-    def calculate_daily_tmin_tmax(epw_data):
+warnings.filterwarnings("ignore", category=UserWarning, message="Parsing dates.*")
+def calculate_daily_tmin_tmax(epw_data):
         epw_data['temp_air'] = pd.to_numeric(epw_data['temp_air'], errors='coerce')
         epw_data['relative_humidity'] = pd.to_numeric(epw_data['relative_humidity'], errors='coerce')
         daily = epw_data.groupby(['year', 'month', 'day']).agg({
@@ -14,7 +14,7 @@ from scipy.stats import genpareto
         }).reset_index()
         daily.columns = ['YEAR', 'MONTH', 'DAY', 'Tmin (oC)', 'Tmax (oC)', 'Humidity (%)']
         return daily
-    def calculate_heat_index(temp_air, rh):
+def calculate_heat_index(temp_air, rh):
         T_F = (temp_air * 9/5) + 32
         hi = (
             -42.379 + 2.04901523*T_F + 10.14333127*rh - 0.22475541*T_F*rh
@@ -23,7 +23,7 @@ from scipy.stats import genpareto
             - 1.99e-6*T_F**2*rh**2
         )
         return hi
-    def identify_heatwaves_static(df, method='ensemble', tmin_th=20, tmax_th=35, max_duration=21):
+def identify_heatwaves_static(df, method='ensemble', tmin_th=20, tmax_th=35, max_duration=21):
         if method == 'ensemble':
             df1 = identify_heatwaves_static(df, method='percentile', max_duration=max_duration)
             df2 = identify_heatwaves_static(df, method='temperature', tmax_th=tmax_th, max_duration=max_duration)
@@ -60,7 +60,7 @@ from scipy.stats import genpareto
                 else:
                     break
         return pd.DataFrame(waves, columns=['Start', 'End']) if waves else pd.DataFrame(columns=['Start', 'End'])
-    def identify_evt_extremes(df, quantile_threshold=0.95, min_duration=3):
+def identify_evt_extremes(df, quantile_threshold=0.95, min_duration=3):
         """
         Identify extreme heatwave events using EVT (Peaks Over Threshold).
         """
@@ -86,13 +86,13 @@ from scipy.stats import genpareto
             if duration >= min_duration:
                 events.append((start, end))
         return pd.DataFrame(events, columns=['Start', 'End']) if events else pd.DataFrame(columns=['Start', 'End'])
-    def apply_gnn_detection(df):
+def apply_gnn_detection(df):
         df = df[['year', 'month', 'day', 'hour', 'temp_air']].dropna()
         daily_z = (daily_max - daily_max.mean()) / daily_max.std()
         threshold = 2.5
         extreme_days = daily_z[daily_z > threshold]
         return list(pd.to_datetime(extreme_days.index).year)
-    def calculate_event_stats(heatwave_df, base_df):
+def calculate_event_stats(heatwave_df, base_df):
             return pd.DataFrame(), pd.DataFrame(), None
         events = []
         stats = {}
@@ -128,7 +128,7 @@ from scipy.stats import genpareto
         events_df = pd.DataFrame(events).sort_values(by='begin_date')
         #print(f" Highest severity year: {peak_year}")
         return stats_df, events_df, peak_year
-    def process_file(epw_path, gnn_years=None, apply_gnn=True):
+def process_file(epw_path, gnn_years=None, apply_gnn=True):
         #print(f" Processing file: {epw_path}")
             'year', 'month', 'day', 'hour', 'minute', 'data_source_unct', 'temp_air',
             'temp_dew', 'relative_humidity', 'atmospheric_pressure', 'etr', 'etrn',
@@ -182,7 +182,7 @@ from scipy.stats import genpareto
             peak_events = pd.DataFrame()
             peak_stats = pd.DataFrame()
         return all_stats, all_events, peak_stats, peak_events, static_stats, static_df
-    def save_final_outputs(output_dir, base_stats, base_events, all_stats, all_events, peak_stats, peak_events):
+def save_final_outputs(output_dir, base_stats, base_events, all_stats, all_events, peak_stats, peak_events):
         os.makedirs(output_dir, exist_ok=True)
         base_events.to_csv(os.path.join(output_dir, "heatwave_events_base.csv"), index=False)
         base_stats.to_csv(os.path.join(output_dir, "heatwave_stats_base.csv"), index=False)
@@ -190,7 +190,7 @@ from scipy.stats import genpareto
         all_stats.to_csv(os.path.join(output_dir, "heatwave_stats.csv"), index=False)
         peak_events.to_csv(os.path.join(output_dir, "heatwave_events_peak.csv"), index=False)
         peak_stats.to_csv(os.path.join(output_dir, "heatwave_stats_peak.csv"), index=False)
-    def run_full_pipeline(epw_dir, base_dir, output_dir):
+def run_full_pipeline(epw_dir, base_dir, output_dir):
         print(f" Starting hybrid method on EPWs in {epw_dir}")
         # Load and process base EPW
         base_files = [f for f in os.listdir(base_dir) if f.endswith('.epw')]
@@ -257,7 +257,7 @@ from scipy.stats import genpareto
         print("✅ Saved all 6 heat wave output CSVs")
 import pandas as pd
     # Function to create custom colormaps for heatwaves and cold spells
-    def create_custom_colormap():
+def create_custom_colormap():
         heatwave_colors = ['#F7DDE1', '#EBAFB9', '#DC7284', '#CF3952', '#B22C42']  # Heatwaves color scheme
         coldspell_colors = ['#b3e7f2', '#80d2e6', '#4dbeda', '#1aaacb', '#0086b3']  # Custom blue shades for cold spells
         heatwave_cmap = mcolors.LinearSegmentedColormap.from_list('heatwave_cmap', heatwave_colors)
@@ -466,7 +466,7 @@ import warnings
     output_epw_path = Path('/content/final/RMY.epw')
     coldspell_stats_path = Path('/content/coldspells/coldspells_stats_peak.csv')
     heatwave_stats_path = Path('/content/hotspells/heatwave_stats_peak.csv')
-    def read_epw_file(epw_file_path):
+def read_epw_file(epw_file_path):
             'year', 'month', 'day', 'hour', 'minute', 'data_source_unct', 'temp_air', 'temp_dew', 'relative_humidity',
             'atmospheric_pressure', 'etr', 'etrn', 'ghi_infrared', 'ghi', 'dni', 'dhi', 'global_hor_illum',
             'direct_normal_illum', 'diffuse_horizontal_illum', 'zenith_luminance', 'wind_direction', 'wind_speed',
@@ -474,16 +474,16 @@ import warnings
             'present_weather_codes', 'precipitable_water', 'aerosol_optical_depth', 'snow_depth',
             'days_since_last_snowfall', 'albedo', 'liquid_precipitation_depth', 'liquid_precipitation_quantity'
         ])
-    def get_peak_year(stats_csv):
-    def find_epw_by_year(year, epw_folder):
+def get_peak_year(stats_csv):
+def find_epw_by_year(year, epw_folder):
         for fname in os.listdir(epw_folder):
             if fname.endswith('.epw') and str(year) in fname:
                 return os.path.join(epw_folder, fname)
         raise FileNotFoundError(f"No EPW found for year {year} in {epw_folder}")
-    def interpolate_smooth_transitions(df, indices, columns):
+def interpolate_smooth_transitions(df, indices, columns):
         for col in columns:
         return df
-    def match_events(base_df, peak_df):
+def match_events(base_df, peak_df):
             best, min_diff = None, float('inf')
             for idx, peak in unmatched.iterrows():
                 if base['begin_date'].month == peak['begin_date'].month and base['begin_date'].day == peak['begin_date'].day:
@@ -494,7 +494,7 @@ import warnings
                 matched.append((base, unmatched.loc[best]))
                 unmatched = unmatched.drop(best)
         return matched, unmatched
-    def integrate_events(df, matched, unmatched, peak_epw, label):
+def integrate_events(df, matched, unmatched, peak_epw, label):
         all_events = matched + [(None, e) for e in unmatched.itertuples()]
         replaced = set()
         for base, peak in all_events:
@@ -508,8 +508,8 @@ import warnings
                 df = interpolate_smooth_transitions(df, smoothing_idx, slice_peak.columns.drop(['year', 'month', 'day', 'hour', 'minute']))
         print(f"{label} events integrated. Days replaced: {len(replaced)}")
         return df, replaced
-    def calculate_monthly_avg_conditions(df, months):
-    def find_days_to_adjust_avg(epw_files, targets, months, cond):
+def calculate_monthly_avg_conditions(df, months):
+def find_days_to_adjust_avg(epw_files, targets, months, cond):
         days, sources = {m: [] for m in months}, {m: [] for m in months}
         for epw in epw_files:
             df = read_epw_file(epw)
@@ -521,7 +521,7 @@ import warnings
                     if sum(len(v) for v in days.values()) >= 40:
                         return days, sources
         return days, sources
-    def integrate_days(df, days, replaced, sources, targets, months):
+def integrate_days(df, days, replaced, sources, targets, months):
         inserted = set()
         for m in months:
             for i, day_df in enumerate(days[m]):
@@ -531,7 +531,7 @@ import warnings
                     smoothing_idx = list(range(max(0, idx.min()-8), min(len(df), idx.max()+9)))
                     inserted.add(tag)
         return df, inserted
-    def safe_load_events(path, cols):
+def safe_load_events(path, cols):
         except: return pd.DataFrame(columns=cols)
     # --- Begin process ---
     base_epw_path = list(base_epw_folder.glob('*.epw'))[0]
