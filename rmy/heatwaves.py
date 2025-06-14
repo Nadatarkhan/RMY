@@ -466,10 +466,7 @@ def visualize_extreme_events(heatwave_csv, coldspell_csv):
     plt.show()
 
 # Example usage:
-heatwave_csv = '/content/hotspells/heatwave_events.csv'
-coldspell_csv = '/content/coldspells/coldspells_events.csv'
 
-visualize_extreme_events(heatwave_csv, coldspell_csv)
 
 
 import pandas as pd
@@ -479,8 +476,6 @@ import numpy as np
 import scipy.stats as stats
 
 # --- Load data ---
-heatwave_csv = '/content/hotspells/heatwave_events.csv'
-coldspell_csv = '/content/coldspells/coldspells_events.csv'
 heatwave_df = pd.read_csv(heatwave_csv)
 coldspell_df = pd.read_csv(coldspell_csv)
 

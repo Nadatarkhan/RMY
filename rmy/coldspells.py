@@ -283,7 +283,6 @@ def run_full_pipeline_cold(epw_dir, base_dir, output_dir):
     print("✅ Saved all 6 cold spell output CSVs.")
 
 
-run_full_pipeline_cold('/content/EPWs', '/content/base', '/content/coldspells')
 
 
 import matplotlib.pyplot as plt
@@ -420,7 +419,4 @@ def visualize_extreme_events(heatwave_csv, coldspell_csv):
     plt.show()
 
 # Example usage:
-heatwave_csv = '/content/hotspells/heatwave_events.csv'
-coldspell_csv = '/content/coldspells/coldspells_events.csv'
 
-visualize_extreme_events(heatwave_csv, coldspell_csv)
