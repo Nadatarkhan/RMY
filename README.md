@@ -1,3 +1,7 @@
+# RMY: Representative Meteorological Year Generator
+
+Anomaly-driven generation of Representative Meteorological Year (RMY) weather files with embedded extreme events, including heatwaves and cold spells. This method preserves core TMY characteristics while adding realistic severe climate conditions to support robust design evaluations.
+
 ## 📁 Folder Structure
 
 - `/content/base/` → contains the base TMY EPW file (only 1 file)
@@ -105,4 +109,3 @@ Journal of Building Performance Simulation, 2025.
 ## License
 
 This project is licensed under the MIT License. See the LICENSE file for details.
-
