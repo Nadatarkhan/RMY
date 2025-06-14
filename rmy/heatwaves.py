@@ -330,7 +330,6 @@ def run_full_pipeline(epw_dir, base_dir, output_dir):
     print("✅ Saved all 6 heat wave output CSVs")
 
 
-run_full_pipeline('/content/EPWs', '/content/base', '/content/hotspells')
 
 
 import matplotlib.pyplot as plt
