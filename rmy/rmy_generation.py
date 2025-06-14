@@ -101,17 +101,31 @@ def safe_load_events(path, cols):
     try: return pd.read_csv(path, parse_dates=['begin_date', 'end_date'], dayfirst=True)
     except: return pd.DataFrame(columns=cols)
 
+
 def run_full_rmy_pipeline(epw_dir, base_dir, output_dir):
+    import os
+    from rmy.heatwaves import run_full_pipeline as run_heatwaves
+    from rmy.coldspells import run_full_pipeline_cold as run_coldspells
+
     print(f"📂 Running full RMY pipeline:")
     print(f"   AMY Folder: {epw_dir}")
     print(f"   Base File: {base_dir}")
     print(f"   Output Folder: {output_dir}")
 
+    # Run detection pipelines
+    hot_output = os.path.join(output_dir, "hotspells")
+    cold_output = os.path.join(output_dir, "coldspells")
+    os.makedirs(hot_output, exist_ok=True)
+    os.makedirs(cold_output, exist_ok=True)
+
+    run_heatwaves(epw_dir, base_dir, hot_output)
+    run_coldspells(epw_dir, base_dir, cold_output)
+
     base_epw_path = list(Path(base_dir).glob('*.epw'))[0]
     all_epw_folder = Path(epw_dir)
     output_epw_path = Path(output_dir) / f"RMY_{base_epw_path.name}"
-    coldspell_stats_path = Path(output_dir) / 'coldspells/coldspells_stats_peak.csv'
-    heatwave_stats_path = Path(output_dir) / 'hotspells/heatwave_stats_peak.csv'
+    coldspell_stats_path = Path(cold_output) / 'coldspells_stats_peak.csv'
+    heatwave_stats_path = Path(hot_output) / 'heatwave_stats_peak.csv'
 
     with open(base_epw_path, 'r') as f:
         header = [f.readline() for _ in range(8)]
@@ -124,10 +138,10 @@ def run_full_rmy_pipeline(epw_dir, base_dir, output_dir):
     peak_heat = read_epw_file(heat_peak)
     peak_cold = read_epw_file(cold_peak)
 
-    heat_base = safe_load_events(output_dir + '/hotspells/heatwave_events_base.csv', ['begin_date','end_date','duration','avg_tmax','std_tmax','max_tmax'])
-    heat_peak_df = safe_load_events(output_dir + '/hotspells/heatwave_events_peak.csv', ['begin_date','end_date','duration','avg_tmax','std_tmax','max_tmax'])
-    cold_base = safe_load_events(output_dir + '/coldspells/base/coldspells_events_base.csv', ['begin_date','end_date','duration','avg_tmin','std_tmin','min_tmin'])
-    cold_peak_df = safe_load_events(output_dir + '/coldspells/coldspells_events_peak.csv', ['begin_date','end_date','duration','avg_tmin','std_tmin','min_tmin'])
+    heat_base = safe_load_events(str(Path(hot_output) / 'heatwave_events_base.csv'), ['begin_date','end_date','duration','avg_tmax','std_tmax','max_tmax'])
+    heat_peak_df = safe_load_events(str(Path(hot_output) / 'heatwave_events_peak.csv'), ['begin_date','end_date','duration','avg_tmax','std_tmax','max_tmax'])
+    cold_base = safe_load_events(str(Path(cold_output) / 'base/coldspells_events_base.csv'), ['begin_date','end_date','duration','avg_tmin','std_tmin','min_tmin'])
+    cold_peak_df = safe_load_events(str(Path(cold_output) / 'coldspells_events_peak.csv'), ['begin_date','end_date','duration','avg_tmin','std_tmin','min_tmin'])
 
     mh, uh = match_events(heat_base, heat_peak_df)
     mc, uc = match_events(cold_base, cold_peak_df)
