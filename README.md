@@ -1,3 +1,34 @@
+## 📁 Folder Structure
+
+- `/content/base/` → contains the base TMY EPW file (only 1 file)
+- `/content/EPWs/` → contains all AMY EPW files for detection
+- `/content/hotspells/` → output folder for detected heatwave events
+- `/content/coldspells/` → output folder for detected cold spell events
+- `/content/final/` → final output RMY EPW file and summary CSVs
+
+
+## ⚙️ Methods Used
+
+The event detection pipeline includes:
+- **Static Thresholding**: Identifies extremes based on fixed temperature or percentile thresholds.
+- **GNN-Based Anomaly Detection**: Flags events using graph-based representations of temporal temperature anomalies.
+- **Extreme Value Theory (EVT)**: Extracts statistically rare extremes using Peaks Over Threshold (POT) modeling.
+
+Each method is used in a complementary ensemble to identify the most severe year and characteristic events.
+
+## 🔄 Workflow Summary
+
+1. Detect peak heatwaves and cold spells across 15+ years of EPW files.
+2. Match extreme events to base-year dates using overlap logic.
+3. Replace those dates with extreme-event days from the most severe year, using smoothing.
+4. Rebalance monthly averages by inserting non-extreme days to maintain realism.
+5. Output:
+   - RMY file with embedded extremes
+   - Summary CSVs for heatwaves and cold spells
+
+
+![RMY Workflow](images/Fig1.png)
+
 # RMY: Representative Meteorological Year Generator
 
 Anomaly-driven generation of Representative Meteorological Year (RMY) weather files with embedded extreme events, including **heatwaves** and **cold spells**. This method preserves core TMY characteristics while adding realistic severe climate conditions to support robust design evaluations.
@@ -61,7 +92,6 @@ Run the full pipeline interactively on Google Colab:
 This timeline shows detected heatwaves and cold spells across years:
 
 ![Event Timeline](images/event_timeline.png)
-
 ## Citation
 
 If you use this method, please cite:
@@ -71,35 +101,8 @@ Tarkhan, N., Crawley, D., Lawrie, L., & Reinhart, C.
 Journal of Building Performance Simulation, 2025.  
 [https://doi.org/10.1080/19401493.2025.2499687](https://doi.org/10.1080/19401493.2025.2499687)
 
+
 ## License
 
 This project is licensed under the MIT License. See the LICENSE file for details.
 
-## 📁 Folder Structure
-
-- `/content/base/` → contains the base TMY EPW file (only 1 file)
-- `/content/EPWs/` → contains all AMY EPW files for detection
-- `/content/hotspells/` → output folder for detected heatwave events
-- `/content/coldspells/` → output folder for detected cold spell events
-- `/content/final/` → final output RMY EPW file and summary CSVs
-
-## 🔄 Workflow Summary
-
-1. Detect peak heatwaves and cold spells across 15+ years of EPW files.
-2. Match extreme events to base-year dates using overlap logic.
-3. Replace those dates with extreme-event days from the most severe year, using smoothing.
-4. Rebalance monthly averages by inserting non-extreme days to maintain realism.
-5. Output:
-   - RMY file with embedded extremes
-   - Summary CSVs for heatwaves and cold spells
-
-
-![RMY Workflow](images/Fig1.png)
-## ⚙️ Methods Used
-
-The event detection pipeline includes:
-- **Static Thresholding**: Identifies extremes based on fixed temperature or percentile thresholds.
-- **GNN-Based Anomaly Detection**: Flags events using graph-based representations of temporal temperature anomalies.
-- **Extreme Value Theory (EVT)**: Extracts statistically rare extremes using Peaks Over Threshold (POT) modeling.
-
-Each method is used in a complementary ensemble to identify the most severe year and characteristic events.
