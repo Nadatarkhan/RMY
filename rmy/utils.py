@@ -95,7 +95,7 @@ def integrate_events(df, matched, unmatched, peak_epw, label):
                 df.loc[row_idx] = row.values
                 replaced.add(f"{int(row['month']):02d}-{int(row['day']):02d}")
             df.loc[smoothing_idx] = smooth_transition(df.loc[smoothing_idx])
-    print(f"{label} events integrated. Days replaced: {len(replaced)}")
+    #print(f"{label} events integrated. Days replaced: {len(replaced)}")
     return df, replaced
 
 def calculate_monthly_avg_conditions(df, months):
