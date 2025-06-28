@@ -56,9 +56,16 @@ def save_epw(df, original_header_lines, output_path):
             f.write(line)
         df.to_csv(f, index=False, header=False)
 
-def calculate_heat_index(t, rh):
-    hi = 0.5 * (t + 61.0 + ((t-68.0)*1.2) + (rh*0.094))
+def calculate_heat_index(temp_air, rh):
+    T_F = (temp_air * 9/5) + 32
+    hi = (
+        -42.379 + 2.04901523*T_F + 10.14333127*rh - 0.22475541*T_F*rh
+        - 6.83783e-3*T_F**2 - 5.481717e-2*rh**2
+        + 1.22874e-3*T_F**2*rh + 8.5282e-4*T_F*rh**2
+        - 1.99e-6*T_F**2*rh**2
+    )
     return hi
+
 
 def match_events(base_df, peak_df):
     matched, unmatched = [], peak_df.copy()
@@ -85,17 +92,20 @@ def integrate_events(df, matched, unmatched, peak_epw, label):
             if slice_peak.empty: continue
             idx = df[(df['month'] == d.month) & (df['day'] == d.day)].index
             smoothing_idx = list(range(max(0, idx.min()-8), min(len(df), idx.max()+9)))
-            df.loc[smoothing_idx] = smooth_transition(df.loc[smoothing_idx])
+            # Replace rows
             for _, row in slice_peak.iterrows():
                 row_idx = df[
-                    (df['month'] == row['month']) & 
-                    (df['day'] == row['day']) & 
+                    (df['month'] == row['month']) &
+                    (df['day'] == row['day']) &
                     (df['hour'] == row['hour'])
                 ].index
                 df.loc[row_idx] = row.values
                 replaced.add(f"{int(row['month']):02d}-{int(row['day']):02d}")
-            df.loc[smoothing_idx] = smooth_transition(df.loc[smoothing_idx])
-    #print(f"{label} events integrated. Days replaced: {len(replaced)}")
+            # Interpolate smoothing region
+            for col in slice_peak.columns.drop(['year', 'month', 'day', 'hour', 'minute']):
+                series = df.loc[smoothing_idx, col].infer_objects(copy=False)
+                df.loc[smoothing_idx, col] = series.interpolate()
+    print(f"{label} events integrated. Days replaced: {len(replaced)}")
     return df, replaced
 
 def calculate_monthly_avg_conditions(df, months):
@@ -171,15 +181,23 @@ def seasonal_adjustment(final_df, original_df, variable='temp_air'):
 def integrate_days(df, days, replaced, sources, targets, months):
     inserted = set()
     for m in months:
-        for i, day_df in enumerate(days[m]):
-            if len(inserted) >= 30: break
-            for _, row in day_df.iterrows():
-                tag = f"{int(row['month']):02d}-{int(row['day']):02d}"
-                if tag in replaced or tag in inserted: continue
-                idx = df[(df['month'] == row['month']) & (df['day'] == row['day'])].index
-                smoothing_idx = list(range(max(0, idx.min()-8), min(len(df), idx.max()+9)))
-                df.loc[smoothing_idx] = smooth_transition(df.loc[smoothing_idx])
-                df.loc[idx] = row.values
+        for day_set in days[m]:
+            tag = f"{int(day_set.iloc[0]['month']):02d}-{int(day_set.iloc[0]['day']):02d}"
+            if tag in replaced or tag in inserted: continue
+            idx = df[(df['month'] == day_set.iloc[0]['month']) & (df['day'] == day_set.iloc[0]['day'])].index
+            smoothing_idx = list(range(max(0, idx.min()-8), min(len(df), idx.max()+9)))
+            for _, row in day_set.iterrows():
+                row_idx = df[
+                    (df['month'] == row['month']) &
+                    (df['day'] == row['day']) &
+                    (df['hour'] == row['hour'])
+                ].index
+                df.loc[row_idx] = row.values
                 inserted.add(tag)
+            # Interpolate smoothing region
+            for col in day_set.columns.drop(['year', 'month', 'day', 'hour', 'minute']):
+                series = df.loc[smoothing_idx, col].infer_objects(copy=False)
+                df.loc[smoothing_idx, col] = series.interpolate()
+    print(f"Adjusted seasonal days inserted: {len(inserted)}")
     return df, inserted
 
