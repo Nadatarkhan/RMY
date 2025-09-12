@@ -1,4 +1,3 @@
-
 # RMY: Representative Meteorological Years with Embedded Extremes
 
 This repository provides tools and data for generating **Representative Meteorological Years (RMYs)** that integrate realistic climate extremes (heatwaves and cold spells) into typical weather files. These are designed for use in building and urban simulation workflows, and can be applied to both present-day and future climates (FRMYs).
@@ -13,14 +12,22 @@ This repository introduces **RMYs** and **FRMYs** — weather files that embed e
 
 ---
 
-## 🧩 Methodology
+## 🧩 Key Components
 
-Our approach includes:
+### 🔹 1. Event Detection
+Detect extreme heatwaves and cold spells using:
+- Temperature thresholds and percentile exceedance
+- Ensemble approaches (hybrid of metrics)
+- Event statistics extraction (duration, intensity, persistence)
 
-- **Anomaly Detection** using thresholds, percentile metrics, and hybrid techniques to detect both heatwaves and cold spells.
-- **Event Embedding** into a base TMY file, while preserving monthly and seasonal statistical structure.
-- **Seasonal Averaging** of meteorological parameters to maintain long-term realism.
-- **Future RMYs (FRMYs)** generated from morphed future files (FAMYs) to reflect SSP245/SSP585 emission scenarios.
+### 🔹 2. RMY Construction
+Embed detected events into base TMY files while preserving monthly/seasonal statistical structure.
+
+### 🔹 3. FRMY Generation
+Use future emulator-based weather files (e.g., FAMYs) to extract and integrate realistic future events under low/high emission scenarios (SSP245 / SSP585).
+
+### 🔹 4. Visualization
+Plot timelines, event characteristics, and RMY vs. TMY comparisons.
 
 ---
 
@@ -41,35 +48,6 @@ Visual timelines and statistics of embedded events — including seasonality, du
 Click the link below to explore an interactive dashboard that allows you to navigate to any city and download its corresponding RMY or FRMY weather file:
 
 🔗 https://svante.mit.edu/~pgiani/buildings/
-
----
-
-## 🚀 Google Colab Notebook
-
-Use our ready-to-run Google Colab notebook to generate your own RMYs:
-
-📎 [Open RMY_Generation_Colab.ipynb](examples/RMY_Generation_Colab.ipynb)
-
----
-
-## 💻 Usage
-
-1. Clone the repository and install requirements:
-
-```
-git clone https://github.com/Nadatarkhan/RMY.git
-cd RMY
-pip install -r requirements.txt
-```
-
-2. Run event detection and generate RMY:
-
-```python
-from rmy import rmy_generation
-rmy_generation.generate_rmy(...)
-```
-
-3. Explore results using your preferred simulation tool (EnergyPlus, UMI, ClimateStudio).
 
 ---
 
