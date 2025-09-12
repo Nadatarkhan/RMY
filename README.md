@@ -46,6 +46,17 @@ Then run the following from the repo root:
 from rmy import run_full_rmy_pipeline
 ```
 
+
+## 📁 Data
+
+The repository now includes the following subfolders in `data/`:
+
+- `RMYs/`: Representative Meteorological Years with historically embedded extreme events using a multi-method anomaly detection framework.
+- `FRMYs/`: Future Representative Meteorological Years based on climate emulator outputs, embedding projected extremes under multiple emissions scenarios.
+
+All files are provided in `.epw` format and are fully compatible with EnergyPlus, ClimateStudio, Rhino/Grasshopper, and other standard simulation tools.
+
+
 ## Repository Structure
 
 ```
@@ -88,7 +99,7 @@ Run the full pipeline interactively on Google Colab:
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Nadatarkhan/RMY/blob/main/examples/RMY_Generation_Colab.ipynb)
 
-## Sample Output
+## 🌡️ Extreme Events Explorer (EEE)
 
 This timeline shows detected heatwaves and cold spells across years:
 
@@ -106,3 +117,22 @@ Journal of Building Performance Simulation, 2025.
 ## License
 
 This project is licensed under the MIT License. See the LICENSE file for details.
+
+## 🌍 Explore the Interactive MapClick the link below to explore an interactive dashboard that allows you to navigate to any city and download its corresponding RMY or FRMY weather file.
+
+🔗 [Interactive Map Dashboard](https://svante.mit.edu/~pgiani/buildings/)
+
+## 📚 Citations
+
+If you use this work, please cite:
+
+- N. Tarkhan, C. Reinhart, "Generation of Representative Meteorological Years Through Anomaly-Based Detection of Extreme Events", Journal of Building Performance Simulation (2024).
+
+- P. Giani, et al., "Origin and Limits of Invariant Warming Patterns in Climate Models", arXiv, 2024. [https://arxiv.org/abs/2411.14183](https://arxiv.org/abs/2411.14183)
+
+- N. Tarkhan and C. Reinhart, “Representing Climate Extremes: An Event-driven Approach to Urban Building Performance Assessments,” Comfort at the Extremes Conference, Seville, Nov. 2024. [Paper Link](https://drive.google.com/file/d/14Kj9-jcL_SQGUaTvbdAzLVPOJHHWHLz0/view?usp=sharing)
+
+
+🎥 **Watch the map in action**  
+[Click here to view the video demo](images/map.mp4)
+
