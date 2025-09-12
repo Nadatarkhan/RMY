@@ -1,108 +1,58 @@
-# RMY: Representative Meteorological Year Generator
 
-Anomaly-driven generation of Representative Meteorological Year (RMY) weather files with embedded extreme events, including **heatwaves** and **cold spells**. This method preserves core TMY characteristics while adding realistic severe climate conditions to support robust resilience evaluations, and produces standard EPW outputs that can be used across all major building simulation platforms.
+# Extreme-Aware Meteorological Years (RMYs and FRMYs)
 
-## 📁 Folder Structure
+## Motivation
 
-- `/content/base/` → contains the base TMY EPW file (only 1 file)
-- `/content/EPWs/` → contains all AMY EPW files for detection
-- `/content/hotspells/` → output folder for detected heatwave events
-- `/content/coldspells/` → output folder for detected cold spell events
-- `/content/final/` → final output RMY EPW file and summary CSVs
+TMY weather files represent averaged conditions and hence do not represent the full spectrum of extremes. This limits their utility for resilience assessment, overheating simulations, and passive survivability design. This project introduces new weather files that embed observed or projected extremes—heatwaves, cold spells, and compound events—into EPW files that are fully compatible with simulation software like EnergyPlus and ClimateStudio.
 
+## Methodology
 
-## Methods Used
+RMYs embed observed extremes through a multi-method detection pipeline using thresholds, EVT, and GNNs. FRMYs incorporate climate projections using emulators and apply the same embedding methods. Events are integrated using a seasonal interpolation approach that preserves monthly means while restoring extreme events.
 
-The event detection pipeline includes:
-- **Static Thresholding**: Identifies extremes based on fixed temperature or percentile thresholds.
-- **GNN-Based Anomaly Detection**: Flags events using graph-based representations of temporal temperature anomalies.
-- **Extreme Value Theory (EVT)**: Extracts statistically rare extremes using Peaks Over Threshold (POT) modeling.
+## Key Components
 
-Each method is used in a complementary ensemble to identify the most severe year and characteristic events.
+- **RMYs:** Representative past weather files that include historically observed extreme heat and cold events.
+- **FRMYs:** Future weather files that embed extremes using emulator-projected trajectories under various climate scenarios.
+- **Extreme Events Explorer (EEE):** Interactive visualization tool to inspect event frequency, intensity, duration, heat index, and wind chill over time.
+- **Interactive Map:** Downloadable global library of present and future weather files for any location.
+- **Codebase:** Fully reproducible scripts to generate and integrate events into EPWs.
 
-## Workflow Summary
+## Explore the Interactive Map
 
-1. Detect peak heatwaves and cold spells across 15+ years of EPW files.
-2. Match extreme events to base-year dates using overlap logic.
-3. Replace those dates with extreme-event days from the most severe year, using smoothing.
-4. Rebalance monthly averages by inserting non-extreme days to maintain realism.
-5. Output:
-   - RMY file with embedded extremes
-   - Summary CSVs for heatwaves and cold spells
+![Interactive Map Animation](images/map.gif)
 
+[Explore the Map here](https://svante.mit.edu/~pgiani/buildings/)
 
-![RMY Workflow](images/Fig1.png)
-
-
-## Quick Start
-
-Install required packages:
-```bash
-pip install -r requirements.txt
-```
-
-Then run the following from the repo root:
-```bash
-from rmy import run_full_rmy_pipeline
-```
+Click the link above to explore an interactive dashboard that allows you to navigate to any city and download its corresponding RMY or FRMY weather file.
 
 ## Repository Structure
 
 ```
-RMY/
-├── rmy/
-│   ├── __init__.py
-│   ├── heatwaves.py
-│   ├── coldspells.py
-│   ├── utils.py
-│   └── rmy_generation.py
-├── examples/
-│   └── RMY_Generation_Colab.ipynb
 ├── data/
-│   ├── base/
-│   └── epws/
-├── final/
+│   ├── RMY/
+│   └── FRMY/
+├── notebooks/
 ├── images/
-│   └── event_timeline.png
-├── README.md
-├── LICENSE
-└── requirements.txt
+└── README.md
 ```
 
-## Usage Guidance
 
-You can run the full RMY pipeline via:
-
-```bash
-from rmy import run_full_rmy_pipeline
-```
-
-Make sure your folder structure matches:
-- `EPWs/base/` → contains the base TMY file (1 file only)
-- `EPWs/epws/` → contains full set of AMY EPWs
-- `final/` → RMY weather file + event summaries will be saved here
-
-## Try it on Google Colab
-
-Run the full pipeline interactively on Google Colab:
-
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Nadatarkhan/RMY/blob/main/examples/RMY_Generation_Colab.ipynb)
-
-## Sample Output
-
-This timeline shows detected heatwaves and cold spells across years:
-
-![Event Timeline](images/event_timeline.png)
 ## Citation
 
-If you use this method, please cite:
-
 Tarkhan, N., Crawley, D., Lawrie, L., & Reinhart, C.  
-*Generation of representative meteorological years through anomaly-based detection of extreme events.*  
+*Generation of representative meteorological years through anomaly-based detection of extreme events*.  
 Journal of Building Performance Simulation, 2025.  
-[https://doi.org/10.1080/19401493.2025.2499687](https://doi.org/10.1080/19401493.2025.2499687)
+https://doi.org/10.1080/19401493.2025.2499687
 
+Tarkhan, N. and Reinhart, C.  
+*Representing Climate Extremes: An Event-driven Approach to Urban Building Performance Assessments*.  
+Comfort at the Extremes Conference, Seville, Nov. 2024.  
+https://drive.google.com/file/d/14Kj9-jcL_SQGUaTvbdAzLVPOJHHWHLz0/view?usp=sharing
+
+Giani, P., et al.  
+*Origin and Limits of Invariant Warming Patterns in Climate Models*.  
+https://arxiv.org/abs/2411.14183
 
 ## License
 
-This project is licensed under the MIT License. See the LICENSE file for details.
+MIT License
