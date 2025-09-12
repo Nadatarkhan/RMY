@@ -118,21 +118,26 @@ Journal of Building Performance Simulation, 2025.
 
 This project is licensed under the MIT License. See the LICENSE file for details.
 
-## 🌍 Explore the Interactive MapClick the link below to explore an interactive dashboard that allows you to navigate to any city and download its corresponding RMY or FRMY weather file.
+## 🌍 Explore the Interactive Map
+
+Click the link below to explore an interactive dashboard that allows you to navigate to any city and download its corresponding RMY or FRMY weather file.
 
 🔗 [Interactive Map Dashboard](https://svante.mit.edu/~pgiani/buildings/)
 
+
 ## 📚 Citations
 
-If you use this work, please cite:
+Tarkhan, N., Crawley, D., Lawrie, L., & Reinhart, C.  
+*Generation of representative meteorological years through anomaly-based detection of extreme events.*  
+*Journal of Building Performance Simulation*, 2025.  
+https://doi.org/10.1080/19401493.2025.2499687
 
-- N. Tarkhan, C. Reinhart, "Generation of Representative Meteorological Years Through Anomaly-Based Detection of Extreme Events", Journal of Building Performance Simulation (2024).
+Tarkhan, N., & Reinhart, C.  
+*Representing Climate Extremes: An Event-driven Approach to Urban Building Performance Assessments.*  
+*Comfort at the Extremes Conference*, Seville, Nov. 2024.  
+https://drive.google.com/file/d/14Kj9-jcL_SQGUaTvbdAzLVPOJHHWHLz0/view?usp=sharing
 
-- P. Giani, et al., "Origin and Limits of Invariant Warming Patterns in Climate Models", arXiv, 2024. [https://arxiv.org/abs/2411.14183](https://arxiv.org/abs/2411.14183)
-
-- N. Tarkhan and C. Reinhart, “Representing Climate Extremes: An Event-driven Approach to Urban Building Performance Assessments,” Comfort at the Extremes Conference, Seville, Nov. 2024. [Paper Link](https://drive.google.com/file/d/14Kj9-jcL_SQGUaTvbdAzLVPOJHHWHLz0/view?usp=sharing)
-
-
-🎥 **Watch the map in action**  
-[Click here to view the video demo](images/map.mp4)
-
+Giani, P., & Bonan, D.  
+*Origin and Limits of Invariant Warming Patterns in Climate Models.*  
+arXiv preprint, 2024.  
+https://arxiv.org/abs/2411.14183
