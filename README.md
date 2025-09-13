@@ -12,6 +12,13 @@ With the increasing *frequency*, *intensity*, and *duration* of extreme weather 
 - **Anomaly Detection:** Ensemble method combining static thresholds, GNN-based detection, and EVT (Peaks Over Threshold) to identify peak years.
 - **Event Smoothing & Integration:** Temporal smoothing and seasonal averaging logic that inserts extremes while preserving monthly averages.
 
+## Extreme Events Explorer (EEE)
+This timeline shows detected heatwaves and cold spells across years based on the detection algorithm:
+
+![Event Timeline](images/event_timeline.png)
+
+---
+
 ## Methodology
 
 This toolkit introduces a multi-method event detection and integration pipeline for constructing Representative Meteorological Year (RMY) and Future RMY (FRMY) weather files. These new formats restore historically observed or projected extremes into standard TMY files to enable realistic simulation for overheating, thermal resilience, peak demand, and mortality-linked risk.
@@ -37,12 +44,6 @@ Each method is used in a complementary ensemble to identify the most severe year
 
 ![RMY Workflow](images/Fig1.png) 
 
-## Extreme Events Explorer (EEE)
-This timeline shows detected heatwaves and cold spells across years based on the detection algorithm:
-
-![Event Timeline](images/event_timeline.png)
-
----
 
 ## Folder Structure
 
