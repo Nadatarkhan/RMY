@@ -3,20 +3,29 @@
 
 ## Motivation
 
-TMY weather files represent averaged conditions and hence do not represent the full spectrum of extremes, which are critical to assessing thermal resilience, peak loads, overheating, and grid reliability under climate stress. This project corrects for that by embedding realistic extreme events—both historical and future—into weather files that are fully compatible with building simulation tools like EnergyPlus, ClimateStudio, Rhino/Grasshopper, and more.
+With the increasing *frequency*, *intensity*, and *duration* of extreme weather events worldwide, traditional simulation inputs no longer capture the conditions most critical to building resilience. TMY (Typical Meteorological Year) weather files represent averaged conditions and hence do not represent the full spectrum of extremes, which are critical to assessing thermal resilience, peak loads, overheating, and grid reliability under climate stress. 
+
+This project adresses that gap by embedding realistic extreme events—both historical and future—into weather files that are fully compatible with building simulation tools like EnergyPlus, ClimateStudio, Rhino/Grasshopper, and more. All data, code, and workflows are open-source, enabling reproducibility and adaptation for global use.
 
 ## Key Components
 
 - **RMYs (Representative Meteorological Years):** Weather files embedded with observed extreme events, generated from historical AMY data using anomaly detection.
 - **FRMYs (Future Representative Meteorological Years):** Morphed weather files embedding future heatwaves and cold spells derived from climate emulator trajectories with annual resolution and embedded uncertainty.
 - **Anomaly Detection:** Ensemble method combining static thresholds, GNN-based detection, and EVT (Peaks Over Threshold) to identify peak years.
-- **Event Smoothing & Integration:** Temporal smoothing and seasonal averaging logic that inserts extremes while preserving monthly averages.
+- **Event Integration in Accessible Weather files:** Temporal smoothing and seasonal averaging logic that inserts extremes while preserving monthly averages in weather files compatible with a wide range of simulation programs. 
+
+## Extreme Events Explorer (EEE)
+This timeline shows detected heatwaves and cold spells across years based on the detection algorithm:
+
+![Event Timeline](images/event_timeline.png)
+
+---
 
 ## Methodology
 
-This toolkit introduces a multi-method event detection and integration pipeline for constructing Representative Meteorological Year (RMY) and Future RMY (FRMY) weather files. These new formats restore historically observed or projected extremes into standard TMY files to enable realistic simulation for overheating, thermal resilience, peak demand, and mortality-linked risk.
+This toolkit introduces a multi-method event detection and integration pipeline for constructing Representative Meteorological Year (RMY) and Future RMY (FRMY) weather files. These new formats restore historically observed or projected extremes into standard TMY files to enable realistic simulation for overheating, thermal resilience, and peak demand.
 
-## Methods Used
+An Ensemble anomaly-detection method is used based on the following:
 
 - **Static Thresholding:** Identifies extremes based on fixed temperature or percentile thresholds.
 - **GNN-Based Anomaly Detection:** Flags events using graph-based representations of temporal temperature anomalies.
@@ -24,17 +33,21 @@ This toolkit introduces a multi-method event detection and integration pipeline 
 
 Each method is used in a complementary ensemble to identify the most severe year and characteristic events.
 
+**For FRMY generation**, future extremes are derived from annually-morphed climate emulator outputs that reflect global warming trajectories under different scenarios. These files embed projected heatwaves and cold spells with realistic variability, and are processed using the same anomaly detection and integration methods as RMYs.
+
 ## Workflow Summary
 
-Detect peak heatwaves and cold spells across 15+ years of EPW files.  
-Match extreme events to base-year dates using overlap logic.  
-Replace those dates with extreme-event days from the most severe year, using smoothing.  
-Rebalance monthly averages by inserting non-extreme days to maintain realism.  
+1. Detect peak heatwaves and cold spells across 15+ years of EPW files.
+2. Match extreme events to base-year dates using overlap logic.
+3. Replace those dates with extreme-event days from the most severe year, using smoothing.
+4. Rebalance monthly averages by inserting non-extreme days to maintain realism.
+5. Output:
+   - RMY file with embedded extremes
+   - Summary CSVs for heatwaves and cold spells
 
-### Extreme Events Explorer (EEE)
-![EEE Timeline](images/Fig1.png)
 
----
+![RMY Workflow](images/Fig1.png) 
+
 
 ## Folder Structure
 
@@ -87,6 +100,20 @@ final/     → RMY weather file + event summaries will be saved here
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Nadatarkhan/RMY/blob/main/examples/RMY_Generation_Colab.ipynb)
 
 ---
+## What's Next?
+
+As climate conditions continue to shift, extreme events are evolving—not just in frequency, but in duration, intensity, and timing. Future extensions of this project will:
+
+- Track how heatwaves and cold spells are shifting across decades
+- Link these shifts to building performance risk and urban equity impacts
+- Expand the tool to include dual temperature hazard assessments across cities
+
+Below is a preview of how extreme events are changing over time:
+
+![Events](images/Events.gif)
+
+Stay tuned for the next phase: ***Extremes in Motion*** — a dynamic, multi-city comparison tool.
+
 
 ## Citations
 
