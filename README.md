@@ -100,6 +100,20 @@ final/     → RMY weather file + event summaries will be saved here
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Nadatarkhan/RMY/blob/main/examples/RMY_Generation_Colab.ipynb)
 
 ---
+## What's Next?
+
+As climate conditions continue to shift, extreme events are evolving—not just in frequency, but in duration, intensity, and timing. Future extensions of this project will:
+
+- Track how heatwaves and cold spells are shifting across decades
+- Link these shifts to building performance risk and urban equity impacts
+- Expand the tool to include dual temperature hazard assessments across cities
+
+Below is a preview of how extreme events are changing over time:
+
+![Events](images/Events.gif)
+
+Stay tuned for the next phase: ***Extremes in Motion*** — a dynamic, multi-city comparison tool.
+
 
 ## Citations
 
