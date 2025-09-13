@@ -26,13 +26,21 @@ Each method is used in a complementary ensemble to identify the most severe year
 
 ## Workflow Summary
 
-Detect peak heatwaves and cold spells across 15+ years of EPW files.  
-Match extreme events to base-year dates using overlap logic.  
-Replace those dates with extreme-event days from the most severe year, using smoothing.  
-Rebalance monthly averages by inserting non-extreme days to maintain realism.  
+1. Detect peak heatwaves and cold spells across 15+ years of EPW files.
+2. Match extreme events to base-year dates using overlap logic.
+3. Replace those dates with extreme-event days from the most severe year, using smoothing.
+4. Rebalance monthly averages by inserting non-extreme days to maintain realism.
+5. Output:
+   - RMY file with embedded extremes
+   - Summary CSVs for heatwaves and cold spells
 
-### Extreme Events Explorer (EEE)
-![EEE Timeline](images/Fig1.png)
+
+![RMY Workflow](images/Fig1.png) 
+
+## Extreme Events Explorer (EEE)
+This timeline shows detected heatwaves and cold spells across years based on the detection algorithm:
+
+![Event Timeline](images/event_timeline.png)
 
 ---
 
