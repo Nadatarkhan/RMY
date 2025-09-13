@@ -3,7 +3,7 @@
 
 ## Motivation
 
-TMY weather files represent averaged conditions and hence do not represent the full spectrum of extremes, which are critical to assessing thermal resilience, peak loads, overheating, and grid reliability under climate stress. This project corrects for that by embedding realistic extreme events—both historical and future—into weather files that are fully compatible with building simulation tools like EnergyPlus, ClimateStudio, Rhino/Grasshopper, and more.
+With the increasing *frequency*, *intensity*, and *duration* of extreme weather events worldwide, traditional simulation inputs no longer capture the conditions most critical to building resilience. TMY (Typical Metereological Year) weather files represent averaged conditions and hence do not represent the full spectrum of extremes, which are critical to assessing thermal resilience, peak loads, overheating, and grid reliability under climate stress. This project corrects for that by embedding realistic extreme events—both historical and future—into weather files that are fully compatible with building simulation tools like EnergyPlus, ClimateStudio, Rhino/Grasshopper, and more.
 
 ## Key Components
 
@@ -16,7 +16,7 @@ TMY weather files represent averaged conditions and hence do not represent the f
 
 This toolkit introduces a multi-method event detection and integration pipeline for constructing Representative Meteorological Year (RMY) and Future RMY (FRMY) weather files. These new formats restore historically observed or projected extremes into standard TMY files to enable realistic simulation for overheating, thermal resilience, peak demand, and mortality-linked risk.
 
-## Methods Used
+An Ensemble anomaly-detection method is used based on the following:
 
 - **Static Thresholding:** Identifies extremes based on fixed temperature or percentile thresholds.
 - **GNN-Based Anomaly Detection:** Flags events using graph-based representations of temporal temperature anomalies.
