@@ -23,7 +23,7 @@ This timeline shows detected heatwaves and cold spells across years based on the
 
 ## Methodology
 
-This toolkit introduces a multi-method event detection and integration pipeline for constructing Representative Meteorological Year (RMY) and Future RMY (FRMY) weather files. These new formats restore historically observed or projected extremes into standard TMY files to enable realistic simulation for overheating, thermal resilience, peak demand, and mortality-linked risk.
+This toolkit introduces a multi-method event detection and integration pipeline for constructing Representative Meteorological Year (RMY) and Future RMY (FRMY) weather files. These new formats restore historically observed or projected extremes into standard TMY files to enable realistic simulation for overheating, thermal resilience, and peak demand.
 
 An Ensemble anomaly-detection method is used based on the following:
 
@@ -32,6 +32,8 @@ An Ensemble anomaly-detection method is used based on the following:
 - **Extreme Value Theory (EVT):** Extracts statistically rare extremes using Peaks Over Threshold (POT) modeling.
 
 Each method is used in a complementary ensemble to identify the most severe year and characteristic events.
+
+**For FRMY generation**, future extremes are derived from annually-morphed climate emulator outputs that reflect global warming trajectories under different scenarios. These files embed projected heatwaves and cold spells with realistic variability, and are processed using the same anomaly detection and integration methods as RMYs.
 
 ## Workflow Summary
 
