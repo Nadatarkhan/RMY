@@ -12,7 +12,7 @@ This project corrects for that by embedding realistic extreme events—both hist
 - **RMYs (Representative Meteorological Years):** Weather files embedded with observed extreme events, generated from historical AMY data using anomaly detection.
 - **FRMYs (Future Representative Meteorological Years):** Morphed weather files embedding future heatwaves and cold spells derived from climate emulator trajectories with annual resolution and embedded uncertainty.
 - **Anomaly Detection:** Ensemble method combining static thresholds, GNN-based detection, and EVT (Peaks Over Threshold) to identify peak years.
-- **Event Smoothing & Integration:** Temporal smoothing and seasonal averaging logic that inserts extremes while preserving monthly averages in weather files compatible with a wide range of simulation programs. 
+- **Event Integration in Accessible Weather files:** Temporal smoothing and seasonal averaging logic that inserts extremes while preserving monthly averages in weather files compatible with a wide range of simulation programs. 
 
 ## Extreme Events Explorer (EEE)
 This timeline shows detected heatwaves and cold spells across years based on the detection algorithm:
