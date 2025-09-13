@@ -3,9 +3,9 @@
 
 ## Motivation
 
-With the increasing *frequency*, *intensity*, and *duration* of extreme weather events worldwide, traditional simulation inputs no longer capture the conditions most critical to building resilience. TMY (Typical Meteorological Year) weather files represent averaged conditions and hence do not represent the full spectrum of extremes, which are critical to assessing thermal resilience, peak loads, overheating, and grid reliability under climate stress. This project corrects for that by embedding realistic extreme events—both historical and future—into weather files that are fully compatible with building simulation tools like EnergyPlus, ClimateStudio, Rhino/Grasshopper, and more.
+With the increasing *frequency*, *intensity*, and *duration* of extreme weather events worldwide, traditional simulation inputs no longer capture the conditions most critical to building resilience. TMY (Typical Meteorological Year) weather files represent averaged conditions and hence do not represent the full spectrum of extremes, which are critical to assessing thermal resilience, peak loads, overheating, and grid reliability under climate stress. 
 
-All data, code, and workflows are open-source, enabling reproducibility and adaptation for global use.
+This project corrects for that by embedding realistic extreme events—both historical and future—into weather files that are fully compatible with building simulation tools like EnergyPlus, ClimateStudio, Rhino/Grasshopper, and more. All data, code, and workflows are open-source, enabling reproducibility and adaptation for global use.
 
 ## Key Components
 
