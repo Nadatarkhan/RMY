@@ -11,7 +11,7 @@ This project adresses that gap by embedding realistic extreme events—both hist
 
 - **RMYs (Representative Meteorological Years):** Weather files embedded with observed extreme events (heatwaves and cold spells), generated from historical AMYs (Actual Meteorological Years) data using anomaly detection.
 - **FRMYs (Future Representative Meteorological Years):** Morphed weather files embedding future heatwaves and cold spells derived from climate emulator trajectories with annual resolution and embedded uncertainty.
-- **Anomaly Detection:** Ensemble method combining static thresholds, GNN-based detection, and EVT (Peaks Over Threshold) to identify peak years.
+- **Open-Source Anomaly Detection**: A modular, fully open-source detection framework that identifies climate extremes using an ensemble of methods—static thresholds, Graph Neural Networks (GNNs), and Extreme Value Theory (EVT). The codebase is public and reusable across projects aiming to detect and embed extremes in weather or environmental time-series data.
 - **Event Integration in Accessible Weather files:** Temporal smoothing and seasonal averaging logic that inserts extremes while preserving monthly averages in weather files compatible with a wide range of simulation programs. 
 
 ## Extreme Events Explorer (EEE)
