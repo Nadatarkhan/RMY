@@ -35,6 +35,8 @@ Each method is used in a complementary ensemble to identify the most severe year
 
 **For FRMY generation**, future extremes are derived from annually-morphed climate emulator outputs that reflect global warming trajectories under different scenarios. These files embed projected heatwaves and cold spells with realistic variability, and are processed using the same anomaly detection and integration methods as RMYs.
 
+![Emulator](images/Emulator.png)
+
 ## Workflow Summary
 
 1. Detect peak heatwaves and cold spells across 15+ years of EPW files.
