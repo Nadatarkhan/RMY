@@ -1,5 +1,5 @@
 
-# Extreme-Aware Meteorological Years: Generating RMYs and FRMYs
+# Extreme-Aware Meteorological Years: Generating RMYs and FRMYs for Climate-Resilient Building Simulation
 
 ## Motivation
 
