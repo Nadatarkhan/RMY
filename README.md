@@ -124,7 +124,7 @@ Tarkhan, N., Crawley, D., Lawrie, L., & Reinhart, C.
 *Journal of Building Performance Simulation, 2025.*  
 [https://doi.org/10.1080/19401493.2025.2499687](https://doi.org/10.1080/19401493.2025.2499687)
 
-Giani, P., Gehlen, B., Nearing, G., et al.  
+Giani, P., Fiore, A.M., Flierl, G., et al.
 **Origin and Limits of Invariant Warming Patterns in Climate Models.**  
 *arXiv preprint, 2024.*  
 [https://arxiv.org/abs/2411.14183](https://arxiv.org/abs/2411.14183)
