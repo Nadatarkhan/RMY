@@ -131,7 +131,8 @@ def calculate_monthly_avg_conditions(df, months):
 
 
 def compensate_monthly(df, base_epw, epw_files, months, protected_days, inserted_hours,
-                       temp_tol=0.25, rh_tol=2.0, max_days_per_month=10, max_days_total=60):
+                       temp_tol=0.25, rh_tol=2.0, max_days_per_month=10, max_days_total=60,
+                       max_midnight_step=None):
     """Pull each month's mean temperature and RH back to the base TMY.
 
     Paper Section 2.4: "the algorithm adjusts monthly and seasonal dry bulb
@@ -144,11 +145,48 @@ def compensate_monthly(df, base_epw, epw_files, months, protected_days, inserted
     helps, or a day budget is reached. Event days and already-inserted days
     are never replaced. Months without deviation are left untouched.
 
+    A compensation day placed directly next to another inserted day (an
+    event day or an earlier compensation day) meets it at midnight with no
+    TMY hours between them, so the boundary smoothing cannot blend that
+    step. Such a day is only used if the temperature step at each shared
+    midnight is at most `max_midnight_step` degrees C.
+
     Returns (df, inserted day tags, per-month report DataFrame).
     """
     targets = calculate_monthly_avg_conditions(base_epw, months)
     sources = [read_epw_file(p) for p in sorted(Path(p) for p in epw_files)]
     inserted, report = set(), []
+
+    # Order of the calendar days in the file, to find each day's neighbors
+    # (also across month ends, and across 28 Feb / 1 Mar in a 365-day TMY).
+    keys = list(zip(df['month'].astype(int), df['day'].astype(int)))
+    position, first_row, last_row = {}, [], []
+    for row_i, key in enumerate(keys):
+        if key not in position:
+            position[key] = len(first_row)
+            first_row.append(row_i)
+            last_row.append(row_i)
+        last_row[position[key]] = row_i
+    occupied = {position[(int(t[:2]), int(t[3:]))] for t in protected_days
+                if (int(t[:2]), int(t[3:])) in position}
+    temp_col = df.columns.get_loc('temp_air')
+    if max_midnight_step is None:
+        # Steps the base TMY itself takes at midnight (99th percentile), at least 3 C.
+        steps = base_epw['temp_air'].diff().abs()[base_epw['hour'] == 1]
+        max_midnight_step = max(3.0, float(np.nanpercentile(steps, 99)))
+
+    def joins_smoothly(m, d, day):
+        """True unless the day would meet an inserted neighbor with a big step."""
+        p, t = position[(m, d)], day['temp_air'].to_numpy(dtype=float)
+        if p - 1 in occupied:
+            before = df.iat[last_row[p - 1], temp_col]
+            if not abs(t[0] - before) <= max_midnight_step:
+                return False
+        if p + 1 in occupied:
+            after = df.iat[first_row[p + 1], temp_col]
+            if not abs(after - t[-1]) <= max_midnight_step:
+                return False
+        return True
 
     def objective(dt, drh):
         return (dt / temp_tol) ** 2 + (drh / rh_tol) ** 2
@@ -178,7 +216,7 @@ def compensate_monthly(df, base_epw, epw_files, months, protected_days, inserted
                and not (abs(dt) <= temp_tol and abs(drh) <= rh_tol)):
             best, best_obj = None, objective(dt, drh)
             for d, day, t_sum, rh_sum in candidates:
-                if d not in target_sums:
+                if d not in target_sums or not joins_smoothly(m, d, day):
                     continue
                 _, cur_t, cur_rh = target_sums[d]
                 new_dt = dt + (t_sum - cur_t) / n_hours
@@ -191,6 +229,7 @@ def compensate_monthly(df, base_epw, epw_files, months, protected_days, inserted
             d, day, dt, drh = best
             replace_whole_day(df, day, m, d, inserted_hours)
             inserted.add(f'{m:02d}-{d:02d}')
+            occupied.add(position[(m, d)])
             del target_sums[d]          # each date is replaced at most once
             row['days_inserted'] += 1
 
@@ -203,6 +242,56 @@ def compensate_monthly(df, base_epw, epw_files, months, protected_days, inserted
         print(f'   - Month {r.month:2d}: {r.temp_dev_before:+.2f} / {r.rh_dev_before:+.1f} -> '
               f'{r.temp_dev_after:+.2f} / {r.rh_dev_after:+.1f} ({r.days_inserted} days)')
     return df, inserted, report
+
+
+def repair_missing_wind(df, base_epw, inserted_hours, max_gap=3):
+    """Fill missing wind speed and direction in the inserted AMY hours.
+
+    NOAA AMYs leave wind direction missing for "variable" wind and have
+    occasional gaps in wind speed. Only hours that are missing (NaN) and
+    were inserted from an AMY are filled; recorded values and the base-TMY
+    hours are never changed:
+    - gaps of up to `max_gap` hours are interpolated from the hours on either
+      side (direction around the compass, through the shorter arc);
+    - longer gaps take the base TMY's value for the same hour.
+
+    Returns (df, {column: (hours interpolated, hours from the TMY)}).
+    """
+    inserted_hours = np.asarray(inserted_hours, dtype=bool)
+    counts = {}
+    for col in ('wind_speed', 'wind_direction'):
+        values = df[col].to_numpy(dtype=float, copy=True)
+        missing = ~np.isfinite(values)
+        edges = np.flatnonzero(np.diff(np.r_[False, missing, False].astype(int)))
+        n_interp = n_tmy = 0
+        for start, stop in zip(edges[::2], edges[1::2]):
+            fill = np.arange(start, stop)
+            fill = fill[inserted_hours[fill]]
+            if fill.size == 0:
+                continue
+            left, right = start - 1, stop
+            anchors_ok = (left >= 0 and right < len(values)
+                          and np.isfinite(values[left]) and np.isfinite(values[right]))
+            if stop - start <= max_gap and anchors_ok:
+                w = (fill - left) / (right - left)
+                if col == 'wind_direction':
+                    a, b = np.radians(values[left]), np.radians(values[right])
+                    u = (1 - w) * np.sin(a) + w * np.sin(b)
+                    v = (1 - w) * np.cos(a) + w * np.cos(b)
+                    new = np.round(np.degrees(np.arctan2(u, v)) % 360)
+                    new[new == 360] = 0
+                else:
+                    new = (1 - w) * values[left] + w * values[right]
+                values[fill] = new
+                n_interp += fill.size
+            else:
+                tmy = base_epw[col].to_numpy(dtype=float)[fill]
+                ok = np.isfinite(tmy)
+                values[fill[ok]] = tmy[ok]
+                n_tmy += int(ok.sum())
+        df[col] = values
+        counts[col] = (n_interp, n_tmy)
+    return df, counts
 
 
 def smooth_inserted_boundaries(df, protected, hours=TRANSITION_HOURS):
@@ -349,6 +438,13 @@ def construct_final_rmy(base_epw_path, epw_dir, hot_dir, cold_dir, output_path,
     all_extreme_days = rh | rc
     final, _, _ = compensate_monthly(final, base_epw, epw_list, list(range(1, 13)),
                                      all_extreme_days, inserted_hours)
+
+    # Fill wind values missing in the inserted AMY hours (before smoothing,
+    # so the boundary blend has wind anchors).
+    final, wind = repair_missing_wind(final, base_epw, inserted_hours)
+    print('Wind repair (inserted AMY hours): ' + '; '.join(
+        f'{col.replace("_", " ")} {a} h interpolated, {b} h from the TMY'
+        for col, (a, b) in wind.items()))
 
     # Blend the shoulders ONCE, after all insertions.
     report_temperature_jumps(final, 'Before smoothing')

@@ -90,6 +90,46 @@ def test_output_does_not_depend_on_file_order():
     assert abs(report.loc[0, 'temp_dev_after']) < abs(report.loc[0, 'temp_dev_before'])
 
 
+def test_compensation_days_join_inserted_days_smoothly():
+    """A compensation day next to an inserted day must not create a big midnight step."""
+    base = read_epw_file(list_epws(BASE_DIR)[0])
+    shifted = base.copy()
+    shifted.loc[shifted.month == 1, 'temp_air'] -= 2.0
+    # Protect every other January day, so most candidates have inserted neighbors.
+    protected = {f'01-{d:02d}' for d in range(1, 32, 2)}
+    df, inserted, _ = compensate_monthly(shifted.copy(), base, list_epws(EPW_DIR), [1], protected,
+                                         np.zeros(len(base), dtype=bool), max_midnight_step=2.0)
+    assert inserted
+    occupied = protected | inserted
+    for tag in inserted:
+        d = int(tag[3:])
+        for a, b in ((d - 1, d), (d, d + 1)):
+            if f'01-{a:02d}' in occupied and f'01-{b:02d}' in occupied:
+                last = df[(df.month == 1) & (df.day == a)].temp_air.iloc[-1]
+                first = df[(df.month == 1) & (df.day == b)].temp_air.iloc[0]
+                assert abs(first - last) <= 2.0, (a, b)
+
+
+def test_wind_repair_fills_only_missing_inserted_hours():
+    from rmy.rmy_generation import repair_missing_wind
+    n = 48
+    base = pd.DataFrame({'wind_speed': np.full(n, 9.0), 'wind_direction': np.full(n, 90.0)})
+    df = pd.DataFrame({'wind_speed': np.full(n, 2.0), 'wind_direction': np.full(n, 180.0)})
+    df.loc[0:3, 'wind_direction'] = [350.0, np.nan, np.nan, 30.0]    # short gap across north
+    df.loc[10:15, 'wind_speed'] = np.nan                               # long gap -> TMY
+    df.loc[20, 'wind_speed'] = np.nan                                  # not inserted -> untouched
+    inserted = np.ones(n, dtype=bool)
+    inserted[20] = False
+    before = df.copy()
+    out, counts = repair_missing_wind(df, base, inserted)
+    assert out.loc[1:2, 'wind_direction'].tolist() == [3.0, 17.0]      # 350 -> 30 the short way
+    assert (out.loc[10:15, 'wind_speed'] == 9.0).all()
+    assert np.isnan(out.loc[20, 'wind_speed'])
+    recorded = before.notna()
+    pd.testing.assert_frame_equal(out[recorded], before[recorded])     # recorded values unchanged
+    assert counts == {'wind_speed': (0, 6), 'wind_direction': (2, 0)}
+
+
 def test_visualization_writes_png(run, tmp_path):
     out, _ = run
     png = tmp_path / 'timeline.png'
