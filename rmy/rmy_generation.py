@@ -402,13 +402,14 @@ def construct_final_rmy(base_epw_path, epw_dir, hot_dir, cold_dir, output_path,
     return output_path
 
 
-def run_full_rmy_pipeline(epw_dir, base_dir, output_dir, **rmy_kwargs):
+def run_full_rmy_pipeline(epw_dir, base_dir, output_dir, gnn_config=None, **rmy_kwargs):
     """Run heat-wave and cold-spell detection, then assemble the RMY.
 
     `epw_dir` holds the AMY EPWs, `base_dir` holds exactly one base TMY EPW.
     Detection CSVs go to `output_dir/hotspells` and `output_dir/coldspells`;
-    the RMY is written to `output_dir/RMY_<base file name>`. Extra keyword
-    arguments are passed to `construct_final_rmy`. Returns the RMY path.
+    the RMY is written to `output_dir/RMY_<base file name>`. `gnn_config`
+    (rmy.gnn.GNNConfig) changes the GNN settings. Extra keyword arguments
+    are passed to `construct_final_rmy`. Returns the RMY path.
     """
     epw_dir, base_dir, output_dir = Path(epw_dir), Path(base_dir), Path(output_dir)
     print('📂 Running full RMY pipeline:')
@@ -427,8 +428,8 @@ def run_full_rmy_pipeline(epw_dir, base_dir, output_dir, **rmy_kwargs):
     hot_dir.mkdir(parents=True, exist_ok=True)
     cold_dir.mkdir(parents=True, exist_ok=True)
 
-    run_full_pipeline(str(epw_dir), str(base_dir), str(hot_dir))
-    run_full_pipeline_cold(str(epw_dir), str(base_dir), str(cold_dir))
+    run_full_pipeline(str(epw_dir), str(base_dir), str(hot_dir), gnn_config=gnn_config)
+    run_full_pipeline_cold(str(epw_dir), str(base_dir), str(cold_dir), gnn_config=gnn_config)
 
     return construct_final_rmy(base_epw_path, epw_dir, hot_dir, cold_dir,
                                output_dir / f'RMY_{base_epw_path.name}',

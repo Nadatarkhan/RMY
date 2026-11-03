@@ -18,7 +18,7 @@ import pandas as pd
 
 from .seasons import season_plan_for_epw
 from .evt import select_pot_threshold
-from .gnn import detect_gnn_anomalies, gnn_flags_for
+from .gnn import GNNConfig, detect_gnn_anomalies, gnn_flags_for
 from .utils import list_epws, read_epw_raw
 
 
@@ -293,7 +293,8 @@ def save_final_outputs_cold_safe(output_dir, base_stats, base_events, all_stats,
 
 
 # === MAIN DRIVER ===
-def run_full_pipeline_cold(epw_dir, base_dir, output_dir, winter_months=None, use_gnn=True):
+def run_full_pipeline_cold(epw_dir, base_dir, output_dir, winter_months=None, use_gnn=True,
+                           gnn_config=None):
     """Detect cold spells in every AMY in `epw_dir` and in the base TMY.
 
     Writes up to six CSVs to `output_dir` (empty tables are skipped):
@@ -324,7 +325,7 @@ def run_full_pipeline_cold(epw_dir, base_dir, output_dir, winter_months=None, us
     gnn_daily = None
     if use_gnn:
         try:
-            gnn_daily = detect_gnn_anomalies(list_epws(epw_dir))
+            gnn_daily = detect_gnn_anomalies(list_epws(epw_dir), gnn_config or GNNConfig())
         except Exception as e:
             print(f" GNN failed ({e}). Continuing with thresholds and EVT only.")
 

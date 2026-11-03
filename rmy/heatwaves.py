@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 
 from .evt import select_pot_threshold
-from .gnn import detect_gnn_anomalies, gnn_flags_for
+from .gnn import GNNConfig, detect_gnn_anomalies, gnn_flags_for
 from .utils import calculate_heat_index, list_epws, read_epw_raw
 
 warnings.filterwarnings("ignore", category=UserWarning, message="Parsing dates.*")
@@ -481,7 +481,7 @@ def save_final_outputs(output_dir, base_stats, base_events, all_stats, all_event
     peak_stats.to_csv(os.path.join(output_dir, "heatwave_stats_peak.csv"), index=False)
 
 
-def run_full_pipeline(epw_dir, base_dir, output_dir, use_gnn=True):
+def run_full_pipeline(epw_dir, base_dir, output_dir, use_gnn=True, gnn_config=None):
     """Detect heat waves in every AMY in `epw_dir` and in the base TMY.
 
     Writes six CSVs to `output_dir`: events and stats for the base file
@@ -504,7 +504,7 @@ def run_full_pipeline(epw_dir, base_dir, output_dir, use_gnn=True):
     gnn_daily = None
     if use_gnn:
         try:
-            gnn_daily = detect_gnn_anomalies(list_epws(epw_dir))
+            gnn_daily = detect_gnn_anomalies(list_epws(epw_dir), gnn_config or GNNConfig())
         except Exception as e:
             print(f"⚠️ GNN failed ({e}). Continuing with thresholds and EVT only.")
 

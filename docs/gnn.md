@@ -59,3 +59,24 @@ whole (the same problem as review item 1 for Phoenix heat). The old z-score
 happened to detect a 4-day slice of it, which kept 2015 on top. The EVT
 stage that followed detects 14–16 February 2015 and restores 2015 as the
 peak year.
+
+## Sensitivity
+
+Settings left open by the paper were varied one at a time on the Boston
+sample (detection only, no 21-day cap). Every variant gives the same peak
+years (heat 2022, cold 2015) and the same peak-year events, so the RMY is
+unchanged. Across all years, at most two events differ from the default.
+
+| Variant | Heat events | Cold events | Events differing from default |
+|---|---|---|---|
+| default (k = 2, 5 neighbours, 16/8 units, 300 epochs, seed 0) | 58 | 74 | 0 |
+| threshold k = 1.5 | 58 | 75 | 1 cold |
+| threshold k = 2.5 | 58 | 74 | 2 heat |
+| 3 neighbours | 58 | 74 | 0 |
+| 10 neighbours | 57 | 74 | 1 heat |
+| seed 1, seed 2 | 58 | 74 | 0 |
+| 32/16 units, 12/4 units | 58 | 74 | 0 |
+| 600 epochs | 58 | 74 | 0 |
+
+Pass a `GNNConfig` to `run_full_rmy_pipeline(..., gnn_config=GNNConfig(threshold_k=2.5))`
+to change these settings.
