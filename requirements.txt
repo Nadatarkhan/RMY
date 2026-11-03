@@ -2,11 +2,4 @@ pandas
 numpy
 scipy
 matplotlib
-plotly
-torch
-torchvision
-torch-geometric
-ladybug-core
-ladybug-pandas
-statsmodels
-jupyter
+pytest

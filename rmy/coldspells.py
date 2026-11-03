@@ -1,10 +1,11 @@
-"""Cold-spell detection (ensemble of thresholds, a stage-2 filter and EVT).
+"""Cold-spell detection: thresholds, the paper's GNN, and EVT (paper Section 2.3).
 
-Ported from the canonical notebook, section "1.2 Cold spells".
+Ported from the canonical notebook, section "1.2 Cold spells", with the
+notebook's rolling z-score stand-in for the 'gnn' method replaced by the GNN
+in rmy.gnn. Events from all methods are pooled and overlaps resolved.
 Importing this module has no side effects; call `run_full_pipeline_cold`.
 
-Known gaps, kept here on purpose and handled in later phases:
-- The 'gnn' method is a rolling z-score, not the paper's GNN.
+Known gap, kept on purpose for a later decision:
 - Runs longer than `max_duration` (21 days) are dropped, not clipped.
 """
 import os
@@ -16,7 +17,8 @@ import pandas as pd
 from scipy.stats import genpareto
 
 from .seasons import season_plan_for_epw
-from .utils import read_epw_raw
+from .gnn import detect_gnn_anomalies, gnn_flags_for
+from .utils import list_epws, read_epw_raw
 
 
 # === DAILY AGGREGATION ===
@@ -32,10 +34,16 @@ def calculate_daily_tmin_tmax_cold(epw_data):
 
 
 # === DETECTION METHOD ===
-def identify_cold_spells(df, method='ensemble', z_thresh=0.7, tmin_thres=-7, wind_speed_thres=2, window=30, max_duration=21,
-                         winter_months=(12, 1, 2)):
-    """Flag cold-spell runs. `winter_months` limits the 'gnn' method to the
-    local winter (all 12 months at equatorial sites); see rmy.seasons."""
+def identify_cold_spells(df, method='ensemble', tmin_thres=-7, max_duration=21,
+                         winter_months=(12, 1, 2), gnn_flags=None):
+    """Flag cold-spell runs of at least 3 days.
+
+    Methods: 'temperature' (Tmin below `tmin_thres`), 'percentile' (Tmin
+    below the file's 10th percentile), 'ensemble' (either), and 'gnn' (days
+    in `gnn_flags`, a boolean array aligned with `df`, from rmy.gnn). The
+    'gnn' method is limited to `winter_months` (all 12 months at equatorial
+    sites; see rmy.seasons).
+    """
     if method == 'temperature':
         condition = df['Tmin (oC)'] < tmin_thres
     elif method == 'percentile':
@@ -45,13 +53,9 @@ def identify_cold_spells(df, method='ensemble', z_thresh=0.7, tmin_thres=-7, win
         cond2 = df['Tmin (oC)'] < df['Tmin (oC)'].quantile(0.1)
         condition = cond1 | cond2
     elif method == 'gnn':
-        df['z'] = (df['Tmin (oC)'] - df['Tmin (oC)'].rolling(window).mean()) / df['Tmin (oC)'].rolling(window).std()
-        df['z'] = df['z'].fillna(0)
-
-        df['is_winter'] = df['MONTH'].isin(list(winter_months))
-
-        # Wind stays in the condition
-        condition = (df['z'] < -z_thresh) & (df['Wind Speed (m/s)'] > wind_speed_thres) & df['is_winter']
+        if gnn_flags is None:
+            return pd.DataFrame(columns=['Start', 'End'])
+        condition = pd.Series(gnn_flags, index=df.index) & df['MONTH'].isin(list(winter_months))
     else:
         raise ValueError("Invalid method")
 
@@ -195,7 +199,8 @@ def resolve_strict_overlaps_cold(events_df):
 
 
 # === PROCESS FILE ===
-def process_file_cold(epw_path, methods=('ensemble', 'gnn', 'evt'), winter_months=(12, 1, 2)):
+def process_file_cold(epw_path, methods=('ensemble', 'gnn', 'evt'), winter_months=(12, 1, 2),
+                      gnn_daily=None):
     try:
         epw_df = read_epw_raw(epw_path)
     except Exception as e:
@@ -217,8 +222,11 @@ def process_file_cold(epw_path, methods=('ensemble', 'gnn', 'evt'), winter_month
             if method == 'evt':
                 events_df = identify_evt_cold_extremes(daily_df.copy())
             else:
+                flags = (gnn_flags_for(daily_df, gnn_daily, 'cold')
+                         if method == 'gnn' and gnn_daily is not None else None)
                 events_df = identify_cold_spells(daily_df.copy(), method=method,
-                                                 winter_months=winter_months)
+                                                 winter_months=winter_months,
+                                                 gnn_flags=flags)
 
             if events_df.empty:
                 continue
@@ -284,7 +292,7 @@ def save_final_outputs_cold_safe(output_dir, base_stats, base_events, all_stats,
 
 
 # === MAIN DRIVER ===
-def run_full_pipeline_cold(epw_dir, base_dir, output_dir, winter_months=None):
+def run_full_pipeline_cold(epw_dir, base_dir, output_dir, winter_months=None, use_gnn=True):
     """Detect cold spells in every AMY in `epw_dir` and in the base TMY.
 
     Writes up to six CSVs to `output_dir` (empty tables are skipped):
@@ -311,6 +319,14 @@ def run_full_pipeline_cold(epw_dir, base_dir, output_dir, winter_months=None):
         print(f" Base file processing failed: {e}")
         base_stats, base_events = pd.DataFrame(), pd.DataFrame()
 
+    # Train the GNN once on all AMYs (shared with heat-wave detection via a cache)
+    gnn_daily = None
+    if use_gnn:
+        try:
+            gnn_daily = detect_gnn_anomalies(list_epws(epw_dir))
+        except Exception as e:
+            print(f" GNN failed ({e}). Continuing with thresholds and EVT only.")
+
     all_stats_list = []
     all_events_list = []
 
@@ -321,7 +337,8 @@ def run_full_pipeline_cold(epw_dir, base_dir, output_dir, winter_months=None):
         print(f" Processing file: {epw_path}")
         try:
             stats_df, events_df, _, _ = process_file_cold(epw_path, methods=['ensemble', 'gnn', 'evt'],
-                                                          winter_months=winter_months)
+                                                          winter_months=winter_months,
+                                                          gnn_daily=gnn_daily)
             if not stats_df.empty:
                 all_stats_list.append(stats_df)
             if not events_df.empty:
