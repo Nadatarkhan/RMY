@@ -216,9 +216,7 @@ def construct_final_rmy(base_epw_path, epw_dir, hot_dir, cold_dir, output_path,
 
     heat_base = safe_load_events(hot_dir / 'heatwave_events_base.csv', HEAT_EVENT_COLS)
     heat_events = safe_load_events(hot_dir / 'heatwave_events_peak.csv', HEAT_EVENT_COLS)
-    # Notebook path, kept as-is for the Phase 1 port. The cold detector writes
-    # this file to cold_dir itself, so this lookup finds nothing.
-    cold_base = safe_load_events(cold_dir / 'base' / 'coldspells_events_base.csv', COLD_EVENT_COLS)
+    cold_base = safe_load_events(cold_dir / 'coldspells_events_base.csv', COLD_EVENT_COLS)
     cold_events = safe_load_events(cold_dir / 'coldspells_events_peak.csv', COLD_EVENT_COLS)
 
     mh, uh = match_events(heat_base, heat_events)
