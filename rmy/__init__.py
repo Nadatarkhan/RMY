@@ -3,7 +3,7 @@
 Importing the package has no side effects. Typical use:
 
     from rmy import run_full_rmy_pipeline
-    run_full_rmy_pipeline('data/EPWs', 'data/base', 'output')
+    run_full_rmy_pipeline('data/cities/Boston/AMY', 'data/cities/Boston/TMY', 'output')
 """
 from .rmy_generation import construct_final_rmy, run_full_rmy_pipeline
 from .utils import read_epw_file

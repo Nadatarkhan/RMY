@@ -129,8 +129,8 @@ def label_rmy_header(header_lines, amy_years, peak_heat_year=None, peak_cold_yea
 
 
 def extract_original_header(epw_path) -> list[str]:
-    """Return the 8 raw EPW header lines (with their line endings)."""
-    with open(epw_path, 'r') as f:
+    """Return the 8 raw EPW header lines (with their line endings, CRLF or LF)."""
+    with open(epw_path, 'r', newline='') as f:
         return [f.readline() for _ in range(EPW_HEADER_LINES)]
 
 

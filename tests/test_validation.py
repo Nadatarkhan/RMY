@@ -10,6 +10,7 @@ from rmy.validation import audit_epws, check_epw_values, fill_missing_codes, mas
 
 REPO = Path(__file__).resolve().parents[1]
 DATA = REPO / 'data'
+BOSTON = {'EPWs': DATA / 'cities' / 'Boston' / 'AMY', 'base': DATA / 'cities' / 'Boston' / 'TMY'}
 
 
 def _frame(**cols):
@@ -46,21 +47,24 @@ def test_audit_traces_phoenix_fill_values_to_source_years():
 
 
 def test_write_epw_round_trip_keeps_missing_codes(tmp_path):
-    src = list_epws(DATA / 'EPWs')[0]
-    out = write_epw(read_epw_file(src), extract_original_header(src), tmp_path / 'x.epw')
+    src = list_epws(BOSTON['EPWs'])[0]
+    df = read_epw_file(src, mask=False)
+    df.loc[[10, 20], 'wind_speed'] = 447.0            # out of range, as in some older AMYs
+    df.loc[[30], 'ghi'] = 9.96921e36                   # netCDF fill value
+    out = write_epw(mask_invalid(df), extract_original_header(src), tmp_path / 'x.epw')
     a, b = read_epw_file(src, mask=False), read_epw_file(out, mask=False)
-    for col in ('ghi_infrared', 'total_sky_cover', 'temp_air', 'ghi'):
-        pd.testing.assert_series_equal(a[col], b[col])
-    # The 447 m/s wind speeds in the source become the EPW missing code.
-    assert (a.wind_speed == 447).any() and not (b.wind_speed == 447).any()
-    assert ((b.wind_speed == 999) == ((a.wind_speed == 447) | (a.wind_speed == 999))).all()
+    for col in ('ghi_infrared', 'total_sky_cover', 'temp_air'):
+        pd.testing.assert_series_equal(a[col], b[col])          # valid values and codes kept
+    assert b.loc[[10, 20], 'wind_speed'].tolist() == [999.0, 999.0]
+    assert b.loc[30, 'ghi'] == 9999.0
+    assert not check_epw_values(b).query("problem == 'invalid'").shape[0]
 
 
 def _copy_inputs_with_fill(dst):
     """Copy the Boston inputs and put a netCDF fill value into every AMY's GHI."""
     for sub in ('EPWs', 'base'):
         (dst / sub).mkdir(parents=True)
-        for f in list_epws(DATA / sub):
+        for f in list_epws(BOSTON[sub]):
             lines = f.read_text().splitlines(True)
             if sub == 'EPWs':
                 for i in range(8, len(lines)):
@@ -88,7 +92,7 @@ def test_invalid_values_error_mode_stops(tmp_path):
 
 
 def test_write_epw_keeps_crlf_line_endings(tmp_path):
-    src = list_epws(DATA / 'EPWs')[0]
+    src = list_epws(BOSTON['EPWs'])[0]
     header = [l.rstrip('\n') + '\r\n' for l in extract_original_header(src)]
     out = write_epw(read_epw_file(src).head(48), header, tmp_path / 'crlf.epw')
     lines = out.read_bytes().split(b'\n')[:-1]

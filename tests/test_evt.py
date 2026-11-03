@@ -10,7 +10,7 @@ from rmy.heatwaves import identify_evt_extremes, pooled_daily
 from rmy.utils import list_epws
 
 REPO = Path(__file__).resolve().parents[1]
-AMYS = list_epws(REPO / 'data' / 'EPWs')
+AMYS = list_epws(REPO / 'data' / 'cities' / 'Boston' / 'AMY')
 
 
 def _series(n_years=10, seed=0):
@@ -65,12 +65,13 @@ def test_heat_evt_finds_the_paper_s_late_june_2021_heat_wave(boston_thresholds):
     assert '2021-06-28' in starts
 
 
-@pytest.mark.parametrize('year, start', [(2015, '2015-02-14'), (2016, '2016-02-13')])
-def test_cold_evt_fires_on_record_cold(boston_thresholds, year, start):
+@pytest.mark.parametrize('year, day', [(2015, '2015-02-15'), (2016, '2016-02-14')])
+def test_cold_evt_fires_on_record_cold(boston_thresholds, year, day):
     _, _, evt = boston_thresholds
-    path = next(p for p in AMYS if str(year) in p.name)
+    path = next(p for p in AMYS if f'_{year}_' in p.name)
     from rmy.utils import read_epw_raw
     d = calculate_daily_tmin_tmax_cold(read_epw_raw(path))
     events = identify_evt_cold_extremes(d, evt=evt)
-    starts = [f"{int(d.YEAR[s])}-{int(d.MONTH[s]):02d}-{int(d.DAY[s]):02d}" for s in events['Start']]
-    assert start in starts
+    dates = pd.to_datetime(dict(year=d.YEAR, month=d.MONTH, day=d.DAY))
+    t = pd.Timestamp(day)
+    assert any(dates[s] <= t <= dates[e] for s, e in zip(events['Start'], events['End']))

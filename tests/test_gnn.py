@@ -9,7 +9,7 @@ from rmy.gnn import GCNAutoencoder, GNNConfig, build_graph, detect_gnn_anomalies
 from rmy.utils import list_epws
 
 REPO = Path(__file__).resolve().parents[1]
-AMYS = list_epws(REPO / 'data' / 'EPWs')
+AMYS = list_epws(REPO / 'data' / 'cities' / 'Boston' / 'AMY')
 
 
 def test_gradients_match_finite_differences():

@@ -12,8 +12,8 @@ from rmy.utils import extract_original_header, list_epws, read_epw_file
 from rmy.visualization import visualize_extreme_events
 
 REPO = Path(__file__).resolve().parents[1]
-EPW_DIR = REPO / 'data' / 'EPWs'
-BASE_DIR = REPO / 'data' / 'base'
+EPW_DIR = REPO / 'data' / 'cities' / 'Boston' / 'AMY'
+BASE_DIR = REPO / 'data' / 'cities' / 'Boston' / 'TMY'
 
 
 @pytest.fixture(scope='module')
@@ -32,10 +32,13 @@ def test_rmy_header_changes_only_comments_2(run):
     assert changed == [6]                                   # COMMENTS 2 only
     assert [l.count(',') for l in new] == [l.count(',') for l in old]
     assert new[6].startswith('COMMENTS 2,"RMY extreme weather file: heat waves and cold spells '
-                             'from AMYs 2009-2023 inserted (peak heat year 2022; peak cold year 2015); ')
+                             'from AMYs 2009-2024 inserted (peak heat year 2022; peak cold year 2015); ')
     assert new[6].endswith(old[6][len('COMMENTS 2,"'):])     # original text kept
-    raw = Path(rmy_path).read_bytes()
-    assert raw.isascii() and b'\r' not in raw
+    # Same line endings as the base TMY throughout (this TMYx uses CRLF).
+    raw, base_raw = Path(rmy_path).read_bytes(), Path(base).read_bytes()
+    assert raw.isascii()
+    crlf = base_raw.count(b'\r\n') == base_raw.count(b'\n')
+    assert (raw.count(b'\r\n') == raw.count(b'\n')) if crlf else (b'\r' not in raw)
     assert len(read_epw_file(rmy_path)) == len(read_epw_file(base)) == 8760
 
 
