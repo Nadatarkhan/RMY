@@ -16,6 +16,8 @@ import pandas as pd
 # NOAA heat-index bands in degrees C: caution starts at 27, extreme danger at 51.
 HEAT_INDEX_RANGE_C = (27, 51)
 CIRCLE_SIZE = 58
+# Event durations shown in the size legend.
+LEGEND_DAYS = (3, 5, 7, 9, 11, 13)
 MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
                 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
@@ -109,12 +111,11 @@ def visualize_extreme_events(heatwave_csv, coldspell_csv, output_path=None, show
         fig.colorbar(sm, ax=ax, orientation='horizontal', pad=0.08, shrink=0.8,
                      aspect=40).set_label(label, fontsize=14)
 
-    sizes = [1, 3, 5, 7]
-    handles = [ax.scatter([], [], s=s * CIRCLE_SIZE, color='gray', alpha=0.5,
-                          edgecolors='black', label=f'{s} days') for s in sizes]
-    legend = ax.legend(handles=handles, scatterpoints=1, frameon=False, labelspacing=1,
-                       title='Event Duration', loc='center left',
-                       bbox_to_anchor=(1.05, 0.5), fontsize=14)
+    handles = [ax.scatter([], [], s=d * CIRCLE_SIZE, color='gray', alpha=0.5,
+                          edgecolors='black', label=f'{d} days') for d in LEGEND_DAYS]
+    legend = ax.legend(handles=handles, scatterpoints=1, frameon=False, labelspacing=2.2,
+                       borderpad=1.2, handletextpad=1.5, title='Event Duration',
+                       loc='center left', bbox_to_anchor=(1.05, 0.5), fontsize=14)
     legend.get_title().set_fontsize(16)
 
     ax.set_xlim(0.8, 13.2)
