@@ -1,203 +1,131 @@
-import pandas as pd
-import numpy as np
-from datetime import datetime, timedelta
+"""Shared EPW helpers for the RMY package.
+
+Ported from the canonical notebook (RMYFRMY_Generation_Oct2026, sections 1-3).
+"""
+from __future__ import annotations
+
+import re
 from pathlib import Path
-import os
 
-epw_columns = [
-    'year', 'month', 'day', 'hour', 'minute', 'data_source_unct', 'temp_air',
-    'temp_dew', 'relative_humidity', 'atmospheric_pressure', 'etr', 'etrn',
-    'ghi_infrared', 'ghi', 'dni', 'dhi', 'global_hor_illum',
-    'direct_normal_illum', 'diffuse_horizontal_illum', 'zenith_luminance',
-    'wind_direction', 'wind_speed', 'total_sky_cover', 'opaque_sky_cover',
-    'visibility', 'ceiling_height', 'present_weather_observation',
-    'present_weather_codes', 'precipitable_water', 'aerosol_optical_depth',
-    'snow_depth', 'days_since_last_snowfall', 'albedo',
-    'liquid_precipitation_depth', 'liquid_precipitation_quantity'
+import numpy as np
+import pandas as pd
+
+EPW_HEADER_LINES = 8
+
+EPW_COLUMNS = [
+    'year', 'month', 'day', 'hour', 'minute', 'data_source_unct',
+    'temp_air', 'temp_dew', 'relative_humidity', 'atmospheric_pressure',
+    'etr', 'etrn', 'ghi_infrared', 'ghi', 'dni', 'dhi',
+    'global_hor_illum', 'direct_normal_illum', 'diffuse_horizontal_illum',
+    'zenith_luminance', 'wind_direction', 'wind_speed',
+    'total_sky_cover', 'opaque_sky_cover', 'visibility', 'ceiling_height',
+    'present_weather_observation', 'present_weather_codes',
+    'precipitable_water', 'aerosol_optical_depth', 'snow_depth',
+    'days_since_last_snowfall', 'albedo', 'liquid_precipitation_depth',
+    'liquid_precipitation_quantity',
 ]
+DATE_COLS = ['year', 'month', 'day', 'hour', 'minute']
+CODE_COLS = ['data_source_unct', 'present_weather_observation', 'present_weather_codes']
+WEATHER_COLS = [c for c in EPW_COLUMNS if c not in DATE_COLS]
 
-def read_epw_file(epw_file_path):
-    return pd.read_csv(epw_file_path, header=None, skiprows=8, sep=',', names=epw_columns)
+
+def list_epws(folder) -> list[Path]:
+    """All .epw files in `folder`, in sorted (filesystem-independent) order."""
+    return sorted(Path(folder).glob('*.epw'))
 
 
-def find_epw_by_year(year, epw_folder):
+def read_epw_raw(path) -> pd.DataFrame:
+    """Read the hourly block of an EPW with pandas' default type inference.
+
+    Used by the event detectors, exactly as in the notebook.
     """
-    Locate the EPW file that contains the specified year in its filename.
+    return pd.read_csv(path, skiprows=EPW_HEADER_LINES, header=None,
+                       names=EPW_COLUMNS, usecols=range(len(EPW_COLUMNS)),
+                       low_memory=False)
+
+
+def read_epw_file(path) -> pd.DataFrame:
+    """Read the hourly block of an EPW with explicit types, for RMY assembly.
+
+    Calendar columns are int64, weather codes are strings, and every other
+    column is float64 so that smoothing can write fractional values.
     """
-    for fname in os.listdir(epw_folder):
-        if fname.endswith('.epw') and str(year) in fname:
-            return os.path.join(epw_folder, fname)
-    raise FileNotFoundError(f"No EPW found for year {year} in {epw_folder}")
+    df = pd.read_csv(path, header=None, skiprows=EPW_HEADER_LINES,
+                     names=EPW_COLUMNS, dtype={c: 'string' for c in CODE_COLS})
+    for c in DATE_COLS:
+        df[c] = pd.to_numeric(df[c], errors='raise').astype('int64')
+    for c in WEATHER_COLS:
+        if c not in CODE_COLS:
+            df[c] = pd.to_numeric(df[c], errors='coerce').astype('float64')
+    return df
 
 
-
-def load_epw(path):
-    return pd.read_csv(path, skiprows=8, header=None, names=epw_columns)
-
-def safe_load_events(path, cols):
-    try:
-        return pd.read_csv(path, parse_dates=['begin_date', 'end_date'], dayfirst=True)
-    except:
-        return pd.DataFrame(columns=cols)
-
-
-def get_peak_year(stats_csv):
-    """Extract the peak year from the event stats CSV."""
-    return int(pd.read_csv(stats_csv).iloc[0]['year'])
-
-
-def extract_original_header(epw_path):
+def extract_original_header(epw_path) -> list[str]:
+    """Return the 8 raw EPW header lines (with their line endings)."""
     with open(epw_path, 'r') as f:
-        return [next(f) for _ in range(8)]
+        return [f.readline() for _ in range(EPW_HEADER_LINES)]
 
-def save_epw(df, original_header_lines, output_path):
-    with open(output_path, 'w') as f:
-        for line in original_header_lines:
-            f.write(line)
-        df.to_csv(f, index=False, header=False)
 
-def calculate_heat_index(temp_air, rh):
-    T_F = (temp_air * 9/5) + 32
-    hi = (
-        -42.379 + 2.04901523*T_F + 10.14333127*rh - 0.22475541*T_F*rh
-        - 6.83783e-3*T_F**2 - 5.481717e-2*rh**2
-        + 1.22874e-3*T_F**2*rh + 8.5282e-4*T_F*rh**2
-        - 1.99e-6*T_F**2*rh**2
+def get_peak_year(stats_csv) -> int:
+    stats = pd.read_csv(stats_csv)
+    if stats.empty or 'year' not in stats:
+        raise ValueError(f'Peak statistics missing/empty: {stats_csv}')
+    return int(stats.iloc[0]['year'])
+
+
+def find_epw_by_year(year, folder) -> Path:
+    """Return the one EPW whose filename contains `year` as a whole number.
+
+    '2010' matches 'Boston_2010.epw' but not 'Boston_20101.epw'. Raises if no
+    file or more than one file matches, instead of picking one arbitrarily.
+    """
+    matches = [p for p in list_epws(folder)
+               if re.search(rf'(?<!\d){int(year)}(?!\d)', p.stem)]
+    if len(matches) != 1:
+        raise FileNotFoundError(
+            f'Expected one EPW for {year} in {folder}; got {len(matches)}: {matches}')
+    return matches[0]
+
+
+def safe_load_events(path, columns) -> pd.DataFrame:
+    """Load an events CSV, or an empty table with `columns` if it is missing.
+
+    A missing or empty file is expected (no events). Any other problem, such
+    as unparseable dates, raises instead of being silently ignored.
+    """
+    path = Path(path)
+    if not path.exists():
+        print(f'WARNING: missing events CSV: {path}')
+        return pd.DataFrame(columns=columns)
+    df = pd.read_csv(path)
+    if df.empty:
+        return pd.DataFrame(columns=columns)
+    for c in ['begin_date', 'end_date']:
+        df[c] = pd.to_datetime(df[c], dayfirst=True, errors='raise')
+    return df
+
+
+def calculate_heat_index(temp_air_c, rh):
+    """Heat index in degrees Celsius.
+
+    Uses the simple NOAA approximation below 80 F and the Rothfusz
+    regression above it.
+    """
+    t_c = pd.Series(temp_air_c, copy=False).astype(float)
+    rh = pd.Series(rh, copy=False).astype(float)
+
+    t_f = (t_c * 9 / 5) + 32
+    hi_simple_f = 0.5 * (t_f + 61.0 + ((t_f - 68.0) * 1.2) + (rh * 0.094))
+    hi_full_f = (
+        -42.379
+        + 2.04901523 * t_f
+        + 10.14333127 * rh
+        - 0.22475541 * t_f * rh
+        - 6.83783e-3 * t_f**2
+        - 5.481717e-2 * rh**2
+        + 1.22874e-3 * t_f**2 * rh
+        + 8.5282e-4 * t_f * rh**2
+        - 1.99e-6 * t_f**2 * rh**2
     )
-    return hi
-
-
-def match_events(base_df, peak_df):
-    matched, unmatched = [], peak_df.copy()
-    if base_df.empty:
-        return matched, unmatched
-    for _, base in base_df.iterrows():
-        best, min_diff = None, float('inf')
-        for idx, peak in unmatched.iterrows():
-            if base['begin_date'].month == peak['begin_date'].month and base['begin_date'].day == peak['begin_date'].day:
-                diff = abs(base['duration'] - peak['duration'])
-                if diff < min_diff:
-                    best, min_diff = idx, diff
-        if best is not None:
-            matched.append((base, unmatched.loc[best]))
-            unmatched = unmatched.drop(best)
-    return matched, unmatched
-
-def integrate_events(df, matched, unmatched, peak_epw, label):
-    all_events = matched + [(None, e) for e in unmatched.itertuples()]
-    replaced = set()
-    for base, peak in all_events:
-        for d in pd.date_range(start=peak.begin_date, end=peak.end_date, freq='D'):
-            slice_peak = peak_epw[(peak_epw['month'] == d.month) & (peak_epw['day'] == d.day)].copy()
-            if slice_peak.empty: continue
-            idx = df[(df['month'] == d.month) & (df['day'] == d.day)].index
-            smoothing_idx = list(range(max(0, idx.min()-8), min(len(df), idx.max()+9)))
-            # Replace rows
-            for _, row in slice_peak.iterrows():
-                row_idx = df[
-                    (df['month'] == row['month']) &
-                    (df['day'] == row['day']) &
-                    (df['hour'] == row['hour'])
-                ].index
-                df.loc[row_idx] = row.values
-                replaced.add(f"{int(row['month']):02d}-{int(row['day']):02d}")
-            # Interpolate smoothing region
-            for col in slice_peak.columns.drop(['year', 'month', 'day', 'hour', 'minute']):
-                series = df.loc[smoothing_idx, col].infer_objects(copy=False)
-                df.loc[smoothing_idx, col] = series.interpolate()
-    print(f"{label} events integrated. Days replaced: {len(replaced)}")
-    return df, replaced
-
-def calculate_monthly_avg_conditions(df, months):
-    return df[df['month'].isin(months)].groupby('month')[['temp_air', 'relative_humidity']].mean()
-
-def find_days_to_adjust_avg(epw_files, targets, months, cond):
-    days, sources = {m: [] for m in months}, {m: [] for m in months}
-    for epw in epw_files:
-        df = read_epw_file(epw)
-        for m in months:
-            for d in range(1, 32):
-                day = df[(df['month'] == m) & (df['day'] == d)]
-                if not day.empty and cond(day, targets.loc[m]):
-                    days[m].append(day)
-                    sources[m].append(epw)
-                if sum(len(v) for v in days.values()) >= 40:
-                    return days, sources
-    return days, sources
-
-
-
-def match_extreme_days(event_df, base_df, n_hours=24):
-    matched_days = []
-    for _, row in event_df.iterrows():
-        day = pd.to_datetime(row['begin_date'], format='%d/%m/%Y')
-        match = base_df[
-            (base_df['month'] == day.month) &
-            (base_df['hour'] == 12)
-        ].copy()
-        match['abs_diff'] = (match['temp_air'] - base_df.loc[
-            (base_df['month'] == day.month) & (base_df['hour'] == 12),
-            'temp_air'
-        ].mean()).abs()
-        if not match.empty:
-            best_match = match.sort_values('abs_diff').iloc[0]
-            matched_day = base_df[
-                (base_df['year'] == best_match['year']) &
-                (base_df['month'] == best_match['month']) &
-                (base_df['day'] == best_match['day'])
-            ]
-            matched_days.append(matched_day)
-    if matched_days:
-        return pd.concat(matched_days)
-    return pd.DataFrame(columns=base_df.columns)
-
-def smooth_transition(df, window=3):
-    df_cleaned = df.copy()
-
-    # Ensure all values are numeric, coercing errors to NaN
-    for col in df_cleaned.columns:
-        df_cleaned[col] = pd.to_numeric(df_cleaned[col], errors='coerce')
-
-    return df_cleaned.rolling(window=window, min_periods=1, center=True).mean()
-
-
-def replace_event_days(base_df, insert_df, event_dates):
-    new_df = base_df.copy()
-    insert_dates = pd.to_datetime(event_dates, format='%d/%m/%Y')
-    for insert_date in insert_dates:
-        mask = (new_df['month'] == insert_date.month) & (new_df['day'] == insert_date.day)
-        if mask.sum() == 24:
-            new_df.loc[mask, :] = insert_df.loc[mask, :].values
-    return new_df
-
-def seasonal_adjustment(final_df, original_df, variable='temp_air'):
-    for month in range(1, 13):
-        original_avg = original_df[original_df['month'] == month][variable].mean()
-        final_avg = final_df[final_df['month'] == month][variable].mean()
-        diff = original_avg - final_avg
-        final_df.loc[final_df['month'] == month, variable] += diff
-    return final_df
-
-def integrate_days(df, days, replaced, sources, targets, months):
-    inserted = set()
-    for m in months:
-        for day_set in days[m]:
-            tag = f"{int(day_set.iloc[0]['month']):02d}-{int(day_set.iloc[0]['day']):02d}"
-            if tag in replaced or tag in inserted: continue
-            idx = df[(df['month'] == day_set.iloc[0]['month']) & (df['day'] == day_set.iloc[0]['day'])].index
-            smoothing_idx = list(range(max(0, idx.min()-8), min(len(df), idx.max()+9)))
-            for _, row in day_set.iterrows():
-                row_idx = df[
-                    (df['month'] == row['month']) &
-                    (df['day'] == row['day']) &
-                    (df['hour'] == row['hour'])
-                ].index
-                df.loc[row_idx] = row.values
-                inserted.add(tag)
-            # Interpolate smoothing region
-            for col in day_set.columns.drop(['year', 'month', 'day', 'hour', 'minute']):
-                series = df.loc[smoothing_idx, col].infer_objects(copy=False)
-                df.loc[smoothing_idx, col] = series.interpolate()
-    print(f"Adjusted seasonal days inserted: {len(inserted)}")
-    return df, inserted
-
+    hi_f = np.where(hi_simple_f < 80, hi_simple_f, hi_full_f)
+    return (pd.Series(hi_f) - 32) * 5 / 9
