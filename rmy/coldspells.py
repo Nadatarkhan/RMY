@@ -10,6 +10,7 @@ There is no upper limit on event length (`max_duration=None`). The
 notebook dropped runs longer than 21 days entirely (review note item 1).
 """
 import os
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
@@ -19,7 +20,35 @@ import pandas as pd
 from .seasons import season_plan_for_epw
 from .evt import select_pot_threshold
 from .gnn import GNNConfig, detect_gnn_anomalies, gnn_flags_for
-from .utils import list_epws, read_epw_raw
+from .utils import list_epws, read_epw_raw, report_runner_up
+
+
+# Fixed Tmin threshold (C) of the 'temperature' method. It is lowered to the
+# site's own Tmin percentile where that is lower (see cold_thresholds).
+FIXED_TMIN_C = -7.0
+
+
+@dataclass(frozen=True)
+class ColdThresholds:
+    """Cold-spell thresholds from all AMY years pooled (see cold_thresholds)."""
+    tmin_pct: float          # 'percentile' method: Tmin below this
+    tmin_abs: float          # 'temperature' method: Tmin below this
+
+    def describe(self):
+        return (f'Cold thresholds (all AMY years): percentile Tmin < {self.tmin_pct:.1f}; '
+                f'temperature Tmin < {self.tmin_abs:.1f}')
+
+
+def cold_thresholds(pooled, tmin_q=0.1, fixed_tmin=FIXED_TMIN_C):
+    """Thresholds from the daily Tmin of all AMY years together.
+
+    Mirrors heatwaves.heat_thresholds: the percentile is of all days of all
+    years, and the fixed -7 C is lowered to that percentile where it is
+    colder, so that in cold climates (where -7 C is an ordinary winter night)
+    whole winters do not become one event.
+    """
+    tmin_pct = float(pooled['Tmin (oC)'].quantile(tmin_q))
+    return ColdThresholds(tmin_pct, min(fixed_tmin, tmin_pct))
 
 
 # === DAILY AGGREGATION ===
@@ -35,24 +64,27 @@ def calculate_daily_tmin_tmax_cold(epw_data):
 
 
 # === DETECTION METHOD ===
-def identify_cold_spells(df, method='ensemble', tmin_thres=-7, max_duration=None,
-                         winter_months=(12, 1, 2), gnn_flags=None):
+def identify_cold_spells(df, method='ensemble', tmin_thres=FIXED_TMIN_C, max_duration=None,
+                         winter_months=(12, 1, 2), gnn_flags=None, thresholds=None):
     """Flag cold-spell runs of at least 3 days.
 
     Methods: 'temperature' (Tmin below `tmin_thres`), 'percentile' (Tmin
     below the file's 10th percentile), 'ensemble' (either), and 'gnn' (days
     in `gnn_flags`, a boolean array aligned with `df`, from rmy.gnn). The
     'gnn' method is limited to `winter_months` (all 12 months at equatorial
-    sites; see rmy.seasons).
+    sites; see rmy.seasons). With `thresholds` (ColdThresholds from all AMY
+    years) its values replace `tmin_thres` and the file's own percentile.
     """
+    if thresholds is not None:
+        t_abs, t_pct = thresholds.tmin_abs, thresholds.tmin_pct
+    else:
+        t_abs, t_pct = tmin_thres, df['Tmin (oC)'].quantile(0.1)
     if method == 'temperature':
-        condition = df['Tmin (oC)'] < tmin_thres
+        condition = df['Tmin (oC)'] < t_abs
     elif method == 'percentile':
-        condition = df['Tmin (oC)'] < df['Tmin (oC)'].quantile(0.1)
+        condition = df['Tmin (oC)'] < t_pct
     elif method == 'ensemble':
-        cond1 = df['Tmin (oC)'] < tmin_thres
-        cond2 = df['Tmin (oC)'] < df['Tmin (oC)'].quantile(0.1)
-        condition = cond1 | cond2
+        condition = (df['Tmin (oC)'] < t_abs) | (df['Tmin (oC)'] < t_pct)
     elif method == 'gnn':
         if gnn_flags is None:
             return pd.DataFrame(columns=['Start', 'End'])
@@ -201,7 +233,7 @@ def resolve_strict_overlaps_cold(events_df):
 
 # === PROCESS FILE ===
 def process_file_cold(epw_path, methods=('ensemble', 'gnn', 'evt'), winter_months=(12, 1, 2),
-                      gnn_daily=None, evt=None):
+                      gnn_daily=None, evt=None, thresholds=None):
     try:
         epw_df = read_epw_raw(epw_path)
     except Exception as e:
@@ -227,7 +259,7 @@ def process_file_cold(epw_path, methods=('ensemble', 'gnn', 'evt'), winter_month
                          if method == 'gnn' and gnn_daily is not None else None)
                 events_df = identify_cold_spells(daily_df.copy(), method=method,
                                                  winter_months=winter_months,
-                                                 gnn_flags=flags)
+                                                 gnn_flags=flags, thresholds=thresholds)
 
             if events_df.empty:
                 continue
@@ -314,9 +346,20 @@ def run_full_pipeline_cold(epw_dir, base_dir, output_dir, winter_months=None, us
         plan = season_plan_for_epw(base_path)
         winter_months = plan.cold_months
         print(f" Seasons: {plan.describe()}")
+
+    # Thresholds and EVT threshold from all AMY years pooled
+    pooled = pooled_daily_cold(list_epws(epw_dir))
+    if pooled.empty:
+        raise ValueError(f"No usable AMY data in {epw_dir}")
+    thresholds = cold_thresholds(pooled)
+    print(thresholds.describe())
+    evt = select_pot_threshold(pooled['Tmin (oC)'], pooled['date'], tail='lower')
+    print(evt.describe('Tmin') if evt else " EVT: no valid Tmin threshold; EVT skipped.")
+
     print(f" Processing base EPW file: {base_path}")
     try:
-        base_stats, base_events, _, _ = process_file_cold(base_path, methods=['temperature'])
+        base_stats, base_events, _, _ = process_file_cold(base_path, methods=['temperature'],
+                                                          thresholds=thresholds)
     except Exception as e:
         print(f" Base file processing failed: {e}")
         base_stats, base_events = pd.DataFrame(), pd.DataFrame()
@@ -329,13 +372,6 @@ def run_full_pipeline_cold(epw_dir, base_dir, output_dir, winter_months=None, us
         except Exception as e:
             print(f" GNN failed ({e}). Continuing with thresholds and EVT only.")
 
-    # Select the EVT-POT threshold on all AMY days pooled
-    evt = None
-    pooled = pooled_daily_cold(list_epws(epw_dir))
-    if not pooled.empty:
-        evt = select_pot_threshold(pooled['Tmin (oC)'], pooled['date'], tail='lower')
-    print(evt.describe('Tmin') if evt else " EVT: no valid Tmin threshold; EVT skipped.")
-
     all_stats_list = []
     all_events_list = []
 
@@ -347,7 +383,8 @@ def run_full_pipeline_cold(epw_dir, base_dir, output_dir, winter_months=None, us
         try:
             stats_df, events_df, _, _ = process_file_cold(epw_path, methods=['ensemble', 'gnn', 'evt'],
                                                           winter_months=winter_months,
-                                                          gnn_daily=gnn_daily, evt=evt)
+                                                          gnn_daily=gnn_daily, evt=evt,
+                                                          thresholds=thresholds)
             if not stats_df.empty:
                 all_stats_list.append(stats_df)
             if not events_df.empty:
@@ -393,6 +430,7 @@ def run_full_pipeline_cold(epw_dir, base_dir, output_dir, winter_months=None, us
             K = epw_stats['cwaa'].max()
             _score = epw_stats['cwf'] * (K - epw_stats['cwaa'])
             peak_year = int(epw_stats.loc[_score.idxmax(), 'year'])
+            report_runner_up(epw_stats['year'], _score, 'Cold-spell')
             peak_events = ev_resolved[ev_resolved['year'] == peak_year].reset_index(drop=True)
 
             print("\n Severity scores across all years:")

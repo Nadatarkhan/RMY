@@ -165,7 +165,10 @@ def safe_load_events(path, columns) -> pd.DataFrame:
     if not path.exists():
         print(f'WARNING: missing events CSV: {path}')
         return pd.DataFrame(columns=columns)
-    df = pd.read_csv(path)
+    try:
+        df = pd.read_csv(path)
+    except pd.errors.EmptyDataError:     # written from an empty table: no events
+        return pd.DataFrame(columns=columns)
     if df.empty:
         return pd.DataFrame(columns=columns)
     for c in ['begin_date', 'end_date']:
@@ -197,3 +200,18 @@ def calculate_heat_index(temp_air_c, rh):
     )
     hi_f = np.where(hi_simple_f < 80, hi_simple_f, hi_full_f)
     return (pd.Series(hi_f) - 32) * 5 / 9
+
+
+def report_runner_up(years, scores, label, close_pct=5.0):
+    """Print the peak year's lead over the runner-up; flag near-ties.
+
+    When two years score within `close_pct` percent, small changes in the
+    inputs or settings can swap them, so both are worth a look.
+    """
+    ranked = sorted(zip(scores, years), reverse=True)
+    if len(ranked) < 2 or ranked[0][0] <= 0:
+        return
+    (s1, y1), (s2, y2) = ranked[0], ranked[1]
+    margin = 100.0 * (s1 - s2) / s1
+    note = '  <- close: both years are plausible peaks' if margin < close_pct else ''
+    print(f"{label} peak year {int(y1)}; runner-up {int(y2)} scores {margin:.1f}% lower{note}")
