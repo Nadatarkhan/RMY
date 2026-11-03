@@ -10,10 +10,11 @@ from rmy.utils import read_epw_file
 
 REPO = Path(__file__).resolve().parents[1]
 DATA = REPO / 'data'
+BOSTON = {'EPWs': DATA / 'cities' / 'Boston' / 'AMY', 'base': DATA / 'cities' / 'Boston' / 'TMY'}
 
 
 @pytest.mark.parametrize('epw, band', [
-    ('base/USA_MA_Boston-Logan.Intl.AP.725090_TMYx.2009-2023.epw', 'northern'),
+    ('cities/Boston/TMY/Boston_MA_725090_TMYx_2009-2023.epw', 'northern'),
     ('RMY/CapeTown_RMY.epw', 'southern'),
     ('RMY/Melbourne_RMY.epw', 'southern'),
     ('RMY/KualaLumpur_RMY.epw', 'equatorial'),    # 3.1 N
@@ -56,7 +57,7 @@ def test_cold_filter_uses_given_winter_months():
 def _copy_with_latitude(dst, lat):
     for sub in ('EPWs', 'base'):
         (dst / sub).mkdir(parents=True)
-        for f in sorted((DATA / sub).glob('*.epw')):
+        for f in sorted(BOSTON[sub].glob('*.epw')):
             lines = f.read_text().splitlines(True)
             fields = lines[0].split(',')
             fields[6] = lat

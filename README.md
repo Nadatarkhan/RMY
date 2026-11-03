@@ -55,12 +55,16 @@ Each method is used in a complementary ensemble to identify the most severe year
 
 ```
 data/
-├── base/               ← base TMY EPW file (1 file only)
-├── epws/               ← AMY files for detection
-├── RMY/                ← output folder for RMY EPWs
-├── FRMY/               ← output folder for FRMY EPWs
-├── final/              ← stores output RMY + stats
-├── images/             ← visualization assets (map.gif, EEE)
+├── cities/             ← one folder per city (8 US cities included)
+│   └── <City>/
+│       ├── AMY/        ← AMY EPWs, one per year (the year must be in the file name)
+│       └── TMY/        ← exactly one base TMY EPW
+├── RMY/                ← published RMY EPWs
+└── FRMY/               ← published FRMY EPWs
+examples/               ← Google Colab notebook
+images/                 ← figures used in this README
+rmy/                    ← the Python package
+tests/                  ← automated checks
 ```
 
 ---
@@ -87,14 +91,27 @@ Then run the following from the repo root:
 
 ```python
 from rmy import run_full_rmy_pipeline
+from rmy.visualization import visualize_extreme_events
+
+rmy_path = run_full_rmy_pipeline("data/cities/Boston/AMY", "data/cities/Boston/TMY", "output/Boston")
+
+visualize_extreme_events("output/Boston/hotspells/heatwave_events.csv",
+                         "output/Boston/coldspells/coldspells_events.csv")
 ```
 
-Make sure your folder structure matches:
+To use your own city, create a folder with the same layout and run it the same way:
 
 ```
-EPWs/base/ → contains the base TMY file (1 file only)
-EPWs/epws/ → contains full set of AMY EPWs
-final/     → RMY weather file + event summaries will be saved here
+data/cities/<YourCity>/AMY/ → AMY EPWs, one per year (the year must be in the file name)
+data/cities/<YourCity>/TMY/ → exactly one base TMY EPW
+```
+
+Outputs, in the folder given as the third argument:
+
+```
+hotspells/                → heat-wave events and yearly statistics
+coldspells/               → cold-spell events and yearly statistics
+RMY_<TMY file name>.epw   → the RMY weather file
 ```
 
 ## Try it on Google Colab
