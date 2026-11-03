@@ -14,18 +14,62 @@ dropped runs longer than 21 days entirely (review note item 1).
 """
 import os
 import warnings
+from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
 
 from .evt import select_pot_threshold
 from .gnn import GNNConfig, detect_gnn_anomalies, gnn_flags_for
-from .utils import calculate_heat_index, list_epws, read_epw_raw
+from .seasons import season_plan_for_epw
+from .utils import calculate_heat_index, list_epws, read_epw_raw, report_runner_up
 
 warnings.filterwarnings("ignore", category=UserWarning, message="Parsing dates.*")
 
 # Longest event kept, in days. None keeps runs of any length.
 MAX_EVENT_DAYS = None
+
+# Fixed Tmax threshold (C) of the 'temperature' method. The notebook lowered
+# the paper's 35 C to 30 C for Nairobi-like climates; it is raised to the
+# site's own Tmax percentile where that is higher (see heat_thresholds).
+FIXED_TMAX_C = 30.0
+
+
+@dataclass(frozen=True)
+class HeatThresholds:
+    """Heat-wave thresholds from all AMY years pooled (see heat_thresholds)."""
+    tmin_pct: float          # 'percentile' method: Tmin at or above this
+    tmax_pct: float          # 'percentile' method: Tmax at or above this
+    tmax_abs: float          # 'temperature' method: Tmax at or above this
+    warm_months: tuple       # heat waves are only counted in these months
+
+    def describe(self):
+        return (f'Heat thresholds (all AMY years): percentile Tmin >= {self.tmin_pct:.1f} and '
+                f'Tmax >= {self.tmax_pct:.1f}; temperature Tmax >= {self.tmax_abs:.1f}; '
+                f'months {list(self.warm_months)}')
+
+
+def heat_thresholds(pooled, summer_months=(), tmin_q=0.4, tmax_q=0.9,
+                    fixed_tmax=FIXED_TMAX_C, warm_month_window_c=1.0):
+    """Thresholds from the daily data of all AMY years together.
+
+    - Percentiles are of all days of all years (the paper's "historical
+      temperature data"), so a hot year has more heat-wave days than a mild
+      one. Per-year percentiles gave every year its own top 10 %.
+    - The fixed threshold is raised to the Tmax percentile where that is
+      higher. In Phoenix every summer day exceeds 30 C, which turned whole
+      months into one event; in cooler climates 30 C stays the threshold.
+    - Months: the hemisphere's summer months plus any month whose mean Tmax
+      is within `warm_month_window_c` of the hottest month (all years). The
+      notebook inferred this per year, often leaving a single month and
+      missing events such as Seattle's June 2021 heat dome. At equatorial
+      sites (no summer months) only the inferred warm months are used.
+    """
+    tmin_pct = float(pooled['Tmin (oC)'].quantile(tmin_q))
+    tmax_pct = float(pooled['Tmax (oC)'].quantile(tmax_q))
+    warm = infer_warm_season_months(pooled, warm_month_window_c=warm_month_window_c) or []
+    months = tuple(sorted(set(summer_months) | set(int(m) for m in warm)))
+    return HeatThresholds(tmin_pct, tmax_pct, max(fixed_tmax, tmax_pct), months)
 
 
 def calculate_daily_tmin_tmax(epw_data):
@@ -111,7 +155,8 @@ def identify_heatwaves_static(
     min_duration=3,
     max_duration=None,
     warm_season_only=True,
-    warm_month_window_c=1.0
+    warm_month_window_c=1.0,
+    thresholds=None
 ):
     """
     Static detector:
@@ -123,14 +168,19 @@ def identify_heatwaves_static(
     - annual Tmax percentile works well
     - fixed Tmax threshold of 29C is more realistic than 35C
     - warm-season filtering prevents relative anomalies in cool months
+
+    With `thresholds` (HeatThresholds from all AMY years), its values and
+    months are used; otherwise thresholds are computed from `df` alone.
     """
     if df.empty:
         return pd.DataFrame(columns=['Start', 'End'])
 
-    warm_months = (
-        infer_warm_season_months(df, warm_month_window_c=warm_month_window_c)
-        if warm_season_only else None
-    )
+    if not warm_season_only:
+        warm_months = None
+    elif thresholds is not None:
+        warm_months = list(thresholds.warm_months)
+    else:
+        warm_months = infer_warm_season_months(df, warm_month_window_c=warm_month_window_c)
 
     if method == 'ensemble':
         df1 = identify_heatwaves_static(
@@ -141,7 +191,8 @@ def identify_heatwaves_static(
             min_duration=min_duration,
             max_duration=max_duration,
             warm_season_only=warm_season_only,
-            warm_month_window_c=warm_month_window_c
+            warm_month_window_c=warm_month_window_c,
+            thresholds=thresholds
         )
 
         df2 = identify_heatwaves_static(
@@ -151,15 +202,19 @@ def identify_heatwaves_static(
             min_duration=min_duration,
             max_duration=max_duration,
             warm_season_only=warm_season_only,
-            warm_month_window_c=warm_month_window_c
+            warm_month_window_c=warm_month_window_c,
+            thresholds=thresholds
         )
 
         combined = pd.concat([df1, df2], ignore_index=True).drop_duplicates().reset_index(drop=True)
         return combined
 
     elif method == 'percentile':
-        tmin_threshold = df['Tmin (oC)'].quantile(tmin_q)
-        tmax_threshold = df['Tmax (oC)'].quantile(tmax_q)
+        if thresholds is not None:
+            tmin_threshold, tmax_threshold = thresholds.tmin_pct, thresholds.tmax_pct
+        else:
+            tmin_threshold = df['Tmin (oC)'].quantile(tmin_q)
+            tmax_threshold = df['Tmax (oC)'].quantile(tmax_q)
 
         condition = (
             (df['Tmin (oC)'] >= tmin_threshold) &
@@ -167,7 +222,9 @@ def identify_heatwaves_static(
         )
 
     elif method == 'temperature':
-        if tmax_th is None:
+        if thresholds is not None:
+            tmax_threshold = thresholds.tmax_abs
+        elif tmax_th is None:
             # adaptive fallback if no fixed threshold is provided
             tmax_threshold = df['Tmax (oC)'].quantile(0.90)
         else:
@@ -193,7 +250,8 @@ def identify_evt_extremes(
     evt=None,
     min_duration=3,
     warm_season_only=True,
-    warm_month_window_c=1.0
+    warm_month_window_c=1.0,
+    warm_months=None
 ):
     """
     EVT-POT heat waves (paper Section 2.2.3): runs of at least `min_duration`
@@ -212,9 +270,10 @@ def identify_evt_extremes(
     condition = pd.Series(evt.flags(df['heat_index']), index=df.index)
 
     if warm_season_only:
-        warm_months = infer_warm_season_months(df, warm_month_window_c=warm_month_window_c)
+        if warm_months is None:
+            warm_months = infer_warm_season_months(df, warm_month_window_c=warm_month_window_c)
         if warm_months:
-            condition = condition & df['MONTH'].isin(warm_months)
+            condition = condition & df['MONTH'].isin(list(warm_months))
 
     return build_condition_runs(
         condition,
@@ -380,14 +439,16 @@ def recompute_stats_from_events(events_df):
     return stats
 
 
-def process_file(epw_path, gnn_daily=None, evt=None):
+def process_file(epw_path, gnn_daily=None, evt=None, thresholds=None):
     """Detect heat waves in one EPW.
 
     `gnn_daily` is the output of rmy.gnn.detect_gnn_anomalies for the AMY set
     this file belongs to; its hot-anomaly days become GNN events. Leave it as
     None for files outside that set (such as the base TMY). `evt` is the
     pooled EVT threshold (rmy.evt.POTThreshold); without it EVT selects a
-    threshold on this file alone.
+    threshold on this file alone. `thresholds` (HeatThresholds) sets the
+    static thresholds and the months for all three methods; without it they
+    come from this file alone, as in the notebook.
     """
     epw_df = read_epw_raw(epw_path)
 
@@ -409,18 +470,20 @@ def process_file(epw_path, gnn_daily=None, evt=None):
     static_events = identify_heatwaves_static(
         daily_df,
         method='ensemble',
-        tmax_th=30.0,
+        tmax_th=FIXED_TMAX_C,
         min_duration=3,
         max_duration=MAX_EVENT_DAYS,
         warm_season_only=True,
-        warm_month_window_c=1.0
+        warm_month_window_c=1.0,
+        thresholds=thresholds
     )
     static_stats, static_df, _ = calculate_event_stats(static_events, daily_df)
 
     # GNN: runs of days the graph autoencoder flags as hot anomalies
     if gnn_daily is not None:
         condition = pd.Series(gnn_flags_for(daily_df, gnn_daily, 'hot'))
-        warm_months = infer_warm_season_months(daily_df, warm_month_window_c=1.0)
+        warm_months = (list(thresholds.warm_months) if thresholds is not None
+                       else infer_warm_season_months(daily_df, warm_month_window_c=1.0))
         if warm_months:
             condition &= daily_df['MONTH'].isin(warm_months).to_numpy()
         gnn_events = build_condition_runs(condition, min_duration=3, max_duration=MAX_EVENT_DAYS)
@@ -432,6 +495,7 @@ def process_file(epw_path, gnn_daily=None, evt=None):
     evt_events = identify_evt_extremes(
         daily_df,
         evt=evt,
+        warm_months=thresholds.warm_months if thresholds is not None else None,
         min_duration=3,
         warm_season_only=True,
         warm_month_window_c=1.0
@@ -497,8 +561,19 @@ def run_full_pipeline(epw_dir, base_dir, output_dir, use_gnn=True, gnn_config=No
 
     base_epw_path = os.path.join(base_dir, base_files[0])
 
+    # Thresholds and months from all AMY years pooled
+    pooled = pooled_daily(list_epws(epw_dir))
+    if pooled.empty:
+        raise ValueError(f"No usable AMY data in {epw_dir}")
+    thresholds = heat_thresholds(pooled, season_plan_for_epw(base_epw_path).summer_months)
+    print(thresholds.describe())
+
+    # Select the EVT-POT threshold on all AMY days pooled
+    evt = select_pot_threshold(pooled['heat_index'], pooled['date'], tail='upper')
+    print(evt.describe('heat index') if evt else "EVT: no valid heat-index threshold; EVT skipped.")
+
     # Process base file (not part of the AMY set the GNN is trained on)
-    base_stats, base_events, _, _, _, _ = process_file(base_epw_path)
+    base_stats, base_events, _, _, _, _ = process_file(base_epw_path, thresholds=thresholds)
 
     # Train the GNN once on all AMYs (paper: "across the 15 years analyzed")
     gnn_daily = None
@@ -507,13 +582,6 @@ def run_full_pipeline(epw_dir, base_dir, output_dir, use_gnn=True, gnn_config=No
             gnn_daily = detect_gnn_anomalies(list_epws(epw_dir), gnn_config or GNNConfig())
         except Exception as e:
             print(f"⚠️ GNN failed ({e}). Continuing with thresholds and EVT only.")
-
-    # Select the EVT-POT threshold on all AMY days pooled
-    evt = None
-    pooled = pooled_daily(list_epws(epw_dir))
-    if not pooled.empty:
-        evt = select_pot_threshold(pooled['heat_index'], pooled['date'], tail='upper')
-    print(evt.describe('heat index') if evt else "EVT: no valid heat-index threshold; EVT skipped.")
 
     if base_stats.empty:
         print(f"No valid stats found in {base_epw_path}.")
@@ -531,7 +599,8 @@ def run_full_pipeline(epw_dir, base_dir, output_dir, use_gnn=True, gnn_config=No
         print(f"Processing file: {epw_path}")
 
         try:
-            stats_df, events_df, _, _, _, _ = process_file(epw_path, gnn_daily=gnn_daily, evt=evt)
+            stats_df, events_df, _, _, _, _ = process_file(epw_path, gnn_daily=gnn_daily, evt=evt,
+                                                           thresholds=thresholds)
 
             if not stats_df.empty:
                 all_stats_df.append(stats_df)
@@ -567,6 +636,7 @@ def run_full_pipeline(epw_dir, base_dir, output_dir, use_gnn=True, gnn_config=No
             print(f"   - Year {int(row['year'])}: Severity = {row['severity']:.2f}")
 
         peak_year = int(epw_stats.loc[epw_stats['severity'].idxmax(), 'year'])
+        report_runner_up(epw_stats['year'], epw_stats['severity'], 'Heat-wave')
         peak_events = ev_resolved[ev_resolved['year'] == peak_year].reset_index(drop=True)
         peak_events = resolve_strict_overlaps(peak_events)
 

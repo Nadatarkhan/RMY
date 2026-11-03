@@ -76,3 +76,11 @@ def test_smoothing_blends_shoulders_and_keeps_inserted_hours():
     np.testing.assert_allclose(out.loc[16:19, 'temp_air'], [3.2, 6.4, 9.6, 12.8])
     np.testing.assert_allclose(out.loc[28:31, 'temp_air'], [12.8, 9.6, 6.4, 3.2])
     assert (out.loc[:15, 'temp_air'] == 0).all() and (out.loc[32:, 'temp_air'] == 0).all()
+
+
+def test_safe_load_events_file_with_no_columns_gives_empty_table(tmp_path):
+    # pandas writes an empty DataFrame as a file with no header at all.
+    p = tmp_path / 'events.csv'
+    pd.DataFrame().to_csv(p, index=False)
+    df = safe_load_events(p, ['begin_date', 'end_date'])
+    assert df.empty and list(df.columns) == ['begin_date', 'end_date']
