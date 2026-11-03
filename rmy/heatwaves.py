@@ -9,8 +9,8 @@ Importing this module has no side effects; call `run_full_pipeline` to run.
 EVT uses the heat index and a POT threshold selected on all AMYs pooled
 (rmy.evt), as in the paper.
 
-Known gap, kept on purpose for a later decision:
-- Runs longer than `max_duration` (21 days) are dropped, not clipped.
+There is no upper limit on event length (MAX_EVENT_DAYS). The notebook
+dropped runs longer than 21 days entirely (review note item 1).
 """
 import os
 import warnings
@@ -23,6 +23,9 @@ from .gnn import detect_gnn_anomalies, gnn_flags_for
 from .utils import calculate_heat_index, list_epws, read_epw_raw
 
 warnings.filterwarnings("ignore", category=UserWarning, message="Parsing dates.*")
+
+# Longest event kept, in days. None keeps runs of any length.
+MAX_EVENT_DAYS = None
 
 
 def calculate_daily_tmin_tmax(epw_data):
@@ -74,7 +77,7 @@ def infer_warm_season_months(df, warm_month_window_c=1.0):
     return warm_months
 
 
-def build_condition_runs(condition, min_duration=3, max_duration=21):
+def build_condition_runs(condition, min_duration=3, max_duration=None):
     """
     Convert a boolean day-level condition into start/end event indices.
     """
@@ -106,7 +109,7 @@ def identify_heatwaves_static(
     tmax_q=0.9,
     tmax_th=None,
     min_duration=3,
-    max_duration=21,
+    max_duration=None,
     warm_season_only=True,
     warm_month_window_c=1.0
 ):
@@ -408,7 +411,7 @@ def process_file(epw_path, gnn_daily=None, evt=None):
         method='ensemble',
         tmax_th=30.0,
         min_duration=3,
-        max_duration=21,
+        max_duration=MAX_EVENT_DAYS,
         warm_season_only=True,
         warm_month_window_c=1.0
     )
@@ -420,7 +423,7 @@ def process_file(epw_path, gnn_daily=None, evt=None):
         warm_months = infer_warm_season_months(daily_df, warm_month_window_c=1.0)
         if warm_months:
             condition &= daily_df['MONTH'].isin(warm_months).to_numpy()
-        gnn_events = build_condition_runs(condition, min_duration=3, max_duration=21)
+        gnn_events = build_condition_runs(condition, min_duration=3, max_duration=MAX_EVENT_DAYS)
         gnn_stats, gnn_df, _ = calculate_event_stats(gnn_events, daily_df)
     else:
         gnn_stats, gnn_df = pd.DataFrame(), pd.DataFrame()

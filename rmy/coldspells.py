@@ -6,8 +6,8 @@ in rmy.gnn, and EVT using a POT threshold selected on all AMYs pooled
 (rmy.evt). Events from all methods are pooled and overlaps resolved.
 Importing this module has no side effects; call `run_full_pipeline_cold`.
 
-Known gap, kept on purpose for a later decision:
-- Runs longer than `max_duration` (21 days) are dropped, not clipped.
+There is no upper limit on event length (`max_duration=None`). The
+notebook dropped runs longer than 21 days entirely (review note item 1).
 """
 import os
 from datetime import datetime
@@ -35,7 +35,7 @@ def calculate_daily_tmin_tmax_cold(epw_data):
 
 
 # === DETECTION METHOD ===
-def identify_cold_spells(df, method='ensemble', tmin_thres=-7, max_duration=21,
+def identify_cold_spells(df, method='ensemble', tmin_thres=-7, max_duration=None,
                          winter_months=(12, 1, 2), gnn_flags=None):
     """Flag cold-spell runs of at least 3 days.
 
@@ -67,7 +67,7 @@ def identify_cold_spells(df, method='ensemble', tmin_thres=-7, max_duration=21,
         while end + 1 < len(grouped) and grouped[end + 1] > 0:
             end += 1
         duration = end - start + 1
-        if 3 <= duration <= max_duration:
+        if duration >= 3 and (max_duration is None or duration <= max_duration):
             spells.append((start, end))
 
     return pd.DataFrame(spells, columns=['Start', 'End']) if spells else pd.DataFrame(columns=['Start', 'End'])

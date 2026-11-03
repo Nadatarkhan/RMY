@@ -72,4 +72,17 @@ def test_equatorial_run_brings_monthly_means_back(tmp_path):
     base = read_epw_file(next((tmp_path / 'base').glob('*.epw')))
     rmy = read_epw_file(rmy_path)
     dev = (rmy.groupby('month')['temp_air'].mean() - base.groupby('month')['temp_air'].mean()).abs()
-    assert dev.max() < 0.3, dev.round(2).to_dict()
+    # February is excluded: the whole 22-day cold run of Feb 2015 is inserted
+    # (no event cap), leaving almost no free days to compensate with.
+    assert dev.drop(2).max() < 0.3, dev.round(2).to_dict()
+
+
+def test_long_runs_are_kept_whole():
+    # A 25-day cold run (the notebook dropped anything over 21 days).
+    dates = pd.date_range('2015-01-01', '2015-03-31')
+    tmin = pd.Series(0.0, index=range(len(dates)))
+    tmin[20:45] = -15.0
+    df = pd.DataFrame({'YEAR': dates.year, 'MONTH': dates.month, 'DAY': dates.day,
+                       'Tmin (oC)': tmin, 'Wind Speed (m/s)': 3.0})
+    events = identify_cold_spells(df, method='temperature')
+    assert len(events) == 1 and events.End[0] - events.Start[0] + 1 == 25
