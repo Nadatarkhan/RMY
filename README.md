@@ -111,7 +111,7 @@ Outputs, in the folder given as the third argument:
 ```
 hotspells/                → heat-wave events and yearly statistics
 coldspells/               → cold-spell events and yearly statistics
-RMY_<TMY file name>.epw   → the RMY weather file
+<TMY file name>.epw       → the RMY weather file, with TMY/TMYx in the name replaced by RMY
 ```
 
 ## Try it on Google Colab
