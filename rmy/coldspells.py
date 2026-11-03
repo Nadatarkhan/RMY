@@ -4,8 +4,7 @@ Ported from the canonical notebook, section "1.2 Cold spells".
 Importing this module has no side effects; call `run_full_pipeline_cold`.
 
 Known gaps, kept here on purpose and handled in later phases:
-- The 'gnn' method is a rolling z-score, not the paper's GNN, and its
-  winter months are hardcoded to the Northern Hemisphere.
+- The 'gnn' method is a rolling z-score, not the paper's GNN.
 - Runs longer than `max_duration` (21 days) are dropped, not clipped.
 """
 import os
@@ -16,6 +15,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import genpareto
 
+from .seasons import season_plan_for_epw
 from .utils import EPW_COLUMNS
 
 
@@ -32,7 +32,10 @@ def calculate_daily_tmin_tmax_cold(epw_data):
 
 
 # === DETECTION METHOD ===
-def identify_cold_spells(df, method='ensemble', z_thresh=0.7, tmin_thres=-7, wind_speed_thres=2, window=30, max_duration=21):
+def identify_cold_spells(df, method='ensemble', z_thresh=0.7, tmin_thres=-7, wind_speed_thres=2, window=30, max_duration=21,
+                         winter_months=(12, 1, 2)):
+    """Flag cold-spell runs. `winter_months` limits the 'gnn' method to the
+    local winter (all 12 months at equatorial sites); see rmy.seasons."""
     if method == 'temperature':
         condition = df['Tmin (oC)'] < tmin_thres
     elif method == 'percentile':
@@ -45,8 +48,7 @@ def identify_cold_spells(df, method='ensemble', z_thresh=0.7, tmin_thres=-7, win
         df['z'] = (df['Tmin (oC)'] - df['Tmin (oC)'].rolling(window).mean()) / df['Tmin (oC)'].rolling(window).std()
         df['z'] = df['z'].fillna(0)
 
-        # Northern Hemisphere winter. Hemisphere handling comes in a later phase.
-        df['is_winter'] = df['MONTH'].isin([12, 1, 2])
+        df['is_winter'] = df['MONTH'].isin(list(winter_months))
 
         # Wind stays in the condition
         condition = (df['z'] < -z_thresh) & (df['Wind Speed (m/s)'] > wind_speed_thres) & df['is_winter']
@@ -193,7 +195,7 @@ def resolve_strict_overlaps_cold(events_df):
 
 
 # === PROCESS FILE ===
-def process_file_cold(epw_path, methods=('ensemble', 'gnn', 'evt')):
+def process_file_cold(epw_path, methods=('ensemble', 'gnn', 'evt'), winter_months=(12, 1, 2)):
     try:
         epw_df = pd.read_csv(epw_path, skiprows=8, header=None, names=EPW_COLUMNS)
     except Exception as e:
@@ -215,7 +217,8 @@ def process_file_cold(epw_path, methods=('ensemble', 'gnn', 'evt')):
             if method == 'evt':
                 events_df = identify_evt_cold_extremes(daily_df.copy())
             else:
-                events_df = identify_cold_spells(daily_df.copy(), method=method)
+                events_df = identify_cold_spells(daily_df.copy(), method=method,
+                                                 winter_months=winter_months)
 
             if events_df.empty:
                 continue
@@ -281,12 +284,15 @@ def save_final_outputs_cold_safe(output_dir, base_stats, base_events, all_stats,
 
 
 # === MAIN DRIVER ===
-def run_full_pipeline_cold(epw_dir, base_dir, output_dir):
+def run_full_pipeline_cold(epw_dir, base_dir, output_dir, winter_months=None):
     """Detect cold spells in every AMY in `epw_dir` and in the base TMY.
 
     Writes up to six CSVs to `output_dir` (empty tables are skipped):
     events and stats for the base file, for all AMY years, and for the
     peak-severity year.
+
+    `winter_months` defaults to the local winter derived from the base EPW's
+    latitude (DJF north, JJA south, all months near the equator).
     """
     print(f" Starting cold spell detection on EPWs in {epw_dir}")
 
@@ -294,6 +300,10 @@ def run_full_pipeline_cold(epw_dir, base_dir, output_dir):
     if not base_files:
         raise FileNotFoundError("No base EPW file found.")
     base_path = os.path.join(base_dir, base_files[0])
+    if winter_months is None:
+        plan = season_plan_for_epw(base_path)
+        winter_months = plan.cold_months
+        print(f" Seasons: {plan.describe()}")
     print(f" Processing base EPW file: {base_path}")
     try:
         base_stats, base_events, _, _ = process_file_cold(base_path, methods=['temperature'])
@@ -310,7 +320,8 @@ def run_full_pipeline_cold(epw_dir, base_dir, output_dir):
         epw_path = os.path.join(epw_dir, epw_file)
         print(f" Processing file: {epw_path}")
         try:
-            stats_df, events_df, _, _ = process_file_cold(epw_path, methods=['ensemble', 'gnn', 'evt'])
+            stats_df, events_df, _, _ = process_file_cold(epw_path, methods=['ensemble', 'gnn', 'evt'],
+                                                          winter_months=winter_months)
             if not stats_df.empty:
                 all_stats_list.append(stats_df)
             if not events_df.empty:
