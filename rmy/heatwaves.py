@@ -6,6 +6,9 @@ all three methods are pooled and overlaps resolved ("methods are applied in
 sequence but also contribute additively to the final event set").
 Importing this module has no side effects; call `run_full_pipeline` to run.
 
+EVT uses the heat index and a POT threshold selected on all AMYs pooled
+(rmy.evt), as in the paper.
+
 Known gap, kept on purpose for a later decision:
 - Runs longer than `max_duration` (21 days) are dropped, not clipped.
 """
@@ -14,8 +17,8 @@ import warnings
 
 import numpy as np
 import pandas as pd
-from scipy.stats import genpareto
 
+from .evt import select_pot_threshold
 from .gnn import detect_gnn_anomalies, gnn_flags_for
 from .utils import calculate_heat_index, list_epws, read_epw_raw
 
@@ -184,45 +187,26 @@ def identify_heatwaves_static(
 
 def identify_evt_extremes(
     df,
-    quantile_threshold=0.95,
+    evt=None,
     min_duration=3,
     warm_season_only=True,
     warm_month_window_c=1.0
 ):
     """
-    Identify extreme heatwave events using EVT (Peaks Over Threshold).
-    Returns events above a fitted return level.
+    EVT-POT heat waves (paper Section 2.2.3): runs of at least `min_duration`
+    days with the heat index above the POT threshold.
 
-    Notes:
-    - fixed the original bug where EVT never actually ran
-    - uses an empirical floor to avoid unstable fits on short series
+    `evt` is a rmy.evt.POTThreshold, normally selected on all AMYs pooled.
+    Without it, the threshold is selected on this file alone.
     """
-    if df.empty:
+    if df.empty or 'heat_index' not in df.columns:
         return pd.DataFrame(columns=['Start', 'End'])
+    if evt is None:
+        evt = select_pot_threshold(df['heat_index'], df['date'], tail='upper')
+        if evt is None:
+            return pd.DataFrame(columns=['Start', 'End'])
 
-    tmax_series = df['Tmax (oC)'].dropna()
-    if tmax_series.empty:
-        return pd.DataFrame(columns=['Start', 'End'])
-
-    threshold = tmax_series.quantile(quantile_threshold)
-    excesses = tmax_series[tmax_series > threshold] - threshold
-
-    empirical_floor = tmax_series.quantile(0.97)
-
-    if len(excesses) >= 5 and excesses.std(ddof=0) > 0:
-        c, loc, scale = genpareto.fit(excesses, floc=0)
-
-        # slightly less aggressive than a second 95th on the GPD tail
-        return_level = threshold + genpareto.ppf(0.80, c, loc=0, scale=scale)
-
-        if not np.isfinite(return_level):
-            return_level = empirical_floor
-        else:
-            return_level = max(return_level, empirical_floor)
-    else:
-        return_level = empirical_floor
-
-    condition = df['Tmax (oC)'] >= return_level
+    condition = pd.Series(evt.flags(df['heat_index']), index=df.index)
 
     if warm_season_only:
         warm_months = infer_warm_season_months(df, warm_month_window_c=warm_month_window_c)
@@ -234,6 +218,16 @@ def identify_evt_extremes(
         min_duration=min_duration,
         max_duration=None
     )
+
+
+def pooled_daily(epw_paths):
+    """Daily Tmin/Tmax/humidity/heat index for all files, for pooled thresholds."""
+    frames = []
+    for p in epw_paths:
+        d = calculate_daily_tmin_tmax(read_epw_raw(p))
+        d['heat_index'] = calculate_heat_index(d['Tmax (oC)'], d['Humidity (%)']).to_numpy()
+        frames.append(d)
+    return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
 
 def calculate_event_stats(heatwave_df, base_df):
@@ -383,12 +377,14 @@ def recompute_stats_from_events(events_df):
     return stats
 
 
-def process_file(epw_path, gnn_daily=None):
+def process_file(epw_path, gnn_daily=None, evt=None):
     """Detect heat waves in one EPW.
 
     `gnn_daily` is the output of rmy.gnn.detect_gnn_anomalies for the AMY set
     this file belongs to; its hot-anomaly days become GNN events. Leave it as
-    None for files outside that set (such as the base TMY).
+    None for files outside that set (such as the base TMY). `evt` is the
+    pooled EVT threshold (rmy.evt.POTThreshold); without it EVT selects a
+    threshold on this file alone.
     """
     epw_df = read_epw_raw(epw_path)
 
@@ -432,7 +428,7 @@ def process_file(epw_path, gnn_daily=None):
     # EVT detection
     evt_events = identify_evt_extremes(
         daily_df,
-        quantile_threshold=0.95,
+        evt=evt,
         min_duration=3,
         warm_season_only=True,
         warm_month_window_c=1.0
@@ -509,6 +505,13 @@ def run_full_pipeline(epw_dir, base_dir, output_dir, use_gnn=True):
         except Exception as e:
             print(f"⚠️ GNN failed ({e}). Continuing with thresholds and EVT only.")
 
+    # Select the EVT-POT threshold on all AMY days pooled
+    evt = None
+    pooled = pooled_daily(list_epws(epw_dir))
+    if not pooled.empty:
+        evt = select_pot_threshold(pooled['heat_index'], pooled['date'], tail='upper')
+    print(evt.describe('heat index') if evt else "EVT: no valid heat-index threshold; EVT skipped.")
+
     if base_stats.empty:
         print(f"No valid stats found in {base_epw_path}.")
         base_stats, base_events = pd.DataFrame(), pd.DataFrame()
@@ -525,7 +528,7 @@ def run_full_pipeline(epw_dir, base_dir, output_dir, use_gnn=True):
         print(f"Processing file: {epw_path}")
 
         try:
-            stats_df, events_df, _, _, _, _ = process_file(epw_path, gnn_daily=gnn_daily)
+            stats_df, events_df, _, _, _, _ = process_file(epw_path, gnn_daily=gnn_daily, evt=evt)
 
             if not stats_df.empty:
                 all_stats_df.append(stats_df)
