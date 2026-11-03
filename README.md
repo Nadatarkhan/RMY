@@ -125,11 +125,13 @@ RMY_<base file name>.epw → the RMY weather file
 
 Seasons come from the latitude in the base EPW's LOCATION line:
 
-| Band | Latitude | Summer | Winter |
+| Band | Latitude | Heat waves counted in | GNN cold anomalies counted in |
 |---|---|---|---|
-| Northern | ≥ 10° | Jun–Aug | Dec–Feb |
-| Southern | ≤ −10° | Dec–Feb | Jun–Aug |
-| Equatorial | between −10° and 10° | every month is compensated against its own base-TMY mean | cold spells are checked in all months |
+| Northern | ≥ 10° | Jun–Aug plus any month as warm locally | Dec–Feb |
+| Southern | ≤ −10° | Dec–Feb plus any month as warm locally | Jun–Aug |
+| Equatorial | between −10° and 10° | the locally warmest months | all months |
+
+After events are inserted, every month whose mean temperature or humidity moved is pulled back toward the base TMY with compensation days (up to 10 per month, 60 in total). Events longer than 21 days are inserted as their most severe 21 days; detection itself has no length limit.
 
 The equatorial band is an extension to the published method, which defines seasons by hemisphere only.
 

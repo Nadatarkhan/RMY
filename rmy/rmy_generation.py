@@ -5,9 +5,8 @@ Ported from the canonical notebook, section "3.0 Generate RMYs"
 
 Steps:
 1. Insert the peak heat-wave and cold-spell event days from the peak AMY years.
-2. Insert compensating AMY days so monthly means stay close to the base TMY:
-   summer and winter at Northern/Southern sites, each month on its own at
-   equatorial sites (see rmy.seasons).
+2. Insert compensating AMY days so each month's mean temperature and
+   humidity stay close to the base TMY (compensate_monthly).
 3. Blend the hours around every inserted block once, after all insertions.
    Inserted AMY hours are never modified.
 """
@@ -26,6 +25,10 @@ from .utils import (
 from .validation import audit_epws, print_report
 
 TRANSITION_HOURS = 8
+# Longest event inserted into the RMY, in days. Detection keeps events at
+# their full length; a longer event is inserted as its most severe window
+# (see clip_events_to_window). None inserts events whole.
+MAX_INSERT_DAYS = 21
 SMOOTH_COLS = [
     'temp_air', 'temp_dew', 'relative_humidity',
     'atmospheric_pressure', 'wind_speed'
@@ -55,6 +58,32 @@ def match_events(base_df, peak_df):
             matched.append((base, unmatched.loc[best]))
             unmatched = unmatched.drop(best)
     return matched, unmatched
+
+
+def clip_events_to_window(events, source_epw, kind, max_days):
+    """Shorten events longer than `max_days` to their most severe window.
+
+    For heat waves the window with the highest mean daily Tmax is kept, for
+    cold spells the one with the lowest mean daily Tmin, computed from the
+    AMY the events are inserted from. Returns (events, list of changes).
+    """
+    if max_days is None or events.empty:
+        return events, []
+    agg = 'max' if kind == 'heat' else 'min'
+    daily = source_epw.groupby(['month', 'day'])['temp_air'].agg(agg)
+    events = events.copy()
+    changes = []
+    for i, ev in events.iterrows():
+        dates = pd.date_range(ev['begin_date'], ev['end_date'], freq='D')
+        if len(dates) <= max_days:
+            continue
+        values = pd.Series([daily.get((d.month, d.day), np.nan) for d in dates])
+        window = values.rolling(max_days).mean()
+        end = int(window.idxmax() if kind == 'heat' else window.idxmin())
+        start = end - max_days + 1
+        changes.append((dates[0], dates[-1], dates[start], dates[end]))
+        events.loc[i, ['begin_date', 'end_date', 'duration']] = [dates[start], dates[end], max_days]
+    return events, changes
 
 
 def replace_whole_day(df, source_day, month, day, inserted_hours):
@@ -100,48 +129,14 @@ def calculate_monthly_avg_conditions(df, months):
             .groupby('month')[['temp_air', 'relative_humidity']].mean())
 
 
-def find_days_to_adjust_avg(epw_files, targets, months, condition):
-    """Collect up to 40 candidate compensation days from the AMYs.
-
-    Files are visited in sorted order so the result does not depend on the
-    order the filesystem lists them.
-    """
-    days = {m: [] for m in months}
-    for path in sorted(Path(p) for p in epw_files):
-        source = read_epw_file(path)
-        for month in months:
-            for day in range(1, 32):
-                subset = source[(source['month'] == month) &
-                                (source['day'] == day)]
-                if not subset.empty and condition(subset, targets.loc[month]):
-                    days[month].append(subset)
-                if sum(map(len, days.values())) >= 40:
-                    return days
-    return days
-
-
-def integrate_days(df, days, protected_days, months, inserted_hours):
-    inserted = set()
-    for month in months:
-        for day_df in days[month]:
-            if len(inserted) >= 30:
-                break
-            month_value = int(day_df.iloc[0]['month'])
-            day_value = int(day_df.iloc[0]['day'])
-            tag = f'{month_value:02d}-{day_value:02d}'
-            if tag in protected_days or tag in inserted:
-                continue
-            if replace_whole_day(df, day_df, month_value, day_value, inserted_hours):
-                inserted.add(tag)
-    return df, inserted
-
-
 def compensate_monthly(df, base_epw, epw_files, months, protected_days, inserted_hours,
                        temp_tol=0.25, rh_tol=2.0, max_days_per_month=10, max_days_total=60):
     """Pull each month's mean temperature and RH back to the base TMY.
 
-    Used at equatorial sites, where there is no summer or winter. For each
-    month whose means moved after event insertion, AMY days from the same
+    Paper Section 2.4: "the algorithm adjusts monthly and seasonal dry bulb
+    temperature and relative humidity averages back to those of the original
+    TMY ... Replacement days are added iteratively until the deviation ...
+    is minimized". For each month whose means moved after event insertion, AMY days from the same
     calendar month are inserted one at a time, each time choosing the day
     that most reduces the remaining deviation, until the month is within
     `temp_tol` (degrees C) and `rh_tol` (percentage points), no candidate
@@ -271,8 +266,8 @@ def _report_missing_hours(base_epw, final):
 
 
 def construct_final_rmy(base_epw_path, epw_dir, hot_dir, cold_dir, output_path,
-                        summer_months=None, winter_months=None,
-                        transition_hours=TRANSITION_HOURS, invalid_values='missing'):
+                        transition_hours=TRANSITION_HOURS, invalid_values='missing',
+                        max_insert_days=MAX_INSERT_DAYS):
     """Build the RMY EPW from detection outputs and write it to `output_path`.
 
     Parameters
@@ -282,11 +277,9 @@ def construct_final_rmy(base_epw_path, epw_dir, hot_dir, cold_dir, output_path,
     hot_dir, cold_dir : folders written by `run_full_pipeline` and
         `run_full_pipeline_cold`.
     output_path : where to write the RMY EPW.
-    summer_months, winter_months : months used for compensation. By default
-        they come from the base EPW's latitude (rmy.seasons): JJA/DJF in the
-        north, DJF/JJA in the south, and month-by-month compensation at
-        equatorial sites. Passing both overrides this with a two-season plan.
     transition_hours : width of the blend around each inserted block.
+    max_insert_days : longest event inserted, in days (default 21). A longer
+        event is inserted as its most severe window; None inserts it whole.
     invalid_values : what to do when an input EPW holds invalid values
         (netCDF fill values, out-of-range numbers; see rmy.validation).
         'missing' (default) reports them and treats them as missing data;
@@ -297,15 +290,7 @@ def construct_final_rmy(base_epw_path, epw_dir, hot_dir, cold_dir, output_path,
     base_epw_path, epw_dir = Path(base_epw_path), Path(epw_dir)
     hot_dir, cold_dir, output_path = Path(hot_dir), Path(cold_dir), Path(output_path)
 
-    if summer_months is None and winter_months is None:
-        plan = season_plan_for_epw(base_epw_path)
-        print(f'Seasons: {plan.describe()}')
-        equatorial = plan.is_equatorial
-        summer_months, winter_months = plan.summer_months, plan.winter_months
-    elif summer_months is None or winter_months is None:
-        raise ValueError('Pass both summer_months and winter_months, or neither.')
-    else:
-        equatorial = False
+    print(f'Seasons: {season_plan_for_epw(base_epw_path).describe()}')
 
     header = extract_original_header(base_epw_path)
     base_epw = read_epw_file(base_epw_path)
@@ -338,6 +323,17 @@ def construct_final_rmy(base_epw_path, epw_dir, hot_dir, cold_dir, output_path,
     cold_base = safe_load_events(cold_dir / 'coldspells_events_base.csv', COLD_EVENT_COLS)
     cold_events = safe_load_events(cold_dir / 'coldspells_events_peak.csv', COLD_EVENT_COLS)
 
+    for label, kind, src in (('Heatwave', 'heat', peak_heat), ('Coldspell', 'cold', peak_cold)):
+        events = heat_events if kind == 'heat' else cold_events
+        events, changes = clip_events_to_window(events, src, kind, max_insert_days)
+        for b0, e0, b1, e1 in changes:
+            print(f'{label} {b0:%d %b %Y}-{e0:%d %b} ({(e0 - b0).days + 1} days) inserted as its most '
+                  f'severe {max_insert_days} days: {b1:%d %b}-{e1:%d %b}')
+        if kind == 'heat':
+            heat_events = events
+        else:
+            cold_events = events
+
     mh, uh = match_events(heat_base, heat_events)
     mc, uc = match_events(cold_base, cold_events)
 
@@ -350,28 +346,8 @@ def construct_final_rmy(base_epw_path, epw_dir, hot_dir, cold_dir, output_path,
 
     # Protect both types of extremes against monthly compensation.
     all_extreme_days = rh | rc
-    if equatorial:
-        final, _, _ = compensate_monthly(final, base_epw, epw_list, list(range(1, 13)),
-                                         all_extreme_days, inserted_hours)
-    else:
-        summer, winter = list(summer_months), list(winter_months)
-        base_summer = calculate_monthly_avg_conditions(base_epw, summer)
-        base_winter = calculate_monthly_avg_conditions(base_epw, winter)
-        # Summer: insert cooler, drier days to offset heat waves.
-        # Winter: insert warmer, wetter days to offset cold spells.
-        s_condition = lambda day, ref: (day['temp_air'].mean() < ref['temp_air'] and
-                                        day['relative_humidity'].mean() < ref['relative_humidity'])
-        w_condition = lambda day, ref: (day['temp_air'].mean() > ref['temp_air'] and
-                                        day['relative_humidity'].mean() > ref['relative_humidity'])
-
-        summer_days = find_days_to_adjust_avg(epw_list, base_summer, summer, s_condition)
-        winter_days = find_days_to_adjust_avg(epw_list, base_winter, winter, w_condition)
-
-        final, inserted_summer = integrate_days(
-            final, summer_days, all_extreme_days, summer, inserted_hours)
-        final, _ = integrate_days(
-            final, winter_days, all_extreme_days | inserted_summer,
-            winter, inserted_hours)
+    final, _, _ = compensate_monthly(final, base_epw, epw_list, list(range(1, 13)),
+                                     all_extreme_days, inserted_hours)
 
     # Blend the shoulders ONCE, after all insertions.
     report_temperature_jumps(final, 'Before smoothing')
