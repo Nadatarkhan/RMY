@@ -414,10 +414,28 @@ def resolve_strict_overlaps(events_df):
     return out.drop(columns=['begin_dt', 'end_dt'], errors='ignore')
 
 
-def recompute_stats_from_events(events_df):
+def exceedance_severity(events_df, reference, value_col='avg_tmax', sign=1):
+    """Cumulative exceedance per year: sum over events of (excess beyond `reference`) x duration.
+
+    Paper Eq. 4, S = sum(event amplitude x event duration), with the amplitude
+    measured beyond the detection threshold rather than from 0 C. This is the
+    idea of the Heat Wave Magnitude Index (Russo et al.) and of Meteo-France's
+    heat-wave intensity (Ouzeau et al. 2016): a year scores by how far and for
+    how long it went past the threshold, so one extreme event can outrank many
+    mild ones. `sign` is 1 for heat (above) and -1 for cold (below).
+    """
+    excess = (sign * (events_df[value_col] - reference)).clip(lower=0)
+    return (excess * events_df['duration']).groupby(events_df['year']).sum()
+
+
+def recompute_stats_from_events(events_df, reference=None):
     """
     Recompute yearly summary stats from the final overlap-resolved event list.
     This avoids double-counting when the same event is found by multiple methods.
+
+    `severity` is the cumulative exceedance above `reference` (C x days; see
+    exceedance_severity) when a reference is given, otherwise the notebook's
+    total heat-wave days x hottest Tmax.
     """
     if events_df is None or events_df.empty:
         return pd.DataFrame(columns=['year', 'hwn', 'hwf', 'hwd', 'hwdm', 'hwaa', 'severity'])
@@ -435,7 +453,10 @@ def recompute_stats_from_events(events_df):
         .sort_values('year')
     )
 
-    stats['severity'] = stats['hwf'] * stats['hwaa']
+    if reference is None:
+        stats['severity'] = stats['hwf'] * stats['hwaa']
+    else:
+        stats['severity'] = stats['year'].map(exceedance_severity(events_df, reference)).fillna(0.0)
     return stats
 
 
@@ -516,7 +537,8 @@ def process_file(epw_path, gnn_daily=None, evt=None, thresholds=None):
         ])
 
     # Recompute final stats from resolved events
-    all_stats = recompute_stats_from_events(all_events)
+    all_stats = recompute_stats_from_events(
+        all_events, thresholds.tmax_abs if thresholds is not None else None)
 
     if all_stats.empty:
         return (
@@ -629,7 +651,7 @@ def run_full_pipeline(epw_dir, base_dir, output_dir, use_gnn=True, gnn_config=No
 
         ev_resolved = pd.concat(resolved_list, ignore_index=True) if resolved_list else pd.DataFrame()
 
-        epw_stats = recompute_stats_from_events(ev_resolved)
+        epw_stats = recompute_stats_from_events(ev_resolved, thresholds.tmax_abs)
 
         print("\n📈 Severity scores across all years:")
         for _, row in epw_stats[['year', 'severity']].iterrows():
@@ -640,7 +662,7 @@ def run_full_pipeline(epw_dir, base_dir, output_dir, use_gnn=True, gnn_config=No
         peak_events = ev_resolved[ev_resolved['year'] == peak_year].reset_index(drop=True)
         peak_events = resolve_strict_overlaps(peak_events)
 
-        peak_stats = recompute_stats_from_events(peak_events)
+        peak_stats = recompute_stats_from_events(peak_events, thresholds.tmax_abs)
         if not peak_stats.empty:
             peak_stats['year'] = peak_year
 

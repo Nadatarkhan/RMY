@@ -20,6 +20,7 @@ import pandas as pd
 from .seasons import season_plan_for_epw
 from .evt import select_pot_threshold
 from .gnn import GNNConfig, detect_gnn_anomalies, gnn_flags_for
+from .heatwaves import exceedance_severity
 from .utils import list_epws, read_epw_raw, report_runner_up
 
 
@@ -423,14 +424,14 @@ def run_full_pipeline_cold(epw_dir, base_dir, output_dir, winter_months=None, us
 
             epw_stats = pd.concat([cwn, cwf, cwd, cwdm, cwaa_series, avg_ws], axis=1).reset_index().sort_values('year')
 
-            # keep severity column (negative product)
-            epw_stats['severity'] = epw_stats['cwf'] * epw_stats['cwaa']
+            # Severity: cumulative exceedance below the percentile threshold
+            # (C x days), mirroring heat waves (see heatwaves.exceedance_severity).
+            epw_stats['severity'] = epw_stats['year'].map(exceedance_severity(
+                ev_resolved, thresholds.tmin_pct, value_col='avg_tmin', sign=-1)).fillna(0.0)
 
             # Robust peak-year selector
-            K = epw_stats['cwaa'].max()
-            _score = epw_stats['cwf'] * (K - epw_stats['cwaa'])
-            peak_year = int(epw_stats.loc[_score.idxmax(), 'year'])
-            report_runner_up(epw_stats['year'], _score, 'Cold-spell')
+            peak_year = int(epw_stats.loc[epw_stats['severity'].idxmax(), 'year'])
+            report_runner_up(epw_stats['year'], epw_stats['severity'], 'Cold-spell')
             peak_events = ev_resolved[ev_resolved['year'] == peak_year].reset_index(drop=True)
 
             print("\n Severity scores across all years:")
@@ -448,7 +449,7 @@ def run_full_pipeline_cold(epw_dir, base_dir, output_dir, winter_months=None, us
             _cwdm = float(peak_events['duration'].mean()) if not peak_events.empty else np.nan
             _cwaa = float((peak_events['avg_tmin'] * peak_events['duration']).sum() / peak_events['duration'].sum()) if not peak_events.empty else np.nan
             _avg_ws = float(peak_events['avg_wind_speed'].mean()) if not peak_events.empty else np.nan
-            _sev = float(_cwf * _cwaa) if not np.isnan(_cwaa) else np.nan
+            _sev = float(epw_stats.loc[epw_stats['year'] == peak_year, 'severity'].iloc[0])
 
             peak_stats = pd.DataFrame([{
                 'year': peak_year,
