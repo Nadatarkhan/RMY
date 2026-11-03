@@ -16,7 +16,7 @@ import pandas as pd
 from scipy.stats import genpareto
 
 from .seasons import season_plan_for_epw
-from .utils import EPW_COLUMNS
+from .utils import read_epw_raw
 
 
 # === DAILY AGGREGATION ===
@@ -197,7 +197,7 @@ def resolve_strict_overlaps_cold(events_df):
 # === PROCESS FILE ===
 def process_file_cold(epw_path, methods=('ensemble', 'gnn', 'evt'), winter_months=(12, 1, 2)):
     try:
-        epw_df = pd.read_csv(epw_path, skiprows=8, header=None, names=EPW_COLUMNS)
+        epw_df = read_epw_raw(epw_path)
     except Exception as e:
         print(f" Could not read EPW file {epw_path}: {e}")
         return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()

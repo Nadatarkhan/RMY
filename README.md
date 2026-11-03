@@ -59,6 +59,7 @@ rmy/                    ← the Python package
 ├── coldspells.py       ← cold-spell detection
 ├── rmy_generation.py   ← RMY assembly (event insertion, compensation, smoothing)
 ├── seasons.py          ← hemisphere / equatorial season rules from EPW latitude
+├── validation.py       ← EPW range and missing-value checks (`python -m rmy.audit`)
 ├── visualization.py    ← Extreme Event Explorer circle plot
 ├── utils.py            ← EPW reading and shared helpers
 data/
@@ -128,6 +129,8 @@ Seasons come from the latitude in the base EPW's LOCATION line:
 | Equatorial | between −10° and 10° | every month is compensated against its own base-TMY mean | cold spells are checked in all months |
 
 The equatorial band is an extension to the published method, which defines seasons by hemisphere only.
+
+Check EPW files for invalid values (netCDF fill values, out-of-range numbers) and missing data with `python -m rmy.audit FILE.epw ...`. The pipeline runs the same check on its inputs and treats invalid values as missing.
 
 Run the tests with `python -m pytest tests/`.
 

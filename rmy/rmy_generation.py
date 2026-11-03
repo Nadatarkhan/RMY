@@ -21,8 +21,9 @@ from .heatwaves import run_full_pipeline
 from .seasons import season_plan_for_epw
 from .utils import (
     WEATHER_COLS, extract_original_header, find_epw_by_year, get_peak_year,
-    list_epws, read_epw_file, safe_load_events,
+    list_epws, read_epw_file, safe_load_events, write_epw,
 )
+from .validation import audit_epws, print_report
 
 TRANSITION_HOURS = 8
 SMOOTH_COLS = [
@@ -256,9 +257,22 @@ def report_temperature_jumps(df, description, threshold_c=8):
     return n
 
 
+def _report_missing_hours(base_epw, final):
+    """Print fields that have more missing hours in the RMY than in the base TMY."""
+    from .validation import FIELD_RULES
+    rows = [(c, int(base_epw[c].isna().sum()), int(final[c].isna().sum()))
+            for c in FIELD_RULES if c in final.columns]
+    rows = [r for r in rows if r[2] > r[1]]
+    if rows:
+        print('Fields with more missing hours than the base TMY '
+              '(written with the EPW missing code):')
+        for c, b, f in rows:
+            print(f'   - {c}: {b} -> {f} hours')
+
+
 def construct_final_rmy(base_epw_path, epw_dir, hot_dir, cold_dir, output_path,
                         summer_months=None, winter_months=None,
-                        transition_hours=TRANSITION_HOURS):
+                        transition_hours=TRANSITION_HOURS, invalid_values='missing'):
     """Build the RMY EPW from detection outputs and write it to `output_path`.
 
     Parameters
@@ -273,7 +287,13 @@ def construct_final_rmy(base_epw_path, epw_dir, hot_dir, cold_dir, output_path,
         north, DJF/JJA in the south, and month-by-month compensation at
         equatorial sites. Passing both overrides this with a two-season plan.
     transition_hours : width of the blend around each inserted block.
+    invalid_values : what to do when an input EPW holds invalid values
+        (netCDF fill values, out-of-range numbers; see rmy.validation).
+        'missing' (default) reports them and treats them as missing data;
+        'error' stops before anything is written.
     """
+    if invalid_values not in ('missing', 'error'):
+        raise ValueError("invalid_values must be 'missing' or 'error'")
     base_epw_path, epw_dir = Path(base_epw_path), Path(epw_dir)
     hot_dir, cold_dir, output_path = Path(hot_dir), Path(cold_dir), Path(output_path)
 
@@ -295,6 +315,16 @@ def construct_final_rmy(base_epw_path, epw_dir, hot_dir, cold_dir, output_path,
     epw_list = list_epws(epw_dir)
     if not epw_list:
         raise FileNotFoundError(f'No AMY EPWs found in {epw_dir}')
+
+    input_report = audit_epws([base_epw_path, *epw_list])
+    invalid = input_report[input_report['problem'] == 'invalid']
+    print_report(invalid, 'Invalid values in the input EPWs')
+    if not invalid.empty:
+        if invalid_values == 'error':
+            raise ValueError('Input EPWs contain invalid values (see the report above). '
+                             "Fix or remove those files, or pass invalid_values='missing'.")
+        print('   These values are treated as missing: never used for detection or '
+              'compensation, and written with the EPW missing code if inserted.')
 
     heat_path = find_epw_by_year(get_peak_year(hot_dir / 'heatwave_stats_peak.csv'), epw_dir)
     cold_path = find_epw_by_year(get_peak_year(cold_dir / 'coldspells_stats_peak.csv'), epw_dir)
@@ -359,11 +389,8 @@ def construct_final_rmy(base_epw_path, epw_dir, hot_dir, cold_dir, output_path,
         print(f'WARNING: {issues} hours have dew point > dry bulb by >0.1°C; '
               'review before using this EPW in EnergyPlus.')
 
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(output_path, 'w', newline='') as out:
-        for line in header:
-            out.write(line if line.endswith('\n') else line + '\n')
-        final.to_csv(out, index=False, header=False, float_format='%g', na_rep='999')
+    write_epw(final, header, output_path)
+    _report_missing_hours(base_epw, final)
 
     print(f'✅ Final RMY saved to: {output_path}')
     print(f'📂 Heatwave peak AMY: {heat_path}')

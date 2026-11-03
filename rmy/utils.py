@@ -10,6 +10,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from .validation import fill_missing_codes, mask_invalid
+
 EPW_HEADER_LINES = 8
 
 EPW_COLUMNS = [
@@ -35,20 +37,26 @@ def list_epws(folder) -> list[Path]:
 
 
 def read_epw_raw(path) -> pd.DataFrame:
-    """Read the hourly block of an EPW with pandas' default type inference.
+    """Read the hourly block of an EPW for event detection.
 
-    Used by the event detectors, exactly as in the notebook.
+    Invalid values (fill values, out-of-range numbers) and EPW missing codes
+    in the checked weather fields become NaN, so that, for example, a
+    missing temperature coded 99.9 is not mistaken for a heat wave.
     """
-    return pd.read_csv(path, skiprows=EPW_HEADER_LINES, header=None,
-                       names=EPW_COLUMNS, usecols=range(len(EPW_COLUMNS)),
-                       low_memory=False)
+    df = pd.read_csv(path, skiprows=EPW_HEADER_LINES, header=None,
+                     names=EPW_COLUMNS, usecols=range(len(EPW_COLUMNS)),
+                     low_memory=False)
+    return mask_invalid(df)
 
 
-def read_epw_file(path) -> pd.DataFrame:
+def read_epw_file(path, mask=True) -> pd.DataFrame:
     """Read the hourly block of an EPW with explicit types, for RMY assembly.
 
     Calendar columns are int64, weather codes are strings, and every other
-    column is float64 so that smoothing can write fractional values.
+    column is float64 so that smoothing can write fractional values. Invalid
+    values and EPW missing codes in the checked fields become NaN (see
+    rmy.validation); `write_epw` turns them back into missing codes.
+    Pass mask=False to get the values exactly as stored in the file.
     """
     df = pd.read_csv(path, header=None, skiprows=EPW_HEADER_LINES,
                      names=EPW_COLUMNS, dtype={c: 'string' for c in CODE_COLS})
@@ -57,7 +65,22 @@ def read_epw_file(path) -> pd.DataFrame:
     for c in WEATHER_COLS:
         if c not in CODE_COLS:
             df[c] = pd.to_numeric(df[c], errors='coerce').astype('float64')
-    return df
+    return mask_invalid(df) if mask else df
+
+
+def write_epw(df, header_lines, path):
+    """Write an EPW: the given 8 header lines, then the hourly rows.
+
+    NaN in a checked field is written as that field's EPW missing code.
+    """
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, 'w', newline='') as out:
+        for line in header_lines:
+            out.write(line if line.endswith('\n') else line + '\n')
+        fill_missing_codes(df).to_csv(out, index=False, header=False,
+                                      float_format='%g', na_rep='999')
+    return path
 
 
 def extract_original_header(epw_path) -> list[str]:
