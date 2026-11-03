@@ -71,16 +71,61 @@ def read_epw_file(path, mask=True) -> pd.DataFrame:
 def write_epw(df, header_lines, path):
     """Write an EPW: the given 8 header lines, then the hourly rows.
 
+    Line endings follow the header (CRLF or LF) so the file is not mixed.
     NaN in a checked field is written as that field's EPW missing code.
     """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
+    newline = '\r\n' if header_lines and header_lines[0].endswith('\r\n') else '\n'
     with open(path, 'w', newline='') as out:
         for line in header_lines:
-            out.write(line if line.endswith('\n') else line + '\n')
-        fill_missing_codes(df).to_csv(out, index=False, header=False,
-                                      float_format='%g', na_rep='999')
+            out.write(line.rstrip('\r\n') + newline)
+        fill_missing_codes(df).to_csv(out, index=False, header=False, float_format='%g',
+                                      na_rep='999', lineterminator=newline)
     return path
+
+
+RMY_LABEL = 'RMY extreme weather file'
+
+
+def label_rmy_header(header_lines, amy_years, peak_heat_year=None, peak_cold_year=None):
+    """Return the header with a short RMY note added to the COMMENTS 2 line.
+
+    Only COMMENTS 2 changes, and only by prepending text inside its existing
+    text field. The note has no commas, so every header line keeps its field
+    count; all other lines are returned unchanged. Example:
+
+        COMMENTS 2,"RMY extreme weather file: heat waves and cold spells from
+        AMYs 2009-2023 inserted (peak heat year 2022; peak cold year 2015);
+        Downloaded from Climate.Onebuilding.org ..."
+    """
+    years = sorted({int(y) for y in amy_years})
+    if not years:
+        raise ValueError('No AMY years given for the header note')
+    note = f'{RMY_LABEL}: heat waves and cold spells from AMYs {years[0]}-{years[-1]} inserted'
+    gaps = sorted(set(range(years[0], years[-1] + 1)) - set(years))
+    if gaps:
+        note += ' (no AMY for ' + ' '.join(str(y) for y in gaps) + ')'
+    peaks = [f'peak {k} year {y}' for k, y in (('heat', peak_heat_year), ('cold', peak_cold_year))
+             if y is not None]
+    if peaks:
+        note += ' (' + '; '.join(peaks) + ')'
+    assert ',' not in note and '"' not in note
+
+    lines = list(header_lines)
+    idx = next((i for i, l in enumerate(lines) if l.upper().startswith('COMMENTS 2,')), None)
+    if idx is None:
+        raise ValueError('EPW header has no COMMENTS 2 line')
+    line = lines[idx]
+    ending = line[len(line.rstrip('\r\n')):]
+    keyword, rest = line.rstrip('\r\n').split(',', 1)
+    if rest.startswith('"') and rest.endswith('"') and len(rest) >= 2:
+        inner = rest[1:-1]
+        rest = '"' + note + ('; ' + inner if inner else '') + '"'
+    else:
+        rest = note + ('; ' + rest if rest else '')
+    lines[idx] = f'{keyword},{rest}{ending}'
+    return lines
 
 
 def extract_original_header(epw_path) -> list[str]:

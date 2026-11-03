@@ -21,10 +21,19 @@ def run(tmp_path_factory):
     return out, rmy_path
 
 
-def test_rmy_has_base_header_and_full_year(run):
+def test_rmy_header_changes_only_comments_2(run):
     _, rmy_path = run
     base = list_epws(BASE_DIR)[0]
-    assert extract_original_header(rmy_path) == extract_original_header(base)
+    old, new = extract_original_header(base), extract_original_header(rmy_path)
+    assert len(new) == 8
+    changed = [i for i in range(8) if old[i] != new[i]]
+    assert changed == [6]                                   # COMMENTS 2 only
+    assert [l.count(',') for l in new] == [l.count(',') for l in old]
+    assert new[6].startswith('COMMENTS 2,"RMY extreme weather file: heat waves and cold spells '
+                             'from AMYs 2009-2023 inserted (peak heat year 2022; peak cold year 2015); ')
+    assert new[6].endswith(old[6][len('COMMENTS 2,"'):])     # original text kept
+    raw = Path(rmy_path).read_bytes()
+    assert raw.isascii() and b'\r' not in raw
     assert len(read_epw_file(rmy_path)) == len(read_epw_file(base)) == 8760
 
 
