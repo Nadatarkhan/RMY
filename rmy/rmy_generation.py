@@ -5,8 +5,9 @@ Ported from the canonical notebook, section "3.0 Generate RMYs"
 
 Steps:
 1. Insert the peak heat-wave and cold-spell event days from the peak AMY years.
-2. Insert compensating AMY days so summer/winter monthly means stay close
-   to the base TMY.
+2. Insert compensating AMY days so monthly means stay close to the base TMY:
+   summer and winter at Northern/Southern sites, each month on its own at
+   equatorial sites (see rmy.seasons).
 3. Blend the hours around every inserted block once, after all insertions.
    Inserted AMY hours are never modified.
 """
@@ -17,6 +18,7 @@ import pandas as pd
 
 from .coldspells import run_full_pipeline_cold
 from .heatwaves import run_full_pipeline
+from .seasons import season_plan_for_epw
 from .utils import (
     WEATHER_COLS, extract_original_header, find_epw_by_year, get_peak_year,
     list_epws, read_epw_file, safe_load_events,
@@ -133,6 +135,79 @@ def integrate_days(df, days, protected_days, months, inserted_hours):
     return df, inserted
 
 
+def compensate_monthly(df, base_epw, epw_files, months, protected_days, inserted_hours,
+                       temp_tol=0.25, rh_tol=2.0, max_days_per_month=10, max_days_total=60):
+    """Pull each month's mean temperature and RH back to the base TMY.
+
+    Used at equatorial sites, where there is no summer or winter. For each
+    month whose means moved after event insertion, AMY days from the same
+    calendar month are inserted one at a time, each time choosing the day
+    that most reduces the remaining deviation, until the month is within
+    `temp_tol` (degrees C) and `rh_tol` (percentage points), no candidate
+    helps, or a day budget is reached. Event days and already-inserted days
+    are never replaced. Months without deviation are left untouched.
+
+    Returns (df, inserted day tags, per-month report DataFrame).
+    """
+    targets = calculate_monthly_avg_conditions(base_epw, months)
+    sources = [read_epw_file(p) for p in sorted(Path(p) for p in epw_files)]
+    inserted, report = set(), []
+
+    def objective(dt, drh):
+        return (dt / temp_tol) ** 2 + (drh / rh_tol) ** 2
+
+    for m in months:
+        in_month = df['month'] == m
+        n_hours = int(in_month.sum())
+        dt = df.loc[in_month, 'temp_air'].mean() - targets.loc[m, 'temp_air']
+        drh = df.loc[in_month, 'relative_humidity'].mean() - targets.loc[m, 'relative_humidity']
+        row = {'month': m, 'temp_dev_before': dt, 'rh_dev_before': drh, 'days_inserted': 0}
+
+        # Current hourly sums of each replaceable target day in this month.
+        target_sums = {}
+        for d, day in df[in_month].groupby('day'):
+            if f'{m:02d}-{d:02d}' not in protected_days:
+                target_sums[d] = (len(day), day['temp_air'].sum(), day['relative_humidity'].sum())
+
+        candidates = []
+        for src in sources:
+            for d, day in src[src['month'] == m].groupby('day'):
+                t_sum, rh_sum = day['temp_air'].sum(), day['relative_humidity'].sum()
+                if d in target_sums and len(day) == target_sums[d][0] \
+                        and np.isfinite(t_sum) and np.isfinite(rh_sum):
+                    candidates.append((d, day, t_sum, rh_sum))
+
+        while (row['days_inserted'] < max_days_per_month and len(inserted) < max_days_total
+               and not (abs(dt) <= temp_tol and abs(drh) <= rh_tol)):
+            best, best_obj = None, objective(dt, drh)
+            for d, day, t_sum, rh_sum in candidates:
+                if d not in target_sums:
+                    continue
+                _, cur_t, cur_rh = target_sums[d]
+                new_dt = dt + (t_sum - cur_t) / n_hours
+                new_drh = drh + (rh_sum - cur_rh) / n_hours
+                obj = objective(new_dt, new_drh)
+                if obj < best_obj - 1e-12:
+                    best, best_obj = (d, day, new_dt, new_drh), obj
+            if best is None:
+                break
+            d, day, dt, drh = best
+            replace_whole_day(df, day, m, d, inserted_hours)
+            inserted.add(f'{m:02d}-{d:02d}')
+            del target_sums[d]          # each date is replaced at most once
+            row['days_inserted'] += 1
+
+        row.update(temp_dev_after=dt, rh_dev_after=drh)
+        report.append(row)
+
+    report = pd.DataFrame(report)
+    print('Monthly compensation (deviation from base TMY, °C / %RH):')
+    for r in report.itertuples():
+        print(f'   - Month {r.month:2d}: {r.temp_dev_before:+.2f} / {r.rh_dev_before:+.1f} -> '
+              f'{r.temp_dev_after:+.2f} / {r.rh_dev_after:+.1f} ({r.days_inserted} days)')
+    return df, inserted, report
+
+
 def smooth_inserted_boundaries(df, protected, hours=TRANSITION_HOURS):
     """Linearly blend up to `hours` untouched hours around inserted AMY blocks.
 
@@ -182,7 +257,7 @@ def report_temperature_jumps(df, description, threshold_c=8):
 
 
 def construct_final_rmy(base_epw_path, epw_dir, hot_dir, cold_dir, output_path,
-                        summer_months=(6, 7, 8), winter_months=(12, 1, 2),
+                        summer_months=None, winter_months=None,
                         transition_hours=TRANSITION_HOURS):
     """Build the RMY EPW from detection outputs and write it to `output_path`.
 
@@ -193,12 +268,24 @@ def construct_final_rmy(base_epw_path, epw_dir, hot_dir, cold_dir, output_path,
     hot_dir, cold_dir : folders written by `run_full_pipeline` and
         `run_full_pipeline_cold`.
     output_path : where to write the RMY EPW.
-    summer_months, winter_months : months used for monthly compensation.
-        The defaults are Northern Hemisphere seasons.
+    summer_months, winter_months : months used for compensation. By default
+        they come from the base EPW's latitude (rmy.seasons): JJA/DJF in the
+        north, DJF/JJA in the south, and month-by-month compensation at
+        equatorial sites. Passing both overrides this with a two-season plan.
     transition_hours : width of the blend around each inserted block.
     """
     base_epw_path, epw_dir = Path(base_epw_path), Path(epw_dir)
     hot_dir, cold_dir, output_path = Path(hot_dir), Path(cold_dir), Path(output_path)
+
+    if summer_months is None and winter_months is None:
+        plan = season_plan_for_epw(base_epw_path)
+        print(f'Seasons: {plan.describe()}')
+        equatorial = plan.is_equatorial
+        summer_months, winter_months = plan.summer_months, plan.winter_months
+    elif summer_months is None or winter_months is None:
+        raise ValueError('Pass both summer_months and winter_months, or neither.')
+    else:
+        equatorial = False
 
     header = extract_original_header(base_epw_path)
     base_epw = read_epw_file(base_epw_path)
@@ -229,24 +316,30 @@ def construct_final_rmy(base_epw_path, epw_dir, hot_dir, cold_dir, output_path,
     final, rc = integrate_events(final, mc, uc, peak_cold,
                                  'Coldspell', inserted_hours)
 
-    summer, winter = list(summer_months), list(winter_months)
-    base_summer = calculate_monthly_avg_conditions(base_epw, summer)
-    base_winter = calculate_monthly_avg_conditions(base_epw, winter)
-    s_condition = lambda day, ref: (day['temp_air'].mean() < ref['temp_air'] and
-                                    day['relative_humidity'].mean() < ref['relative_humidity'])
-    w_condition = lambda day, ref: (day['temp_air'].mean() > ref['temp_air'] and
-                                    day['relative_humidity'].mean() > ref['relative_humidity'])
-
-    summer_days = find_days_to_adjust_avg(epw_list, base_summer, summer, s_condition)
-    winter_days = find_days_to_adjust_avg(epw_list, base_winter, winter, w_condition)
-
     # Protect both types of extremes against monthly compensation.
     all_extreme_days = rh | rc
-    final, inserted_summer = integrate_days(
-        final, summer_days, all_extreme_days, summer, inserted_hours)
-    final, _ = integrate_days(
-        final, winter_days, all_extreme_days | inserted_summer,
-        winter, inserted_hours)
+    if equatorial:
+        final, _, _ = compensate_monthly(final, base_epw, epw_list, list(range(1, 13)),
+                                         all_extreme_days, inserted_hours)
+    else:
+        summer, winter = list(summer_months), list(winter_months)
+        base_summer = calculate_monthly_avg_conditions(base_epw, summer)
+        base_winter = calculate_monthly_avg_conditions(base_epw, winter)
+        # Summer: insert cooler, drier days to offset heat waves.
+        # Winter: insert warmer, wetter days to offset cold spells.
+        s_condition = lambda day, ref: (day['temp_air'].mean() < ref['temp_air'] and
+                                        day['relative_humidity'].mean() < ref['relative_humidity'])
+        w_condition = lambda day, ref: (day['temp_air'].mean() > ref['temp_air'] and
+                                        day['relative_humidity'].mean() > ref['relative_humidity'])
+
+        summer_days = find_days_to_adjust_avg(epw_list, base_summer, summer, s_condition)
+        winter_days = find_days_to_adjust_avg(epw_list, base_winter, winter, w_condition)
+
+        final, inserted_summer = integrate_days(
+            final, summer_days, all_extreme_days, summer, inserted_hours)
+        final, _ = integrate_days(
+            final, winter_days, all_extreme_days | inserted_summer,
+            winter, inserted_hours)
 
     # Blend the shoulders ONCE, after all insertions.
     report_temperature_jumps(final, 'Before smoothing')

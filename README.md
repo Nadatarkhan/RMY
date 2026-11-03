@@ -58,6 +58,7 @@ rmy/                    ← the Python package
 ├── heatwaves.py        ← heat-wave detection
 ├── coldspells.py       ← cold-spell detection
 ├── rmy_generation.py   ← RMY assembly (event insertion, compensation, smoothing)
+├── seasons.py          ← hemisphere / equatorial season rules from EPW latitude
 ├── visualization.py    ← Extreme Event Explorer circle plot
 ├── utils.py            ← EPW reading and shared helpers
 data/
@@ -117,6 +118,16 @@ hotspells/   → heat-wave events and yearly stats (all years, base file, peak y
 coldspells/  → cold-spell events and yearly stats (all years, base file, peak year)
 RMY_<base file name>.epw → the RMY weather file
 ```
+
+Seasons come from the latitude in the base EPW's LOCATION line:
+
+| Band | Latitude | Summer | Winter |
+|---|---|---|---|
+| Northern | ≥ 10° | Jun–Aug | Dec–Feb |
+| Southern | ≤ −10° | Dec–Feb | Jun–Aug |
+| Equatorial | between −10° and 10° | every month is compensated against its own base-TMY mean | cold spells are checked in all months |
+
+The equatorial band is an extension to the published method, which defines seasons by hemisphere only.
 
 Run the tests with `python -m pytest tests/`.
 
