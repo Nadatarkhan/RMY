@@ -101,3 +101,22 @@ def test_visualization_writes_png(run, tmp_path):
 
 def test_visualization_handles_missing_csvs(tmp_path):
     assert visualize_extreme_events(tmp_path / 'a.csv', tmp_path / 'b.csv', show=False) is None
+
+
+def test_rmy_is_named_after_the_tmy_with_tmy_replaced_by_rmy(run):
+    _, rmy_path = run
+    assert Path(rmy_path).name == 'Boston_MA_725090_RMY_2009-2023.epw'
+
+
+@pytest.mark.parametrize('tmy, rmy', [
+    ('Boston_MA_725090_TMYx_2009-2023.epw', 'Boston_MA_725090_RMY_2009-2023.epw'),
+    ('USA_MA_Boston-Logan.Intl.AP.725090_TMYx.2009-2023.epw', 'USA_MA_Boston-Logan.Intl.AP.725090_RMY.2009-2023.epw'),
+    ('USA_MA_Boston.725090_TMY3.epw', 'USA_MA_Boston.725090_RMY.epw'),
+    ('City_TMY2.epw', 'City_RMY.epw'),
+    ('city_tmy.epw', 'city_RMY.epw'),
+    ('MyCity_TMY2009-2023.epw', 'MyCity_RMY2009-2023.epw'),     # 2009 is a year, not TMY2
+    ('Toronto_base.epw', 'Toronto_base_RMY.epw'),              # no TMY in the name
+])
+def test_rmy_file_name(tmy, rmy):
+    from rmy.rmy_generation import rmy_file_name
+    assert rmy_file_name(tmy) == rmy

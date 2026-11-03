@@ -10,6 +10,7 @@ Steps:
 3. Blend the hours around every inserted block once, after all insertions.
    Inserted AMY hours are never modified.
 """
+import re
 from pathlib import Path
 
 import numpy as np
@@ -378,12 +379,32 @@ def construct_final_rmy(base_epw_path, epw_dir, hot_dir, cold_dir, output_path,
     return output_path
 
 
+# "TMY", "TMYx", "TMY2" or "TMY3" as a word in a file name (any case), but not
+# the "TMY" of "TMY2009", whose digits are a year.
+_TMY_TOKEN = re.compile(r'(?<![A-Za-z])TMY(?:x|[23](?!\d))?(?![A-Za-z])', re.IGNORECASE)
+
+
+def rmy_file_name(tmy_file_name):
+    """Name of the RMY made from a base TMY file: every TMY variant becomes RMY.
+
+    'Boston_MA_725090_TMYx_2009-2023.epw' -> 'Boston_MA_725090_RMY_2009-2023.epw'
+    'USA_MA_Boston.725090_TMY3.epw'       -> 'USA_MA_Boston.725090_RMY.epw'
+    A name without any TMY variant gets '_RMY' before the extension.
+    """
+    path = Path(tmy_file_name)
+    stem, n = _TMY_TOKEN.subn('RMY', path.stem)
+    if n == 0:
+        stem = f'{path.stem}_RMY'
+    return stem + path.suffix
+
+
 def run_full_rmy_pipeline(epw_dir, base_dir, output_dir, gnn_config=None, **rmy_kwargs):
     """Run heat-wave and cold-spell detection, then assemble the RMY.
 
     `epw_dir` holds the AMY EPWs, `base_dir` holds exactly one base TMY EPW.
     Detection CSVs go to `output_dir/hotspells` and `output_dir/coldspells`;
-    the RMY is written to `output_dir/RMY_<base file name>`. `gnn_config`
+    the RMY is written to `output_dir/<base file name with TMY -> RMY>`
+    (see rmy_file_name). `gnn_config`
     (rmy.gnn.GNNConfig) changes the GNN settings. Extra keyword arguments
     are passed to `construct_final_rmy`. Returns the RMY path.
     """
@@ -408,5 +429,5 @@ def run_full_rmy_pipeline(epw_dir, base_dir, output_dir, gnn_config=None, **rmy_
     run_full_pipeline_cold(str(epw_dir), str(base_dir), str(cold_dir), gnn_config=gnn_config)
 
     return construct_final_rmy(base_epw_path, epw_dir, hot_dir, cold_dir,
-                               output_dir / f'RMY_{base_epw_path.name}',
+                               output_dir / rmy_file_name(base_epw_path.name),
                                **rmy_kwargs)
