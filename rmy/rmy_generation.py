@@ -21,7 +21,7 @@ from .heatwaves import run_full_pipeline
 from .seasons import season_plan_for_epw
 from .utils import (
     WEATHER_COLS, extract_original_header, find_epw_by_year, get_peak_year,
-    list_epws, read_epw_file, safe_load_events, write_epw,
+    label_rmy_header, list_epws, read_epw_file, safe_load_events, write_epw,
 )
 from .validation import audit_epws, print_report
 
@@ -326,8 +326,10 @@ def construct_final_rmy(base_epw_path, epw_dir, hot_dir, cold_dir, output_path,
         print('   These values are treated as missing: never used for detection or '
               'compensation, and written with the EPW missing code if inserted.')
 
-    heat_path = find_epw_by_year(get_peak_year(hot_dir / 'heatwave_stats_peak.csv'), epw_dir)
-    cold_path = find_epw_by_year(get_peak_year(cold_dir / 'coldspells_stats_peak.csv'), epw_dir)
+    heat_year = get_peak_year(hot_dir / 'heatwave_stats_peak.csv')
+    cold_year = get_peak_year(cold_dir / 'coldspells_stats_peak.csv')
+    heat_path = find_epw_by_year(heat_year, epw_dir)
+    cold_path = find_epw_by_year(cold_year, epw_dir)
     peak_heat = read_epw_file(heat_path)
     peak_cold = read_epw_file(cold_path)
 
@@ -389,6 +391,8 @@ def construct_final_rmy(base_epw_path, epw_dir, hot_dir, cold_dir, output_path,
         print(f'WARNING: {issues} hours have dew point > dry bulb by >0.1°C; '
               'review before using this EPW in EnergyPlus.')
 
+    amy_years = [int(read_epw_file(p, mask=False)['year'].mode().iloc[0]) for p in epw_list]
+    header = label_rmy_header(header, amy_years, heat_year, cold_year)
     write_epw(final, header, output_path)
     _report_missing_hours(base_epw, final)
 

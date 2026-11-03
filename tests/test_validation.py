@@ -85,3 +85,11 @@ def test_invalid_values_error_mode_stops(tmp_path):
     with pytest.raises(ValueError, match='invalid values'):
         run_full_rmy_pipeline(tmp_path / 'EPWs', tmp_path / 'base', tmp_path / 'out',
                               invalid_values='error')
+
+
+def test_write_epw_keeps_crlf_line_endings(tmp_path):
+    src = list_epws(DATA / 'EPWs')[0]
+    header = [l.rstrip('\n') + '\r\n' for l in extract_original_header(src)]
+    out = write_epw(read_epw_file(src).head(48), header, tmp_path / 'crlf.epw')
+    lines = out.read_bytes().split(b'\n')[:-1]
+    assert len(lines) == 8 + 48 and all(l.endswith(b'\r') for l in lines)
