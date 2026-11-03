@@ -56,4 +56,6 @@ Against the notebook baseline:
 The move is caused by the 21-day cap, not the GNN: 31 January to
 21 February 2015 is one 22-day run below the thresholds, so the cap drops it
 whole (the same problem as review item 1 for Phoenix heat). The old z-score
-happened to detect a 4-day slice of it, which kept 2015 on top.
+happened to detect a 4-day slice of it, which kept 2015 on top. The EVT
+stage that followed detects 14–16 February 2015 and restores 2015 as the
+peak year.

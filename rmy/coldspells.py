@@ -2,7 +2,8 @@
 
 Ported from the canonical notebook, section "1.2 Cold spells", with the
 notebook's rolling z-score stand-in for the 'gnn' method replaced by the GNN
-in rmy.gnn. Events from all methods are pooled and overlaps resolved.
+in rmy.gnn, and EVT using a POT threshold selected on all AMYs pooled
+(rmy.evt). Events from all methods are pooled and overlaps resolved.
 Importing this module has no side effects; call `run_full_pipeline_cold`.
 
 Known gap, kept on purpose for a later decision:
@@ -14,9 +15,9 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from scipy.stats import genpareto
 
 from .seasons import season_plan_for_epw
+from .evt import select_pot_threshold
 from .gnn import detect_gnn_anomalies, gnn_flags_for
 from .utils import list_epws, read_epw_raw
 
@@ -72,37 +73,37 @@ def identify_cold_spells(df, method='ensemble', tmin_thres=-7, max_duration=21,
     return pd.DataFrame(spells, columns=['Start', 'End']) if spells else pd.DataFrame(columns=['Start', 'End'])
 
 
-def identify_evt_cold_extremes(df, quantile_threshold=0.05, min_duration=3):
+def identify_evt_cold_extremes(df, evt=None, min_duration=3):
     """
-    Identify cold spells using EVT (POT) approach based on Tmin.
+    EVT-POT cold spells (paper Section 2.2.3): runs of at least
+    `min_duration` days with Tmin below the POT threshold.
+
+    `evt` is a rmy.evt.POTThreshold, normally selected on all AMYs pooled.
+    Without it, the threshold is selected on this file alone.
     """
-    tmin_series = df['Tmin (oC)'].dropna()
-    threshold = tmin_series.quantile(quantile_threshold)
-    excesses = -(tmin_series[tmin_series < threshold] - threshold)  # flip tail for cold
-
-    if len(excesses) < 5:
-        return pd.DataFrame(columns=['Start', 'End'])  # Not enough data
-
-    c, loc, scale = genpareto.fit(excesses, floc=0)
-
-    # Define return level (e.g., 98th percentile in lower tail)
-    return_level = threshold - genpareto.ppf(0.98, c, loc=0, scale=scale)
-
-    # Flag days below return level
-    condition = df['Tmin (oC)'] < return_level
-    condition = condition.fillna(False)
-
-    spells = []
-    grouped = condition.groupby((condition != condition.shift()).cumsum()).cumsum()
-    for start in grouped[grouped == 1].index:
-        end = start
-        while end + 1 < len(grouped) and condition.iloc[end + 1]:
-            end += 1
-        duration = end - start + 1
-        if duration >= min_duration:
-            spells.append((start, end))
-
+    if df.empty:
+        return pd.DataFrame(columns=['Start', 'End'])
+    dates = pd.to_datetime(dict(year=df['YEAR'], month=df['MONTH'], day=df['DAY']), errors='coerce')
+    if evt is None:
+        evt = select_pot_threshold(df['Tmin (oC)'], dates, tail='lower')
+        if evt is None:
+            return pd.DataFrame(columns=['Start', 'End'])
+    condition = pd.Series(evt.flags(df['Tmin (oC)']), index=df.index)
+    runs = condition.reset_index(drop=True)
+    groups = (runs != runs.shift()).cumsum()
+    spells = [(idx[0], idx[-1]) for _, idx in runs.groupby(groups).groups.items()
+              if runs.iloc[idx[0]] and len(idx) >= min_duration]
     return pd.DataFrame(spells, columns=['Start', 'End']) if spells else pd.DataFrame(columns=['Start', 'End'])
+
+
+def pooled_daily_cold(epw_paths):
+    """Daily Tmin for all files, with dates, for the pooled EVT threshold."""
+    frames = [calculate_daily_tmin_tmax_cold(read_epw_raw(p)) for p in epw_paths]
+    if not frames:
+        return pd.DataFrame()
+    d = pd.concat(frames, ignore_index=True)
+    d['date'] = pd.to_datetime(dict(year=d['YEAR'], month=d['MONTH'], day=d['DAY']), errors='coerce')
+    return d.dropna(subset=['date'])
 
 
 # === EVENT + STATS ===
@@ -200,7 +201,7 @@ def resolve_strict_overlaps_cold(events_df):
 
 # === PROCESS FILE ===
 def process_file_cold(epw_path, methods=('ensemble', 'gnn', 'evt'), winter_months=(12, 1, 2),
-                      gnn_daily=None):
+                      gnn_daily=None, evt=None):
     try:
         epw_df = read_epw_raw(epw_path)
     except Exception as e:
@@ -220,7 +221,7 @@ def process_file_cold(epw_path, methods=('ensemble', 'gnn', 'evt'), winter_month
     for method in methods:
         try:
             if method == 'evt':
-                events_df = identify_evt_cold_extremes(daily_df.copy())
+                events_df = identify_evt_cold_extremes(daily_df.copy(), evt=evt)
             else:
                 flags = (gnn_flags_for(daily_df, gnn_daily, 'cold')
                          if method == 'gnn' and gnn_daily is not None else None)
@@ -327,6 +328,13 @@ def run_full_pipeline_cold(epw_dir, base_dir, output_dir, winter_months=None, us
         except Exception as e:
             print(f" GNN failed ({e}). Continuing with thresholds and EVT only.")
 
+    # Select the EVT-POT threshold on all AMY days pooled
+    evt = None
+    pooled = pooled_daily_cold(list_epws(epw_dir))
+    if not pooled.empty:
+        evt = select_pot_threshold(pooled['Tmin (oC)'], pooled['date'], tail='lower')
+    print(evt.describe('Tmin') if evt else " EVT: no valid Tmin threshold; EVT skipped.")
+
     all_stats_list = []
     all_events_list = []
 
@@ -338,7 +346,7 @@ def run_full_pipeline_cold(epw_dir, base_dir, output_dir, winter_months=None, us
         try:
             stats_df, events_df, _, _ = process_file_cold(epw_path, methods=['ensemble', 'gnn', 'evt'],
                                                           winter_months=winter_months,
-                                                          gnn_daily=gnn_daily)
+                                                          gnn_daily=gnn_daily, evt=evt)
             if not stats_df.empty:
                 all_stats_list.append(stats_df)
             if not events_df.empty:
