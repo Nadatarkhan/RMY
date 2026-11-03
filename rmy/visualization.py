@@ -17,7 +17,7 @@ import pandas as pd
 HEAT_INDEX_RANGE_C = (27, 51)
 CIRCLE_SIZE = 58
 # Event durations shown in the size legend.
-LEGEND_DAYS = (3, 5, 7, 9, 11, 13)
+LEGEND_DAYS = (3, 5, 7, 9, 11)
 MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
                 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
