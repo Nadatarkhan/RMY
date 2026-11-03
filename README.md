@@ -28,8 +28,8 @@ This toolkit introduces a multi-method event detection and integration pipeline 
 An Ensemble anomaly-detection method is used based on the following:
 
 - **Static Thresholding:** Identifies extremes based on fixed temperature or percentile thresholds.
-- **GNN-Based Anomaly Detection:** A graph autoencoder trained on all AMY days (nodes are days; edges link consecutive and similar days) flags days it cannot reconstruct well, relative to the time of year. Runs of at least three such days become events. See [docs/gnn.md](docs/gnn.md).
-- **Extreme Value Theory (EVT):** Peaks Over Threshold on the heat index (heat waves) and on daily minimum temperature (cold spells). The threshold is grid-searched on all AMY years pooled and a Generalized Pareto Distribution is fitted to the excesses; runs of at least three days beyond it are events.
+- **GNN-Based Anomaly Detection:** Flags events using graph-based representations of temporal temperature anomalies.
+- **Extreme Value Theory (EVT):** Extracts statistically rare extremes using Peaks Over Threshold (POT) modeling.
 
 Each method is used in a complementary ensemble to identify the most severe year and characteristic events.
 
@@ -54,25 +54,13 @@ Each method is used in a complementary ensemble to identify the most severe year
 ## Folder Structure
 
 ```
-rmy/                    ← the Python package
-├── heatwaves.py        ← heat-wave detection
-├── coldspells.py       ← cold-spell detection
-├── rmy_generation.py   ← RMY assembly (event insertion, compensation, smoothing)
-├── gnn.py              ← graph neural network anomaly detector (paper Section 2.2.2)
-├── evt.py              ← Extreme Value Theory, Peaks Over Threshold (paper Section 2.2.3)
-├── seasons.py          ← hemisphere / equatorial season rules from EPW latitude
-├── validation.py       ← EPW range and missing-value checks (`python -m rmy.audit`)
-├── visualization.py    ← Extreme Event Explorer circle plot
-├── utils.py            ← EPW reading and shared helpers
 data/
-├── base/               ← sample base TMY EPW (Boston, 1 file only)
-├── EPWs/               ← sample AMY EPWs (Boston 2009-2023)
-├── cities/             ← test cities: <City>/AMY (2009-2024) and <City>/TMY (TMYx 2009-2023)
-├── RMY/                ← published RMY EPWs
-├── FRMY/               ← published FRMY EPWs
-examples/               ← Google Colab notebook
-tests/                  ← pytest checks
-images/                 ← figures used in this README
+├── base/               ← base TMY EPW file (1 file only)
+├── epws/               ← AMY files for detection
+├── RMY/                ← output folder for RMY EPWs
+├── FRMY/               ← output folder for FRMY EPWs
+├── final/              ← stores output RMY + stats
+├── images/             ← visualization assets (map.gif, EEE)
 ```
 
 ---
@@ -99,51 +87,19 @@ Then run the following from the repo root:
 
 ```python
 from rmy import run_full_rmy_pipeline
-from rmy.visualization import visualize_extreme_events
-
-rmy_path = run_full_rmy_pipeline("data/EPWs", "data/base", "output")
-
-visualize_extreme_events("output/hotspells/heatwave_events.csv",
-                         "output/coldspells/coldspells_events.csv",
-                         output_path="output/event_timeline.png")
 ```
 
-Inputs:
+Make sure your folder structure matches:
 
 ```
-data/EPWs/ → one AMY EPW per year; each file name must contain its year
-data/base/ → exactly one base TMY EPW
+EPWs/base/ → contains the base TMY file (1 file only)
+EPWs/epws/ → contains full set of AMY EPWs
+final/     → RMY weather file + event summaries will be saved here
 ```
-
-Outputs, in the folder you pass as the third argument:
-
-```
-hotspells/   → heat-wave events and yearly stats (all years, base file, peak year)
-coldspells/  → cold-spell events and yearly stats (all years, base file, peak year)
-RMY_<base file name>.epw → the RMY weather file
-```
-
-Seasons come from the latitude in the base EPW's LOCATION line:
-
-| Band | Latitude | Heat waves counted in | GNN cold anomalies counted in |
-|---|---|---|---|
-| Northern | ≥ 10° | Jun–Aug plus any month as warm locally | Dec–Feb |
-| Southern | ≤ −10° | Dec–Feb plus any month as warm locally | Jun–Aug |
-| Equatorial | between −10° and 10° | the locally warmest months | all months |
-
-After events are inserted, every month whose mean temperature or humidity moved is pulled back toward the base TMY with compensation days (up to 10 per month, 60 in total). Events longer than 21 days are inserted as their most severe 21 days; detection itself has no length limit.
-
-The equatorial band is an extension to the published method, which defines seasons by hemisphere only.
-
-Check EPW files for invalid values (netCDF fill values, out-of-range numbers) and missing data with `python -m rmy.audit FILE.epw ...`. The pipeline runs the same check on its inputs and treats invalid values as missing.
-
-Run the tests with `python -m pytest tests/`.
 
 ## Try it on Google Colab
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Nadatarkhan/RMY/blob/main/examples/RMY_Generation_Colab.ipynb)
-
-The notebook runs every city in `data/cities` (Boston, Chicago, Dulles, Las Vegas NM, Los Angeles, Phoenix, San Francisco and Seattle): it checks the inputs, builds each RMY, shows each city's Extreme Event Explorer plot and a summary table, and zips the outputs. Add a folder with `AMY/` and `TMY/` subfolders to test another city.
 
 ---
 ## What's Next?
