@@ -67,6 +67,7 @@ rmy/                    ← the Python package
 data/
 ├── base/               ← sample base TMY EPW (Boston, 1 file only)
 ├── EPWs/               ← sample AMY EPWs (Boston 2009-2023)
+├── cities/             ← test cities: <City>/AMY (2009-2024) and <City>/TMY (TMYx 2009-2023)
 ├── RMY/                ← published RMY EPWs
 ├── FRMY/               ← published FRMY EPWs
 examples/               ← Google Colab notebook
@@ -139,6 +140,8 @@ Run the tests with `python -m pytest tests/`.
 ## Try it on Google Colab
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Nadatarkhan/RMY/blob/main/examples/RMY_Generation_Colab.ipynb)
+
+The notebook runs every city in `data/cities` (Boston, Chicago, Dulles, Las Vegas NM, Los Angeles, Phoenix, San Francisco and Seattle): it checks the inputs, builds each RMY, shows each city's Extreme Event Explorer plot and a summary table, and zips the outputs. Add a folder with `AMY/` and `TMY/` subfolders to test another city.
 
 ---
 ## What's Next?
