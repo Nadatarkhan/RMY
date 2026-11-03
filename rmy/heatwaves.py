@@ -1,12 +1,13 @@
-"""Heat-wave detection (ensemble of static thresholds, a stage-2 filter and EVT).
+"""Heat-wave detection: thresholds, the paper's GNN, and EVT (paper Section 2.3).
 
-Ported from the canonical notebook, section "1.1 Heatwaves v2 (feb26)".
+Ported from the canonical notebook, section "1.1 Heatwaves v2 (feb26)", with
+the notebook's z-score stand-in replaced by the GNN in rmy.gnn. Events from
+all three methods are pooled and overlaps resolved ("methods are applied in
+sequence but also contribute additively to the final event set").
 Importing this module has no side effects; call `run_full_pipeline` to run.
 
-Known gaps, kept here on purpose and handled in later phases:
-- `apply_gnn_detection` is a z-score prefilter, not the paper's GNN.
+Known gap, kept on purpose for a later decision:
 - Runs longer than `max_duration` (21 days) are dropped, not clipped.
-- Hemisphere is not handled; the warm-season filter is inferred per file.
 """
 import os
 import warnings
@@ -15,7 +16,8 @@ import numpy as np
 import pandas as pd
 from scipy.stats import genpareto
 
-from .utils import calculate_heat_index, read_epw_raw
+from .gnn import detect_gnn_anomalies, gnn_flags_for
+from .utils import calculate_heat_index, list_epws, read_epw_raw
 
 warnings.filterwarnings("ignore", category=UserWarning, message="Parsing dates.*")
 
@@ -234,60 +236,6 @@ def identify_evt_extremes(
     )
 
 
-def apply_gnn_detection(df, z_thresh=2.5):
-    """
-    Robust GNN-like year prefilter.
-    Works whether columns are already named or still positional.
-    Uses daily max temp z-scores by year, but avoids datetime issues with EPW hour formatting.
-    """
-    lower_map = {str(c).lower(): c for c in df.columns}
-    needed = {}
-
-    for key in ('year', 'month', 'day', 'temp_air'):
-        if key in lower_map:
-            needed[key] = lower_map[key]
-
-    if len(needed) == 4:
-        df_tmp = df.rename(columns={
-            needed['year']: 'year',
-            needed['month']: 'month',
-            needed['day']: 'day',
-            needed['temp_air']: 'temp_air'
-        }).copy()
-    else:
-        df_tmp = df.copy()
-        df_tmp.columns = list(range(df_tmp.shape[1]))
-        fallback = {0: 'year', 1: 'month', 2: 'day', 6: 'temp_air'}
-        df_tmp = df_tmp.rename(columns={k: v for k, v in fallback.items() if k in df_tmp.columns})
-
-    missing = [c for c in ('year', 'month', 'day', 'temp_air') if c not in df_tmp.columns]
-    if missing:
-        return []
-
-    df_tmp = df_tmp[['year', 'month', 'day', 'temp_air']].dropna()
-    df_tmp = df_tmp[df_tmp['temp_air'] != -9999]
-
-    if df_tmp.empty:
-        return []
-
-    daily_max = (
-        df_tmp.groupby(['year', 'month', 'day'])['temp_air']
-        .max()
-        .reset_index()
-    )
-
-    if len(daily_max) < 5 or daily_max['temp_air'].std(ddof=0) == 0:
-        return []
-
-    z_scores = (
-        (daily_max['temp_air'] - daily_max['temp_air'].mean()) /
-        daily_max['temp_air'].std(ddof=0)
-    )
-
-    extreme_years = daily_max.loc[z_scores > z_thresh, 'year'].astype(int).unique().tolist()
-    return sorted(extreme_years)
-
-
 def calculate_event_stats(heatwave_df, base_df):
     if heatwave_df.empty:
         return pd.DataFrame(), pd.DataFrame(), None
@@ -435,7 +383,13 @@ def recompute_stats_from_events(events_df):
     return stats
 
 
-def process_file(epw_path, gnn_years=None, apply_gnn=True):
+def process_file(epw_path, gnn_daily=None):
+    """Detect heat waves in one EPW.
+
+    `gnn_daily` is the output of rmy.gnn.detect_gnn_anomalies for the AMY set
+    this file belongs to; its hot-anomaly days become GNN events. Leave it as
+    None for files outside that set (such as the base TMY).
+    """
     epw_df = read_epw_raw(epw_path)
 
     daily_df = calculate_daily_tmin_tmax(epw_df)
@@ -464,23 +418,14 @@ def process_file(epw_path, gnn_years=None, apply_gnn=True):
     )
     static_stats, static_df, _ = calculate_event_stats(static_events, daily_df)
 
-    # GNN filtering (optional)
-    if apply_gnn and gnn_years:
-        filtered_df = daily_df[daily_df['YEAR'].isin(gnn_years)].reset_index(drop=True)
-    else:
-        filtered_df = pd.DataFrame(columns=daily_df.columns)
-
-    if not filtered_df.empty:
-        gnn_events = identify_heatwaves_static(
-            filtered_df,
-            method='temperature',
-            tmax_th=30.0,
-            min_duration=3,
-            max_duration=21,
-            warm_season_only=True,
-            warm_month_window_c=1.0
-        )
-        gnn_stats, gnn_df, _ = calculate_event_stats(gnn_events, filtered_df)
+    # GNN: runs of days the graph autoencoder flags as hot anomalies
+    if gnn_daily is not None:
+        condition = pd.Series(gnn_flags_for(daily_df, gnn_daily, 'hot'))
+        warm_months = infer_warm_season_months(daily_df, warm_month_window_c=1.0)
+        if warm_months:
+            condition &= daily_df['MONTH'].isin(warm_months).to_numpy()
+        gnn_events = build_condition_runs(condition, min_duration=3, max_duration=21)
+        gnn_stats, gnn_df, _ = calculate_event_stats(gnn_events, daily_df)
     else:
         gnn_stats, gnn_df = pd.DataFrame(), pd.DataFrame()
 
@@ -537,7 +482,7 @@ def save_final_outputs(output_dir, base_stats, base_events, all_stats, all_event
     peak_stats.to_csv(os.path.join(output_dir, "heatwave_stats_peak.csv"), index=False)
 
 
-def run_full_pipeline(epw_dir, base_dir, output_dir):
+def run_full_pipeline(epw_dir, base_dir, output_dir, use_gnn=True):
     """Detect heat waves in every AMY in `epw_dir` and in the base TMY.
 
     Writes six CSVs to `output_dir`: events and stats for the base file
@@ -553,21 +498,16 @@ def run_full_pipeline(epw_dir, base_dir, output_dir):
 
     base_epw_path = os.path.join(base_dir, base_files[0])
 
-    # Read base file for GNN prefilter
-    df_base = read_epw_raw(base_epw_path)
+    # Process base file (not part of the AMY set the GNN is trained on)
+    base_stats, base_events, _, _, _, _ = process_file(base_epw_path)
 
-    try:
-        gnn_years = apply_gnn_detection(df_base)
-    except Exception as e:
-        print(f"⚠️ GNN prefilter failed on base EPW ({e}). Continuing without GNN.")
-        gnn_years = []
-
-    # Process base file
-    base_stats, base_events, _, _, _, _ = process_file(
-        base_epw_path,
-        gnn_years=gnn_years,
-        apply_gnn=True
-    )
+    # Train the GNN once on all AMYs (paper: "across the 15 years analyzed")
+    gnn_daily = None
+    if use_gnn:
+        try:
+            gnn_daily = detect_gnn_anomalies(list_epws(epw_dir))
+        except Exception as e:
+            print(f"⚠️ GNN failed ({e}). Continuing with thresholds and EVT only.")
 
     if base_stats.empty:
         print(f"No valid stats found in {base_epw_path}.")
@@ -585,11 +525,7 @@ def run_full_pipeline(epw_dir, base_dir, output_dir):
         print(f"Processing file: {epw_path}")
 
         try:
-            stats_df, events_df, _, _, _, _ = process_file(
-                epw_path,
-                gnn_years=None,
-                apply_gnn=False
-            )
+            stats_df, events_df, _, _, _, _ = process_file(epw_path, gnn_daily=gnn_daily)
 
             if not stats_df.empty:
                 all_stats_df.append(stats_df)

@@ -1,6 +1,5 @@
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import pytest
 
@@ -43,15 +42,13 @@ def test_bad_location_line_raises(tmp_path):
 
 
 def test_cold_filter_uses_given_winter_months():
-    # A cold, windy 5-day dip in July: winter in the south, summer in the north.
+    # GNN flags a 5-day cold anomaly in July: winter in the south, summer in the north.
     dates = pd.date_range('2010-01-01', '2010-12-31')
-    tmin = np.full(len(dates), 10.0) + np.random.default_rng(0).normal(0, 0.5, len(dates))
     dip = (dates.month == 7) & (dates.day >= 10) & (dates.day <= 14)
-    tmin[dip] = 0.0
     df = pd.DataFrame({'YEAR': dates.year, 'MONTH': dates.month, 'DAY': dates.day,
-                       'Tmin (oC)': tmin, 'Wind Speed (m/s)': 5.0})
-    north = identify_cold_spells(df.copy(), method='gnn', winter_months=(12, 1, 2))
-    south = identify_cold_spells(df.copy(), method='gnn', winter_months=(6, 7, 8))
+                       'Tmin (oC)': 10.0, 'Wind Speed (m/s)': 5.0})
+    north = identify_cold_spells(df.copy(), method='gnn', winter_months=(12, 1, 2), gnn_flags=dip)
+    south = identify_cold_spells(df.copy(), method='gnn', winter_months=(6, 7, 8), gnn_flags=dip)
     assert north.empty
     assert not south.empty and dates[south['Start'].iloc[0]].month == 7
 

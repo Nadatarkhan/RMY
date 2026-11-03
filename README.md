@@ -28,7 +28,7 @@ This toolkit introduces a multi-method event detection and integration pipeline 
 An Ensemble anomaly-detection method is used based on the following:
 
 - **Static Thresholding:** Identifies extremes based on fixed temperature or percentile thresholds.
-- **GNN-Based Anomaly Detection:** Flags events using graph-based representations of temporal temperature anomalies.
+- **GNN-Based Anomaly Detection:** A graph autoencoder trained on all AMY days (nodes are days; edges link consecutive and similar days) flags days it cannot reconstruct well, relative to the time of year. Runs of at least three such days become events. See [docs/gnn.md](docs/gnn.md).
 - **Extreme Value Theory (EVT):** Extracts statistically rare extremes using Peaks Over Threshold (POT) modeling.
 
 Each method is used in a complementary ensemble to identify the most severe year and characteristic events.
@@ -58,6 +58,7 @@ rmy/                    ← the Python package
 ├── heatwaves.py        ← heat-wave detection
 ├── coldspells.py       ← cold-spell detection
 ├── rmy_generation.py   ← RMY assembly (event insertion, compensation, smoothing)
+├── gnn.py              ← graph neural network anomaly detector (paper Section 2.2.2)
 ├── seasons.py          ← hemisphere / equatorial season rules from EPW latitude
 ├── validation.py       ← EPW range and missing-value checks (`python -m rmy.audit`)
 ├── visualization.py    ← Extreme Event Explorer circle plot
