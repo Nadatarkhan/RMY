@@ -54,13 +54,20 @@ Each method is used in a complementary ensemble to identify the most severe year
 ## Folder Structure
 
 ```
+rmy/                    ← the Python package
+├── heatwaves.py        ← heat-wave detection
+├── coldspells.py       ← cold-spell detection
+├── rmy_generation.py   ← RMY assembly (event insertion, compensation, smoothing)
+├── visualization.py    ← Extreme Event Explorer circle plot
+├── utils.py            ← EPW reading and shared helpers
 data/
-├── base/               ← base TMY EPW file (1 file only)
-├── epws/               ← AMY files for detection
-├── RMY/                ← output folder for RMY EPWs
-├── FRMY/               ← output folder for FRMY EPWs
-├── final/              ← stores output RMY + stats
-├── images/             ← visualization assets (map.gif, EEE)
+├── base/               ← sample base TMY EPW (Boston, 1 file only)
+├── EPWs/               ← sample AMY EPWs (Boston 2009-2023)
+├── RMY/                ← published RMY EPWs
+├── FRMY/               ← published FRMY EPWs
+examples/               ← Google Colab notebook
+tests/                  ← pytest checks
+images/                 ← figures used in this README
 ```
 
 ---
@@ -87,15 +94,31 @@ Then run the following from the repo root:
 
 ```python
 from rmy import run_full_rmy_pipeline
+from rmy.visualization import visualize_extreme_events
+
+rmy_path = run_full_rmy_pipeline("data/EPWs", "data/base", "output")
+
+visualize_extreme_events("output/hotspells/heatwave_events.csv",
+                         "output/coldspells/coldspells_events.csv",
+                         output_path="output/event_timeline.png")
 ```
 
-Make sure your folder structure matches:
+Inputs:
 
 ```
-EPWs/base/ → contains the base TMY file (1 file only)
-EPWs/epws/ → contains full set of AMY EPWs
-final/     → RMY weather file + event summaries will be saved here
+data/EPWs/ → one AMY EPW per year; each file name must contain its year
+data/base/ → exactly one base TMY EPW
 ```
+
+Outputs, in the folder you pass as the third argument:
+
+```
+hotspells/   → heat-wave events and yearly stats (all years, base file, peak year)
+coldspells/  → cold-spell events and yearly stats (all years, base file, peak year)
+RMY_<base file name>.epw → the RMY weather file
+```
+
+Run the tests with `python -m pytest tests/`.
 
 ## Try it on Google Colab
 
