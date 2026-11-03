@@ -84,3 +84,19 @@ def test_safe_load_events_file_with_no_columns_gives_empty_table(tmp_path):
     pd.DataFrame().to_csv(p, index=False)
     df = safe_load_events(p, ['begin_date', 'end_date'])
     assert df.empty and list(df.columns) == ['begin_date', 'end_date']
+
+
+
+def test_exceedance_severity_ranks_one_extreme_event_above_many_mild_ones():
+    from rmy.heatwaves import exceedance_severity
+    events = pd.DataFrame({
+        'year': [2015] * 4 + [2021],
+        'avg_tmax': [31.0, 31.0, 31.0, 31.0, 39.0],
+        'duration': [5, 5, 5, 5, 4],
+    })
+    sev = exceedance_severity(events, reference=30.0)
+    assert sev[2015] == pytest.approx(20.0)          # 4 events x 5 days x 1 C
+    assert sev[2021] == pytest.approx(36.0)          # 4 days x 9 C
+    cold = pd.DataFrame({'year': [2009, 2013], 'avg_tmin': [-10.0, -4.0], 'duration': [3, 10]})
+    sev = exceedance_severity(cold, reference=-3.0, value_col='avg_tmin', sign=-1)
+    assert sev[2009] == pytest.approx(21.0) and sev[2013] == pytest.approx(10.0)

@@ -38,6 +38,8 @@ def detected(tmp_path_factory):
                 ev = pd.read_csv(out / 'coldspells_events.csv')
             ev['b'] = pd.to_datetime(ev.begin_date, dayfirst=True)
             ev['e'] = pd.to_datetime(ev.end_date, dayfirst=True)
+            stats = 'heatwave_stats_peak.csv' if kind == 'heat' else 'coldspells_stats_peak.csv'
+            ev.attrs['peak_year'] = int(pd.read_csv(out / stats).year[0])
             cache[(city, kind)] = ev
         return cache[(city, kind)]
     return get
@@ -56,3 +58,20 @@ def test_phoenix_events_are_not_whole_calendar_months(detected):
     ev = detected('Phoenix', 'heat')
     whole_months = ((ev.b.dt.day == 1) & (ev.e == ev.e + pd.offsets.MonthEnd(0))).sum()
     assert whole_months <= 2 and ev.duration.median() <= 10
+
+
+PEAK_YEARS = [
+    # The year holding each city's record heat event, chosen by cumulative
+    # exceedance (the earlier score, days x hottest Tmax, chose 2015 for
+    # Seattle and Los Angeles and 2020 for Phoenix).
+    ('Seattle', 'heat', 2021),      # heat dome, 41.7 C
+    ('Phoenix', 'heat', 2023),      # 31-day streak, 48.3 C
+    ('Los_Angeles', 'heat', 2017),  # October 2017 heat, 39.4 C
+    ('Chicago', 'heat', 2012),      # July 2012, 39.4 C
+    ('Chicago', 'cold', 2014),      # polar vortex winter
+]
+
+
+@pytest.mark.parametrize('city, kind, year', PEAK_YEARS, ids=[f'{c}-{k}' for c, k, _ in PEAK_YEARS])
+def test_peak_year_holds_the_record_event(detected, city, kind, year):
+    assert detected(city, kind).attrs['peak_year'] == year
