@@ -78,6 +78,43 @@ def test_smoothing_blends_shoulders_and_keeps_inserted_hours():
     assert (out.loc[:15, 'temp_air'] == 0).all() and (out.loc[32:, 'temp_air'] == 0).all()
 
 
+def test_smoothing_with_base_keeps_the_tmy_shape():
+    n = 48
+    hours = np.arange(n)
+    tmy = pd.DataFrame({c: np.zeros(n) for c in
+                        ['temp_air', 'temp_dew', 'relative_humidity',
+                         'atmospheric_pressure', 'wind_speed']})
+    tmy['temp_air'] = 5 * np.sin(2 * np.pi * hours / 24)      # day-night cycle
+    tmy['temp_dew'] = tmy['temp_air'] - 1
+    df = tmy.copy()
+    protected = np.zeros(n, dtype=bool)
+    protected[20:28] = True
+    df.loc[20:27, ['temp_air', 'temp_dew']] = 20.0             # inserted block, Td = T
+    out, _ = smooth_inserted_boundaries(df.copy(), protected, hours=4, base=tmy)
+
+    assert (out.loc[20:27, 'temp_air'] == 20.0).all()          # inserted hours untouched
+    # Blended hours = TMY + an offset growing linearly from 0 (hour 15) to the step at hour 20.
+    step = 20.0 - tmy.loc[20, 'temp_air']
+    expected = tmy.loc[16:19, 'temp_air'] + step * np.arange(1, 5) / 5
+    np.testing.assert_allclose(out.loc[16:19, 'temp_air'], expected)
+    assert (out['temp_dew'] <= out['temp_air'] + 1e-9).all()   # dew point capped at dry bulb
+    pd.testing.assert_frame_equal(out.loc[:15], tmy.loc[:15])   # outside the blend unchanged
+
+
+def test_smoothing_with_base_uses_a_straight_line_across_a_tmy_step():
+    n = 48
+    tmy = pd.DataFrame({c: np.zeros(n) for c in
+                        ['temp_air', 'temp_dew', 'relative_humidity',
+                         'atmospheric_pressure', 'wind_speed']})
+    tmy.loc[18:, 'temp_air'] = 12.0                             # the TMY's own 12 C step
+    df = tmy.copy()
+    protected = np.zeros(n, dtype=bool)
+    protected[20:28] = True
+    df.loc[20:27, 'temp_air'] = 16.0
+    out, _ = smooth_inserted_boundaries(df.copy(), protected, hours=4, base=tmy)
+    np.testing.assert_allclose(out.loc[16:19, 'temp_air'], [3.2, 6.4, 9.6, 12.8])
+
+
 def test_safe_load_events_file_with_no_columns_gives_empty_table(tmp_path):
     # pandas writes an empty DataFrame as a file with no header at all.
     p = tmp_path / 'events.csv'

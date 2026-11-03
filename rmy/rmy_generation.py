@@ -294,13 +294,24 @@ def repair_missing_wind(df, base_epw, inserted_hours, max_gap=3):
     return df, counts
 
 
-def smooth_inserted_boundaries(df, protected, hours=TRANSITION_HOURS):
-    """Linearly blend up to `hours` untouched hours around inserted AMY blocks.
+def smooth_inserted_boundaries(df, protected, hours=TRANSITION_HOURS, base=None,
+                               max_shape_step=8.0):
+    """Blend up to `hours` untouched hours around inserted AMY blocks.
 
     The inserted AMY hours themselves are never modified. Close blocks share a
     single blend across the intervening hours. Categorical fields, radiation,
     and calendar information are not interpolated. Blocks that touch the start
     or end of the year are not blended across the year boundary.
+
+    With `base` (the base TMY, same rows as `df`), the blended hours keep the
+    TMY's hourly shape (its day-night cycle): the TMY values are shifted by an
+    offset that changes linearly from the offset at one end of the blend
+    (inserted value minus TMY value) to the offset at the other end, so the
+    blend meets both neighbors without a step. Without `base`, where the TMY
+    has missing values, or where the TMY's own temperature jumps by more than
+    `max_shape_step` degrees C within one hour, the blended hours are a
+    straight line between the two neighboring hours. Dew point in the blended
+    hours is capped at the dry-bulb temperature.
     """
     protected = np.asarray(protected, dtype=bool)
     if not protected.any():
@@ -319,16 +330,29 @@ def smooth_inserted_boundaries(df, protected, hours=TRANSITION_HOURS):
         left, right = start - 1, end + 1
         if left < 0 or right >= len(df):
             continue
+        # Keep the TMY's hourly shape unless the TMY itself has a step here.
+        use_shape = base is not None and not (
+            np.abs(np.diff(base['temp_air'].to_numpy(dtype=float)[left:right + 1]))
+            > max_shape_step).any()
         for col in SMOOTH_COLS:
             a, b = float(df.at[left, col]), float(df.at[right, col])
             if not (np.isfinite(a) and np.isfinite(b)):
                 continue
             values = np.linspace(a, b, right - left + 1)[1:-1]
+            if use_shape:
+                shape = base[col].to_numpy(dtype=float)[left:right + 1]
+                if np.isfinite(shape).all():
+                    offsets = np.linspace(a - shape[0], b - shape[-1], right - left + 1)
+                    values = (shape + offsets)[1:-1]
             if col == 'relative_humidity':
                 values = np.clip(values, 0, 100)
             elif col == 'wind_speed':
                 values = np.maximum(values, 0)
             df.loc[start:end, col] = values
+        # Blended temperature and dew point move separately; keep Td <= T.
+        seg_t = df.loc[start:end, 'temp_air']
+        df.loc[start:end, 'temp_dew'] = df.loc[start:end, 'temp_dew'].where(
+            ~(df.loc[start:end, 'temp_dew'] > seg_t), seg_t)
         smoothed_hours += end - start + 1
 
     return df, smoothed_hours
@@ -450,7 +474,7 @@ def construct_final_rmy(base_epw_path, epw_dir, hot_dir, cold_dir, output_path,
     report_temperature_jumps(final, 'Before smoothing')
     event_values = final.loc[inserted_hours, SMOOTH_COLS].copy()
     final, n_smoothed = smooth_inserted_boundaries(
-        final, inserted_hours, hours=transition_hours)
+        final, inserted_hours, hours=transition_hours, base=base_epw)
     pd.testing.assert_frame_equal(final.loc[inserted_hours, SMOOTH_COLS],
                                   event_values, check_exact=True)
     report_temperature_jumps(final, 'After smoothing')
