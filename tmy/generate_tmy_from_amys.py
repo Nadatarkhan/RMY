@@ -16,11 +16,15 @@ Steps (clause numbers refer to ISO 15927-4:2005):
               Equations (1) to (3) of the standard.
   5.3.1 e-g)  The candidate months are ranked per parameter, the ranks are summed, and
               of the three months with the lowest total the one whose mean wind speed is
-              closest to the multi-year mean of that calendar month is selected.
+              closest to the multi-year mean of that calendar month is selected (months
+              with wind speed in fewer than --min-wind-completeness of their hours are
+              left out of this wind comparison). Each year may appear only once, and a
+              month is used only if its days and hours are complete and in order.
   5.3.2       The last 8 hours of each month and the first 8 hours of the next month
               (including December -> January) are adjusted by interpolation so the months
-              join smoothly. Dry-bulb, dew point, relative humidity, pressure and wind
-              speed are adjusted. Solar radiation, illuminance and wind direction are not.
+              join smoothly. Dry-bulb, dew point, pressure and wind speed are adjusted,
+              and relative humidity is rescaled to stay consistent with the adjusted dry
+              bulb and dew point. Solar radiation, illuminance and wind direction are not.
   6           The years each month was taken from, the parameters used and the period of
               record are written to COMMENTS 1 and to a month-source CSV.
 
@@ -153,11 +157,14 @@ def fs_statistic(candidate: np.ndarray, pooled_sorted: np.ndarray) -> float:
     Phi(i) = K(i) / (N + 1): K(i) is the rank of that same daily mean among all N daily
              means of that calendar month in the whole data set.
     FS     = sum over the n days of |F(i) - Phi(i)|.
+    Tied values (common for daily mean relative humidity) get the average of the ranks
+    they span, in both J and K; the standard does not specify a tie rule.
     """
     x = np.sort(np.asarray(candidate, dtype=float))
     n, N = len(x), len(pooled_sorted)
-    J = np.arange(1, n + 1)
-    K = np.searchsorted(pooled_sorted, x, side='right')
+    J = (np.searchsorted(x, x, side='left') + np.searchsorted(x, x, side='right') + 1) / 2
+    K = (np.searchsorted(pooled_sorted, x, side='left')
+         + np.searchsorted(pooled_sorted, x, side='right') + 1) / 2
     return float(np.sum(np.abs(J / (n + 1) - K / (N + 1))))
 
 
@@ -173,8 +180,19 @@ def _rank(scores: Sequence[float]) -> np.ndarray:
     return ranks
 
 
-def select_months(candidates: Dict[int, List[dict]]) -> Dict[int, dict]:
-    """Apply ISO 15927-4 5.3.1 b) to g) to the candidate months of each calendar month."""
+def select_months(candidates: Dict[int, List[dict]], min_wind_completeness: float = 0.95
+                  ) -> Dict[int, dict]:
+    """Apply ISO 15927-4 5.3.1 b) to g) to the candidate months of each calendar month.
+
+    Step g) compares monthly mean wind speeds. A month whose wind speed is missing in more
+    than 1 - `min_wind_completeness` of its hours (after gap filling) is not used for that
+    comparison: its mean is not representative, and it cannot win the wind criterion. The
+    multi-year mean is taken over the complete months. If none of the three months is
+    complete enough, the one with the lowest rank sum is selected.
+
+    Ties are not specified in the standard. Months with equal rank sums at the cut-off
+    for the three lowest are ordered by the same wind-speed deviation, then by year.
+    """
     selected = {}
     for month, cands in candidates.items():
         rows = [{'year': c['year'], 'file': c['file']} for c in cands]
@@ -184,12 +202,16 @@ def select_months(candidates: Dict[int, List[dict]]) -> Dict[int, dict]:
             scores = [fs_statistic(d, pooled) for d in daily]
             for r, s, k in zip(rows, scores, _rank(scores)):
                 r[f'fs_{name}'], r[f'rank_{name}'] = s, int(k)
-        ws = [float(np.nanmean(c['values'][SECONDARY])) for c in cands]
-        ws_ref = float(np.nanmean(ws))
-        for r, w in zip(rows, ws):
+        wind = [c['values'][SECONDARY] for c in cands]
+        complete = [float(np.isfinite(w).mean()) for w in wind]
+        ws = [float(np.nanmean(w)) if f > 0 else float('nan') for w, f in zip(wind, complete)]
+        usable = [w for w, f in zip(ws, complete) if f >= min_wind_completeness]
+        ws_ref = float(np.mean(usable)) if usable else float('nan')
+        for r, w, f in zip(rows, ws, complete):
             r['rank_sum'] = sum(r[f'rank_{n}'] for n in PRIMARY)
-            r['ws_mean'], r['ws_ref_mean'] = w, ws_ref
-            r['ws_abs_diff'] = abs(w - ws_ref) if np.isfinite(w) else float('inf')
+            r['ws_mean'], r['ws_ref_mean'], r['ws_completeness'] = w, ws_ref, f
+            ok = f >= min_wind_completeness and np.isfinite(w) and np.isfinite(ws_ref)
+            r['ws_abs_diff'] = abs(w - ws_ref) if ok else float('inf')
         ranked = sorted(rows, key=lambda r: (r['rank_sum'], r['ws_abs_diff'], r['year']))
         best = min(ranked[:3], key=lambda r: (r['ws_abs_diff'], r['rank_sum'], r['year']))
         best['top3_years'] = ' '.join(str(r['year']) for r in ranked[:3])
@@ -213,12 +235,17 @@ def smooth_month_joins(values: Dict[int, np.ndarray], starts: Sequence[int],
         linearly over the `span` hours after it.
     method='linear': the 2*span hours are replaced by a straight line between the hour
         before and the hour after the window.
+    Relative humidity is not adjusted on its own where dry bulb and dew point are known:
+    it is scaled by the change in the vapour-pressure ratio e(Td)/e(T) that the adjusted
+    dry bulb and dew point imply, so the three stay consistent (and each source keeps its
+    own humidity convention). Dew point is capped at the dry bulb.
     Returns a boolean mask of the adjusted hours.
     """
     n = len(next(iter(values.values())))
     touched = np.zeros(n, dtype=bool)
     if span <= 0:
         return touched
+    original = {c: values[c].copy() for c in (TEMP_COL, DEWPOINT_COL, RH_COL) if c in values}
     for b_start in starts:
         a_end = (b_start - 1) % n
         before = (a_end - np.arange(span - 1, -1, -1)) % n        # last span hours of A
@@ -243,14 +270,22 @@ def smooth_month_joins(values: Dict[int, np.ndarray], starts: Sequence[int],
                 v[before] += excess / 2 * ramp
                 v[after] -= excess / 2 * ramp[::-1]
             touched[before] = touched[after] = True
-    if RH_COL in values:
-        values[RH_COL] = np.clip(values[RH_COL], 0, 100)
     if WS_COL in values:
         values[WS_COL] = np.maximum(values[WS_COL], 0)
     if TEMP_COL in values and DEWPOINT_COL in values:
         t, td = values[TEMP_COL], values[DEWPOINT_COL]
         cap = touched & np.isfinite(t) & (td > t)
         td[cap] = t[cap]
+        if RH_COL in values:
+            def ratio(temp, dew):          # e(Td)/e(T), Magnus formula over water
+                es = lambda x: np.exp(17.625 * x / (x + 243.04))
+                return es(dew) / es(temp)
+            with np.errstate(invalid='ignore', divide='ignore'):
+                scaled = original[RH_COL] * ratio(t, td) / ratio(original[TEMP_COL], original[DEWPOINT_COL])
+            use = touched & np.isfinite(scaled)
+            values[RH_COL][use] = scaled[use]
+    if RH_COL in values:
+        values[RH_COL] = np.clip(values[RH_COL], 0, 100)
     return touched
 
 
@@ -293,6 +328,7 @@ def generate_tmy_from_amys(
     years: Optional[Tuple[int, int]] = None,
     min_years: int = 10,
     max_gap: int = 6,
+    min_wind_completeness: float = 0.95,
     set_year: Optional[int] = None,
     update_header_years: bool = True,
     add_header_generation_note: bool = True,
@@ -313,6 +349,8 @@ def generate_tmy_from_amys(
     years: Optional (first, last) year range of AMY files to use, e.g. (2009, 2023).
     min_years: Minimum number of years per calendar month (10 in ISO 15927-4).
     max_gap: Longest gap in hours filled by linear interpolation.
+    min_wind_completeness: Share of hours with wind speed a month needs to take part in the
+        wind-speed comparison of 5.3.1 g).
     set_year: Optional year written into the year column of every row.
     update_header_years: Rewrite COMMENTS 1 with this file's period and month years.
     add_header_generation_note: Rewrite COMMENTS 2 with a note on the header source.
@@ -342,6 +380,7 @@ def generate_tmy_from_amys(
     candidates: Dict[int, List[dict]] = {m: [] for m in range(1, 13)}
     expected_cols = None
     fill_log = []
+    seen_years: Dict[int, str] = {}
     for path in files:
         try:
             raw = read_epw_data(path)
@@ -356,6 +395,11 @@ def generate_tmy_from_amys(
         year = year_from_filename(path)
         if year is None:
             year = int(pd.to_numeric(raw.iloc[:, YEAR_COL], errors='coerce').mode().iloc[0])
+        if year in seen_years:
+            raise ValueError(f'Two AMY files for {year}: {seen_years[year]} and {path.name}. '
+                             f'Each year may appear once, or it is counted twice in the '
+                             f'long-term distribution.')
+        seen_years[year] = path.name
 
         # Clause 4: fill missing values by linear interpolation.
         values = numeric_fields(raw)
@@ -371,9 +415,19 @@ def generate_tmy_from_amys(
 
         month_col = pd.to_numeric(raw.iloc[:, MONTH_COL], errors='coerce').to_numpy()
         day_col = pd.to_numeric(raw.iloc[:, DAY_COL], errors='coerce').to_numpy()
+        hour_col = pd.to_numeric(raw.iloc[:, HOUR_COL], errors='coerce').to_numpy()
         for m in range(1, 13):
             idx = np.flatnonzero(month_col == m)
             if len(idx) not in MONTH_LENGTHS:
+                continue
+            # Every day 1..n_days must have hours 1..24, in order and without repeats.
+            n_days = len(idx) // 24
+            in_order = (np.array_equal(idx, np.arange(idx[0], idx[0] + len(idx)))
+                        and np.array_equal(day_col[idx], np.repeat(np.arange(1, n_days + 1), 24))
+                        and np.array_equal(hour_col[idx], np.tile(np.arange(1, 25), n_days)))
+            if not in_order:
+                print(f'   {path.name} {MONTH_NAMES[m - 1]}: not a candidate, '
+                      f'days/hours are not complete and in order')
                 continue
             month_vals = {c: v[idx] for c, v in values.items()}
             gaps = [name for name, c in PRIMARY.items() if np.isnan(month_vals[c]).any()]
@@ -394,7 +448,7 @@ def generate_tmy_from_amys(
         raise ValueError(f'ISO 15927-4 needs at least {min_years} years per calendar month; '
                          f'available: {short}. Lower min_years to proceed anyway.')
 
-    selected = select_months(candidates)
+    selected = select_months(candidates, min_wind_completeness=min_wind_completeness)
     for m, r in selected.items():
         ys = [c['year'] for c in candidates[m]]
         r['first_year'], r['last_year'] = min(ys), max(ys)
@@ -475,6 +529,8 @@ def parse_args() -> argparse.Namespace:
                         help="'offset' keeps each month's hourly profile; 'linear' draws a straight line.")
     parser.add_argument('--min-years', type=int, default=10, help='Minimum years per month (ISO 15927-4: 10).')
     parser.add_argument('--max-gap', type=int, default=6, help='Longest gap (hours) filled by interpolation.')
+    parser.add_argument('--min-wind-completeness', type=float, default=0.95,
+                        help='Share of hours with wind speed a month needs for the wind comparison (5.3.1 g).')
     parser.add_argument('--set-year', type=int, default=None, help='Optional year written into every row.')
     parser.add_argument('--no-update-header-years', action='store_true',
                         help='Keep COMMENTS 1 of the header EPW unchanged.')
@@ -493,7 +549,8 @@ def main() -> None:
         amy_dir=args.amy_dir, output_epw=args.output, header_epw=args.header_epw,
         sources_csv=args.sources_csv, pattern=args.pattern, recursive=args.recursive,
         smooth_span=args.smooth_span, smooth_method=args.smooth_method, years=years,
-        min_years=args.min_years, max_gap=args.max_gap, set_year=args.set_year,
+        min_years=args.min_years, max_gap=args.max_gap,
+        min_wind_completeness=args.min_wind_completeness, set_year=args.set_year,
         update_header_years=not args.no_update_header_years,
         add_header_generation_note=not args.no_header_generation_note, verbose=True)
 
