@@ -5,7 +5,9 @@ import pandas as pd
 import pytest
 
 from rmy import run_full_rmy_pipeline
-from rmy.rmy_generation import calculate_monthly_avg_conditions, find_days_to_adjust_avg
+import numpy as np
+
+from rmy.rmy_generation import compensate_monthly
 from rmy.utils import extract_original_header, list_epws, read_epw_file
 from rmy.visualization import visualize_extreme_events
 
@@ -46,6 +48,7 @@ def test_rmy_keeps_base_timestamps(run):
 
 
 def test_peak_events_are_inserted_hour_for_hour(run):
+    """Every peak event day is in the RMY exactly; long events as their 21 most severe days."""
     out, rmy_path = run
     rmy = read_epw_file(rmy_path)
     for folder, prefix in (('hotspells', 'heatwave'), ('coldspells', 'coldspells')):
@@ -55,23 +58,33 @@ def test_peak_events_are_inserted_hour_for_hour(run):
         events = pd.read_csv(out / folder / f'{prefix}_events_peak.csv')
         assert not events.empty
         for _, ev in events.iterrows():
-            for d in pd.date_range(pd.to_datetime(ev.begin_date, dayfirst=True),
-                                   pd.to_datetime(ev.end_date, dayfirst=True)):
-                pick = lambda df: df[(df.month == d.month) & (df.day == d.day)]
-                assert pick(rmy)['temp_air'].tolist() == pick(source)['temp_air'].tolist()
+            days = pd.date_range(pd.to_datetime(ev.begin_date, dayfirst=True),
+                                 pd.to_datetime(ev.end_date, dayfirst=True))
+            pick = lambda df, d: df[(df.month == d.month) & (df.day == d.day)]['temp_air'].tolist()
+            same = [pick(rmy, d) == pick(source, d) for d in days]
+            if len(days) <= 21:
+                assert all(same), (ev.begin_date, ev.end_date)
+            else:
+                # Longer events are inserted as one run of their 21 most severe days.
+                assert sum(same) >= 21
+                run_len = max(len(r) for r in ''.join('1' if x else '0' for x in same).split('0'))
+                assert run_len >= 21
 
 
 def test_output_does_not_depend_on_file_order():
     base = read_epw_file(list_epws(BASE_DIR)[0])
-    months = [6, 7, 8]
-    targets = calculate_monthly_avg_conditions(base, months)
-    cond = lambda day, ref: (day['temp_air'].mean() < ref['temp_air'] and
-                             day['relative_humidity'].mean() < ref['relative_humidity'])
+    # Shift January to create a deviation for compensation to remove.
+    shifted = base.copy()
+    shifted.loc[shifted.month == 1, 'temp_air'] -= 2.0
     files = list_epws(EPW_DIR)
-    forward = find_days_to_adjust_avg(files, targets, months, cond)
-    backward = find_days_to_adjust_avg(files[::-1], targets, months, cond)
-    for m in months:
-        assert [d.index.tolist() for d in forward[m]] == [d.index.tolist() for d in backward[m]]
+    out = []
+    for order in (files, files[::-1]):
+        df, inserted, report = compensate_monthly(shifted.copy(), base, order, [1], set(),
+                                                  np.zeros(len(base), dtype=bool))
+        out.append((sorted(inserted), df['temp_air'].round(6).tolist()))
+    assert out[0] == out[1]
+    assert report.loc[0, 'days_inserted'] > 0
+    assert abs(report.loc[0, 'temp_dev_after']) < abs(report.loc[0, 'temp_dev_before'])
 
 
 def test_visualization_writes_png(run, tmp_path):

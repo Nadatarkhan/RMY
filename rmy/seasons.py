@@ -8,9 +8,13 @@ names, and adds an equatorial band, which the paper does not define:
 - Northern (lat >= +band): summer JJA, winter DJF.
 - Southern (lat <= -band): summer DJF, winter JJA.
 - Equatorial (|lat| < band, default 10 degrees): there is no meaningful
-  summer or winter, so every month is treated on its own. Cold-spell
-  detection considers all 12 months, and monthly compensation targets each
-  calendar month's base-TMY mean separately.
+  summer or winter. Cold-spell detection considers all 12 months, and heat
+  waves use only the warm months inferred from the data.
+
+The summer months set where heat waves are counted (together with any
+locally warm month, see heatwaves.heat_thresholds); the winter months set
+where the GNN's cold anomalies count. Monthly compensation works on every
+month at all sites (rmy_generation.compensate_monthly).
 """
 from dataclasses import dataclass
 
