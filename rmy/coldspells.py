@@ -1,24 +1,59 @@
+"""Cold-spell detection: thresholds, the paper's GNN, and EVT (paper Section 2.3).
+
+Ported from the canonical notebook, section "1.2 Cold spells", with the
+notebook's rolling z-score stand-in for the 'gnn' method replaced by the GNN
+in rmy.gnn, and EVT using a POT threshold selected on all AMYs pooled
+(rmy.evt). Events from all methods are pooled and overlaps resolved.
+Importing this module has no side effects; call `run_full_pipeline_cold`.
+
+There is no upper limit on event length (`max_duration=None`). The
+notebook dropped runs longer than 21 days entirely (review note item 1).
+"""
 import os
-import pandas as pd
-import numpy as np
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-# === Shared EPW column names ===
-epw_columns = [
-    'year', 'month', 'day', 'hour', 'minute', 'data_source_unct', 'temp_air',
-    'temp_dew', 'relative_humidity', 'atmospheric_pressure', 'etr', 'etrn',
-    'ghi_infrared', 'ghi', 'dni', 'dhi', 'global_hor_illum',
-    'direct_normal_illum', 'diffuse_horizontal_illum', 'zenith_luminance',
-    'wind_direction', 'wind_speed', 'total_sky_cover', 'opaque_sky_cover',
-    'visibility', 'ceiling_height', 'present_weather_observation',
-    'present_weather_codes', 'precipitable_water', 'aerosol_optical_depth',
-    'snow_depth', 'days_since_last_snowfall', 'albedo',
-    'liquid_precipitation_depth', 'liquid_precipitation_quantity'
-]
+import numpy as np
+import pandas as pd
+
+from .seasons import season_plan_for_epw
+from .evt import select_pot_threshold
+from .gnn import GNNConfig, detect_gnn_anomalies, gnn_flags_for
+from .heatwaves import exceedance_severity
+from .utils import list_epws, read_epw_raw, report_runner_up
+
+
+# Fixed Tmin threshold (C) of the 'temperature' method. It is lowered to the
+# site's own Tmin percentile where that is lower (see cold_thresholds).
+FIXED_TMIN_C = -7.0
+
+
+@dataclass(frozen=True)
+class ColdThresholds:
+    """Cold-spell thresholds from all AMY years pooled (see cold_thresholds)."""
+    tmin_pct: float          # 'percentile' method: Tmin below this
+    tmin_abs: float          # 'temperature' method: Tmin below this
+
+    def describe(self):
+        return (f'Cold thresholds (all AMY years): percentile Tmin < {self.tmin_pct:.1f}; '
+                f'temperature Tmin < {self.tmin_abs:.1f}')
+
+
+def cold_thresholds(pooled, tmin_q=0.1, fixed_tmin=FIXED_TMIN_C):
+    """Thresholds from the daily Tmin of all AMY years together.
+
+    Mirrors heatwaves.heat_thresholds: the percentile is of all days of all
+    years, and the fixed -7 C is lowered to that percentile where it is
+    colder, so that in cold climates (where -7 C is an ordinary winter night)
+    whole winters do not become one event.
+    """
+    tmin_pct = float(pooled['Tmin (oC)'].quantile(tmin_q))
+    return ColdThresholds(tmin_pct, min(fixed_tmin, tmin_pct))
+
 
 # === DAILY AGGREGATION ===
-def calculate_daily_tmin_tmax(epw_data):
+def calculate_daily_tmin_tmax_cold(epw_data):
     epw_data['temp_air'] = pd.to_numeric(epw_data['temp_air'], errors='coerce')
     epw_data['wind_speed'] = pd.to_numeric(epw_data['wind_speed'], errors='coerce')
     daily = epw_data.groupby(['year', 'month', 'day']).agg({
@@ -28,21 +63,33 @@ def calculate_daily_tmin_tmax(epw_data):
     daily.columns = ['YEAR', 'MONTH', 'DAY', 'Tmin (oC)', 'Tmax (oC)', 'Wind Speed (m/s)']
     return daily
 
+
 # === DETECTION METHOD ===
-def identify_cold_spells(df, method='ensemble', z_thresh=0.7, tmin_thres=-7, wind_speed_thres=2, window=30, max_duration=21):
+def identify_cold_spells(df, method='ensemble', tmin_thres=FIXED_TMIN_C, max_duration=None,
+                         winter_months=(12, 1, 2), gnn_flags=None, thresholds=None):
+    """Flag cold-spell runs of at least 3 days.
+
+    Methods: 'temperature' (Tmin below `tmin_thres`), 'percentile' (Tmin
+    below the file's 10th percentile), 'ensemble' (either), and 'gnn' (days
+    in `gnn_flags`, a boolean array aligned with `df`, from rmy.gnn). The
+    'gnn' method is limited to `winter_months` (all 12 months at equatorial
+    sites; see rmy.seasons). With `thresholds` (ColdThresholds from all AMY
+    years) its values replace `tmin_thres` and the file's own percentile.
+    """
+    if thresholds is not None:
+        t_abs, t_pct = thresholds.tmin_abs, thresholds.tmin_pct
+    else:
+        t_abs, t_pct = tmin_thres, df['Tmin (oC)'].quantile(0.1)
     if method == 'temperature':
-        condition = df['Tmin (oC)'] < tmin_thres
+        condition = df['Tmin (oC)'] < t_abs
     elif method == 'percentile':
-        condition = df['Tmin (oC)'] < df['Tmin (oC)'].quantile(0.1)
+        condition = df['Tmin (oC)'] < t_pct
     elif method == 'ensemble':
-        cond1 = df['Tmin (oC)'] < tmin_thres
-        cond2 = df['Tmin (oC)'] < df['Tmin (oC)'].quantile(0.1)
-        condition = cond1 | cond2
+        condition = (df['Tmin (oC)'] < t_abs) | (df['Tmin (oC)'] < t_pct)
     elif method == 'gnn':
-        df['z'] = (df['Tmin (oC)'] - df['Tmin (oC)'].rolling(window).mean()) / df['Tmin (oC)'].rolling(window).std()
-        df['z'] = df['z'].fillna(0)
-        df['is_winter'] = df['MONTH'].isin([12, 1, 2])
-        condition = (df['z'] < -z_thresh) & (df['Wind Speed (m/s)'] > wind_speed_thres) & df['is_winter']
+        if gnn_flags is None:
+            return pd.DataFrame(columns=['Start', 'End'])
+        condition = pd.Series(gnn_flags, index=df.index) & df['MONTH'].isin(list(winter_months))
     else:
         raise ValueError("Invalid method")
 
@@ -53,45 +100,43 @@ def identify_cold_spells(df, method='ensemble', z_thresh=0.7, tmin_thres=-7, win
         while end + 1 < len(grouped) and grouped[end + 1] > 0:
             end += 1
         duration = end - start + 1
-        if 3 <= duration <= max_duration:
+        if duration >= 3 and (max_duration is None or duration <= max_duration):
             spells.append((start, end))
 
     return pd.DataFrame(spells, columns=['Start', 'End']) if spells else pd.DataFrame(columns=['Start', 'End'])
 
-from scipy.stats import genpareto
 
-def identify_evt_cold_extremes(df, quantile_threshold=0.05, min_duration=3):
+def identify_evt_cold_extremes(df, evt=None, min_duration=3):
     """
-    Identify cold spells using EVT (POT) approach based on Tmin.
+    EVT-POT cold spells (paper Section 2.2.3): runs of at least
+    `min_duration` days with Tmin below the POT threshold.
+
+    `evt` is a rmy.evt.POTThreshold, normally selected on all AMYs pooled.
+    Without it, the threshold is selected on this file alone.
     """
-    tmin_series = df['Tmin (oC)'].dropna()
-    threshold = tmin_series.quantile(quantile_threshold)
-    excesses = -(tmin_series[tmin_series < threshold] - threshold)  # flip tail for cold
-
-    if len(excesses) < 5:
-        return pd.DataFrame(columns=['Start', 'End'])  # Not enough data
-
-    c, loc, scale = genpareto.fit(excesses, floc=0)
-
-    # Define return level (e.g., 98th percentile in lower tail)
-    return_level = threshold - genpareto.ppf(0.98, c, loc=0, scale=scale)
-
-    # Flag days below return level
-    condition = df['Tmin (oC)'] < return_level
-    condition = condition.fillna(False)
-
-    spells = []
-    grouped = condition.groupby((condition != condition.shift()).cumsum()).cumsum()
-    for start in grouped[grouped == 1].index:
-        end = start
-        while end + 1 < len(grouped) and condition.iloc[end + 1]:
-            end += 1
-        duration = end - start + 1
-        if duration >= min_duration:
-            spells.append((start, end))
-
+    if df.empty:
+        return pd.DataFrame(columns=['Start', 'End'])
+    dates = pd.to_datetime(dict(year=df['YEAR'], month=df['MONTH'], day=df['DAY']), errors='coerce')
+    if evt is None:
+        evt = select_pot_threshold(df['Tmin (oC)'], dates, tail='lower')
+        if evt is None:
+            return pd.DataFrame(columns=['Start', 'End'])
+    condition = pd.Series(evt.flags(df['Tmin (oC)']), index=df.index)
+    runs = condition.reset_index(drop=True)
+    groups = (runs != runs.shift()).cumsum()
+    spells = [(idx[0], idx[-1]) for _, idx in runs.groupby(groups).groups.items()
+              if runs.iloc[idx[0]] and len(idx) >= min_duration]
     return pd.DataFrame(spells, columns=['Start', 'End']) if spells else pd.DataFrame(columns=['Start', 'End'])
 
+
+def pooled_daily_cold(epw_paths):
+    """Daily Tmin for all files, with dates, for the pooled EVT threshold."""
+    frames = [calculate_daily_tmin_tmax_cold(read_epw_raw(p)) for p in epw_paths]
+    if not frames:
+        return pd.DataFrame()
+    d = pd.concat(frames, ignore_index=True)
+    d['date'] = pd.to_datetime(dict(year=d['YEAR'], month=d['MONTH'], day=d['DAY']), errors='coerce')
+    return d.dropna(subset=['date'])
 
 
 # === EVENT + STATS ===
@@ -119,30 +164,84 @@ def calculate_coldspell_stats(events_df, base_df):
             'year': year
         })
         if year not in stats:
-            stats[year] = {'cwn': 0, 'cwf': 0, 'cwd': 0, 'cwdm': [], 'cwaa': np.inf, 'avg_wind_speed': []}
+            stats[year] = {'cwn': 0, 'cwf': 0, 'cwd': 0, 'cwdm': [], 'cwaa': np.inf, 'avg_wind_speed': [], 'tmin_all': []}
         stats[year]['cwn'] += 1
         stats[year]['cwf'] += duration
         stats[year]['cwd'] = max(stats[year]['cwd'], duration)
         stats[year]['cwdm'].append(duration)
-        stats[year]['cwaa'] = min(stats[year]['cwaa'], min_tmin)
+        # accumulate all Tmin values across all cold-spell days for the year
+        stats[year]['tmin_all'].extend(period['Tmin (oC)'].tolist())
         stats[year]['avg_wind_speed'].append(avg_ws)
     for y in stats:
         stats[y]['cwdm'] = np.mean(stats[y]['cwdm'])
         stats[y]['avg_wind_speed'] = np.mean(stats[y]['avg_wind_speed'])
+        # cwaa = average Tmin across all cold-spell days in the year
+        stats[y]['cwaa'] = float(np.mean(stats[y]['tmin_all'])) if stats[y].get('tmin_all') else np.nan
+        # remove temp list to avoid adding a new column
+        stats[y].pop('tmin_all', None)
     stats_df = pd.DataFrame.from_dict(stats, orient='index').reset_index().rename(columns={'index': 'year'})
+    # keep severity column as-is (negative), selection will use positive scoring later
     stats_df['severity'] = stats_df['cwf'] * stats_df['cwaa']
     events_df_final = pd.DataFrame(events).sort_values(by='begin_date')
     return stats_df, events_df_final
 
+
+def resolve_strict_overlaps_cold(events_df):
+    """
+    Remove strictly-overlapping cold-spell events.
+    Keep the longer event; tie-breakers: colder event (lower min_tmin/avg_tmin/avg_wind_chill), then earlier start.
+    Expects columns: begin_date, end_date, duration, and ideally min_tmin (or avg_tmin / avg_wind_chill).
+    """
+    if events_df is None or events_df.empty or 'begin_date' not in events_df.columns or 'end_date' not in events_df.columns:
+        return events_df
+
+    df = events_df.copy()
+    df['begin_dt'] = pd.to_datetime(df['begin_date'], format='%d/%m/%Y', errors='coerce')
+    df['end_dt'] = pd.to_datetime(df['end_date'], format='%d/%m/%Y', errors='coerce')
+    df = df.dropna(subset=['begin_dt', 'end_dt'])
+
+    # Prefer colder metric if available (lower is more severe)
+    if 'min_tmin' in df.columns:
+        intensity_col = 'min_tmin'
+        sort_cols, ascending = ['duration', intensity_col, 'begin_dt'], [False, True, True]
+    elif 'avg_tmin' in df.columns:
+        intensity_col = 'avg_tmin'
+        sort_cols, ascending = ['duration', intensity_col, 'begin_dt'], [False, True, True]
+    elif 'avg_wind_chill' in df.columns:
+        intensity_col = 'avg_wind_chill'
+        sort_cols, ascending = ['duration', intensity_col, 'begin_dt'], [False, True, True]
+    else:
+        sort_cols, ascending = ['duration', 'begin_dt'], [False, True]
+
+    df = df.sort_values(sort_cols, ascending=ascending).reset_index(drop=True)
+
+    selected = []
+    for i, row in df.iterrows():
+        keep = True
+        for j in selected:
+            s = df.loc[j]
+            # strict overlap: (a_begin < b_end) and (b_begin < a_end)
+            if (row['begin_dt'] < s['end_dt']) and (s['begin_dt'] < row['end_dt']):
+                keep = False
+                break
+        if keep:
+            selected.append(i)
+
+    out = df.loc[selected].copy()
+    out = out.sort_values('begin_dt').reset_index(drop=True)
+    return out.drop(columns=['begin_dt', 'end_dt'], errors='ignore')
+
+
 # === PROCESS FILE ===
-def process_file_cold(epw_path, methods=['ensemble', 'gnn', 'evt']):
+def process_file_cold(epw_path, methods=('ensemble', 'gnn', 'evt'), winter_months=(12, 1, 2),
+                      gnn_daily=None, evt=None, thresholds=None):
     try:
-        epw_df = pd.read_csv(epw_path, skiprows=8, header=None, names=epw_columns)
+        epw_df = read_epw_raw(epw_path)
     except Exception as e:
         print(f" Could not read EPW file {epw_path}: {e}")
         return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
-    daily_df = calculate_daily_tmin_tmax(epw_df)
+    daily_df = calculate_daily_tmin_tmax_cold(epw_df)
     daily_df = daily_df[(daily_df["Tmin (oC)"] != -9999) & (daily_df["Tmax (oC)"] != -9999)]
 
     if daily_df.empty:
@@ -155,9 +254,13 @@ def process_file_cold(epw_path, methods=['ensemble', 'gnn', 'evt']):
     for method in methods:
         try:
             if method == 'evt':
-                events_df = identify_evt_cold_extremes(daily_df.copy())
+                events_df = identify_evt_cold_extremes(daily_df.copy(), evt=evt)
             else:
-                events_df = identify_cold_spells(daily_df.copy(), method=method)
+                flags = (gnn_flags_for(daily_df, gnn_daily, 'cold')
+                         if method == 'gnn' and gnn_daily is not None else None)
+                events_df = identify_cold_spells(daily_df.copy(), method=method,
+                                                 winter_months=winter_months,
+                                                 gnn_flags=flags, thresholds=thresholds)
 
             if events_df.empty:
                 continue
@@ -175,12 +278,16 @@ def process_file_cold(epw_path, methods=['ensemble', 'gnn', 'evt']):
 
     all_events_df = pd.concat(combined_events).drop_duplicates().sort_values('begin_date').reset_index(drop=True)
 
+    # Resolve overlaps within this file's combined events
+    if not all_events_df.empty and 'end_date' in all_events_df.columns:
+        all_events_df = resolve_strict_overlaps_cold(all_events_df)
+
     all_stats_df = pd.concat(all_stats).groupby('year').agg({
         'cwn': 'sum',
         'cwf': 'sum',
         'cwd': 'max',
         'cwdm': 'mean',
-        'cwaa': 'min',
+        'cwaa': 'min',  # placeholder aggregation; selection uses score below
         'avg_wind_speed': 'mean',
         'severity': 'min'
     }).reset_index()
@@ -189,16 +296,17 @@ def process_file_cold(epw_path, methods=['ensemble', 'gnn', 'evt']):
         print(f" Cold spell stats were empty after aggregation in {epw_path}.")
         return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
-    peak_year = all_stats_df.loc[all_stats_df['severity'].idxmin()]['year']
+    # Robust peak-year selector even when cwaa is positive
+    K = all_stats_df['cwaa'].max()
+    _score = all_stats_df['cwf'] * (K - all_stats_df['cwaa'])
+    peak_year = int(all_stats_df.loc[_score.idxmax(), 'year'])
     peak_events = all_events_df[all_events_df['year'] == peak_year]
     peak_stats = all_stats_df[all_stats_df['year'] == peak_year]
 
     return all_stats_df, all_events_df, peak_stats, peak_events
 
 
-
 # === SAVE OUTPUTS ===
-
 def save_final_outputs_cold_safe(output_dir, base_stats, base_events, all_stats, all_events, peak_stats, peak_events):
     Path(output_dir).mkdir(parents=True, exist_ok=True)
 
@@ -206,7 +314,6 @@ def save_final_outputs_cold_safe(output_dir, base_stats, base_events, all_stats,
         path = Path(output_dir) / filename
         if df is not None and not df.empty:
             df.to_csv(path, index=False)
-            #print(f" Saved: {path}")
         else:
             print(f" Skipped empty file: {path}")
 
@@ -219,19 +326,52 @@ def save_final_outputs_cold_safe(output_dir, base_stats, base_events, all_stats,
 
 
 # === MAIN DRIVER ===
-def run_full_pipeline_cold(epw_dir, base_dir, output_dir):
+def run_full_pipeline_cold(epw_dir, base_dir, output_dir, winter_months=None, use_gnn=True,
+                           gnn_config=None):
+    """Detect cold spells in every AMY in `epw_dir` and in the base TMY.
+
+    Writes up to six CSVs to `output_dir` (empty tables are skipped):
+    events and stats for the base file, for all AMY years, and for the
+    peak-severity year.
+
+    `winter_months` defaults to the local winter derived from the base EPW's
+    latitude (DJF north, JJA south, all months near the equator).
+    """
     print(f" Starting cold spell detection on EPWs in {epw_dir}")
 
-    base_files = [f for f in os.listdir(base_dir) if f.endswith('.epw')]
+    base_files = sorted(f for f in os.listdir(base_dir) if f.endswith('.epw'))
     if not base_files:
         raise FileNotFoundError("No base EPW file found.")
     base_path = os.path.join(base_dir, base_files[0])
+    if winter_months is None:
+        plan = season_plan_for_epw(base_path)
+        winter_months = plan.cold_months
+        print(f" Seasons: {plan.describe()}")
+
+    # Thresholds and EVT threshold from all AMY years pooled
+    pooled = pooled_daily_cold(list_epws(epw_dir))
+    if pooled.empty:
+        raise ValueError(f"No usable AMY data in {epw_dir}")
+    thresholds = cold_thresholds(pooled)
+    print(thresholds.describe())
+    evt = select_pot_threshold(pooled['Tmin (oC)'], pooled['date'], tail='lower')
+    print(evt.describe('Tmin') if evt else " EVT: no valid Tmin threshold; EVT skipped.")
+
     print(f" Processing base EPW file: {base_path}")
     try:
-        base_stats, base_events, _, _ = process_file_cold(base_path, methods=['temperature'])
+        base_stats, base_events, _, _ = process_file_cold(base_path, methods=['temperature'],
+                                                          thresholds=thresholds)
     except Exception as e:
         print(f" Base file processing failed: {e}")
         base_stats, base_events = pd.DataFrame(), pd.DataFrame()
+
+    # Train the GNN once on all AMYs (shared with heat-wave detection via a cache)
+    gnn_daily = None
+    if use_gnn:
+        try:
+            gnn_daily = detect_gnn_anomalies(list_epws(epw_dir), gnn_config or GNNConfig())
+        except Exception as e:
+            print(f" GNN failed ({e}). Continuing with thresholds and EVT only.")
 
     all_stats_list = []
     all_events_list = []
@@ -242,7 +382,10 @@ def run_full_pipeline_cold(epw_dir, base_dir, output_dir):
         epw_path = os.path.join(epw_dir, epw_file)
         print(f" Processing file: {epw_path}")
         try:
-            stats_df, events_df, _, _ = process_file_cold(epw_path, methods=['ensemble', 'gnn', 'evt'])
+            stats_df, events_df, _, _ = process_file_cold(epw_path, methods=['ensemble', 'gnn', 'evt'],
+                                                          winter_months=winter_months,
+                                                          gnn_daily=gnn_daily, evt=evt,
+                                                          thresholds=thresholds)
             if not stats_df.empty:
                 all_stats_list.append(stats_df)
             if not events_df.empty:
@@ -254,169 +397,86 @@ def run_full_pipeline_cold(epw_dir, base_dir, output_dir):
     epw_events = pd.concat(all_events_list, ignore_index=True) if all_events_list else pd.DataFrame()
 
     if not epw_stats.empty:
-        #Recomputing for consistency
-        epw_stats['severity'] = epw_stats['cwf'] * epw_stats['cwaa']
-        peak_year = int(epw_stats.loc[epw_stats['severity'].idxmin()]['year'])
-        peak_events = epw_events[epw_events['year'] == peak_year]
-        peak_stats = epw_stats[epw_stats['year'] == peak_year]
+        if not epw_events.empty:
+            # De-dup, sort, and resolve overlaps PER YEAR
+            ev = epw_events.drop_duplicates(subset=[
+                'begin_date', 'end_date', 'duration', 'avg_tmin', 'min_tmin', 'avg_wind_speed'
+            ]).copy()
+            ev['begin_dt'] = pd.to_datetime(ev['begin_date'], format='%d/%m/%Y', errors='coerce')
+            ev = ev.sort_values(['year', 'begin_dt']).drop(columns='begin_dt')
 
-        print("\n Severity scores across all years:")
-        for _, row in epw_stats[['year', 'severity']].sort_values('year').iterrows():
-            print(f"   - Year {int(row['year'])}: Severity = {row['severity']:.2f}")
+            ev_resolved = (
+                ev.groupby('year', group_keys=False)
+                  .apply(lambda g: resolve_strict_overlaps_cold(g).assign(year=g.name), include_groups=False)
+                  .reset_index(drop=True)
+            )
 
-        print("\n Ensemble method run complete.")
-        print(f" Peak severity year identified: {peak_year}")
+            # Recompute per-year stats FROM resolved events
+            # cwaa = weighted average of avg_tmin across all cold-spell days in the year
+            grp = ev_resolved.groupby('year')
+            cwn = grp['duration'].size().rename('cwn')
+            cwf = grp['duration'].sum().rename('cwf')
+            cwd = grp['duration'].max().rename('cwd')
+            cwdm = grp['duration'].mean().rename('cwdm')
+            avg_ws = grp['avg_wind_speed'].mean().rename('avg_wind_speed')
+            cwaa_series = (grp.apply(lambda g: (g['avg_tmin'] * g['duration']).sum() / g['duration'].sum(), include_groups=False)
+                              .rename('cwaa'))
 
-        print("\n Event Stats for Peak Year:")
-        for col in ['cwn', 'cwf', 'cwd', 'cwdm', 'cwaa', 'severity']:
-            val = peak_stats.iloc[0][col]
-            print(f"   - {col}: {val:.2f}" if isinstance(val, (float, int)) else f"   - {col}: {val}")
-        print()
+            epw_stats = pd.concat([cwn, cwf, cwd, cwdm, cwaa_series, avg_ws], axis=1).reset_index().sort_values('year')
+
+            # Severity: cumulative exceedance below the percentile threshold
+            # (C x days), mirroring heat waves (see heatwaves.exceedance_severity).
+            epw_stats['severity'] = epw_stats['year'].map(exceedance_severity(
+                ev_resolved, thresholds.tmin_pct, value_col='avg_tmin', sign=-1)).fillna(0.0)
+
+            # Robust peak-year selector
+            peak_year = int(epw_stats.loc[epw_stats['severity'].idxmax(), 'year'])
+            report_runner_up(epw_stats['year'], epw_stats['severity'], 'Cold-spell')
+            peak_events = ev_resolved[ev_resolved['year'] == peak_year].reset_index(drop=True)
+
+            print("\n Severity scores across all years:")
+            for _, row in epw_stats[['year', 'severity']].iterrows():
+                print(f"   - Year {int(row['year'])}: Severity = {row['severity']:.2f}")
+
+            print("\n Ensemble method run complete.")
+            print(f" Peak severity year identified: {peak_year}")
+
+            print("\n Event Stats for Peak Year:")
+            # Peak stats computed consistently with the cwaa definition (weighted avg Tmin)
+            _cwf = int(peak_events['duration'].sum()) if not peak_events.empty else 0
+            _cwn = int(len(peak_events)) if not peak_events.empty else 0
+            _cwd = int(peak_events['duration'].max()) if not peak_events.empty else 0
+            _cwdm = float(peak_events['duration'].mean()) if not peak_events.empty else np.nan
+            _cwaa = float((peak_events['avg_tmin'] * peak_events['duration']).sum() / peak_events['duration'].sum()) if not peak_events.empty else np.nan
+            _avg_ws = float(peak_events['avg_wind_speed'].mean()) if not peak_events.empty else np.nan
+            _sev = float(epw_stats.loc[epw_stats['year'] == peak_year, 'severity'].iloc[0])
+
+            peak_stats = pd.DataFrame([{
+                'year': peak_year,
+                'cwn': _cwn,
+                'cwf': _cwf,
+                'cwd': _cwd,
+                'cwdm': _cwdm,
+                'cwaa': _cwaa,
+                'avg_wind_speed': _avg_ws,
+                'severity': _sev
+            }])
+            for col in ['cwn', 'cwf', 'cwd', 'cwdm', 'cwaa', 'severity']:
+                val = peak_stats.iloc[0][col]
+                try:
+                    print(f"   - {col}: {val:.2f}")
+                except Exception:
+                    print(f"   - {col}: {val}")
+            print()
+        else:
+            print(" No cold spells detected in EPWs.")
+            peak_stats = pd.DataFrame()
+            peak_events = pd.DataFrame()
 
     else:
         print(" No cold spells detected in EPWs.")
         peak_stats = pd.DataFrame()
         peak_events = pd.DataFrame()
 
-
     save_final_outputs_cold_safe(output_dir, base_stats, base_events, epw_stats, epw_events, peak_stats, peak_events)
     print("✅ Saved all 6 cold spell output CSVs.")
-
-
-
-
-import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
-import pandas as pd
-
-# Function to create custom colormaps for heatwaves and cold spells
-def create_custom_colormap():
-    heatwave_colors = ['#F7DDE1', '#EBAFB9', '#DC7284', '#CF3952', '#B22C42']  # Heatwaves color scheme
-    coldspell_colors = ['#b3e7f2', '#80d2e6', '#4dbeda', '#1aaacb', '#0086b3']  # Custom blue shades for cold spells
-    heatwave_cmap = mcolors.LinearSegmentedColormap.from_list('heatwave_cmap', heatwave_colors)
-    coldspell_cmap = mcolors.LinearSegmentedColormap.from_list('coldspell_cmap', coldspell_colors)
-    return heatwave_cmap, coldspell_cmap
-
-# Function to visualize heatwave and cold spell events on a timeline
-def visualize_extreme_events(heatwave_csv, coldspell_csv):
-    # Read the CSV files for heatwaves and cold spells
-    heatwave_df = pd.read_csv(heatwave_csv)
-    coldspell_df = pd.read_csv(coldspell_csv)
-
-    # Convert 'begin_date' to datetime format
-    heatwave_df['begin_date'] = pd.to_datetime(heatwave_df['begin_date'], format='%d/%m/%Y')
-    coldspell_df['begin_date'] = pd.to_datetime(coldspell_df['begin_date'], format='%d/%m/%Y')
-
-    # Extract year, month, and day for plotting
-    heatwave_df['year'] = heatwave_df['begin_date'].dt.year
-    heatwave_df['month'] = heatwave_df['begin_date'].dt.month
-    heatwave_df['day'] = heatwave_df['begin_date'].dt.day
-
-    coldspell_df['year'] = coldspell_df['begin_date'].dt.year
-    coldspell_df['month'] = coldspell_df['begin_date'].dt.month
-    coldspell_df['day'] = coldspell_df['begin_date'].dt.day
-
-    # Create custom colormaps for heatwaves and cold spells
-    heatwave_cmap, coldspell_cmap = create_custom_colormap()
-
-    fig, ax = plt.subplots(figsize=(20, 15))  # Updated from plt.figure()
-
-    # Get unique years
-    unique_years = sorted(set(heatwave_df['year'].unique()) | set(coldspell_df['year'].unique()))
-
-    # Plot horizontal lines for each year
-    for i, year in enumerate(unique_years):
-        ax.hlines(y=i, xmin=1, xmax=13, color='gray', alpha=0.5, linestyle='--')
-
-    # Add vertical dashed lines between months and after December
-    for month in range(1, 14):  # Include 13 to add line after December
-        ax.axvline(x=month, color='lightgray', linestyle='--', linewidth=0.7)
-
-    # Adjust the normalization to better reflect the range of the data in the colormap
-    #heatwave_norm = mcolors.Normalize(vmin=heatwave_df['avg_heat_index'].min(), vmax=heatwave_df['avg_heat_index'].max())
-    # Set a fixed normalization range for heat index (85°C to 125°C)
-    heatwave_norm = mcolors.Normalize(vmin=85, vmax=125)
-
-    heatwave_df['clipped_index'] = heatwave_df['avg_heat_index'].clip(85, 125)
-
-    if 'avg_wind_chill' in coldspell_df.columns:
-        coldspell_norm = mcolors.Normalize(vmin=coldspell_df['avg_wind_chill'].min(), vmax=coldspell_df['avg_wind_chill'].max())
-        wind_chill_column = 'avg_wind_chill'
-    else:
-        coldspell_norm = mcolors.Normalize(vmin=coldspell_df['avg_wind_speed'].min(), vmax=coldspell_df['avg_wind_speed'].max())
-        wind_chill_column = 'avg_wind_speed'
-
-    circle_size_factor = 50
-
-
-    for i, row in heatwave_df.iterrows():
-        year_index = unique_years.index(row['year'])
-        month_day = row['month'] + row['day'] / 30
-        ax.scatter(month_day, year_index,
-                   s=row['duration'] * circle_size_factor,
-                   #color=heatwave_cmap(heatwave_norm(row['avg_heat_index'])),
-                   # Cap heat index normalization between 85 and 125
-                   color=heatwave_cmap(heatwave_norm(row['clipped_index'])),
-                   alpha=0.7, edgecolors='black', linewidth=0.5)
-
-    for i, row in coldspell_df.iterrows():
-        year_index = unique_years.index(row['year'])
-        month_day = row['month'] + row['day'] / 30
-        ax.scatter(month_day, year_index,
-                   s=row['duration'] * circle_size_factor,
-                   color=coldspell_cmap(coldspell_norm(row[wind_chill_column])),
-                   alpha=0.7, edgecolors='black', linewidth=0.5)
-
-    heatwave_sm = plt.cm.ScalarMappable(cmap=heatwave_cmap, norm=heatwave_norm)
-    coldspell_sm = plt.cm.ScalarMappable(cmap=coldspell_cmap, norm=coldspell_norm)
-    heatwave_sm.set_array([])
-    coldspell_sm.set_array([])
-
-    # Shift heatwave bar closer to coldspell bar by reducing pad
-    cbar_heatwave = fig.colorbar(heatwave_sm, ax=ax, orientation='horizontal', pad=0.0001, shrink=0.8, aspect=40)
-    cbar_coldspell = fig.colorbar(coldspell_sm, ax=ax, orientation='horizontal', pad=0.08, shrink=0.8, aspect=40)
-
-    cbar_heatwave.set_label('Heatwave Average Heat Index (°C)',fontsize=14)
-    cbar_coldspell.set_label('Cold Spell Wind Chill (°C)' if 'avg_wind_chill' in coldspell_df.columns else 'Cold Spell Wind Speed (m/s)',fontsize=14)
-
-    sizes = [1, 3, 5, 7]
-    labels = [f'{size} days' for size in sizes]
-    handles = [ax.scatter([], [], s=size * circle_size_factor, color='gray', alpha=0.5, edgecolors='black', label=label)
-               for size, label in zip(sizes, labels)]
-
-    # Removed bounding box from legend
-    legend = ax.legend(
-        handles=handles,
-        scatterpoints=1,
-        frameon=False,
-        labelspacing=1,
-        title='Event Duration',
-        loc='center left',
-        bbox_to_anchor=(1.05, 0.5),
-        fontsize=14  # label font size
-    )
-
-    # Now set the title font size explicitly
-    legend.get_title().set_fontsize(16)
-
-
-    ax.set_xlim(0.8, 13.2)
-    ax.set_ylim(-1, len(unique_years))
-    ax.set_yticks(ticks=range(len(unique_years)))
-    ax.set_yticklabels(unique_years, fontsize=16)
-    ax.set_xticks(ticks=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
-    ax.set_xticklabels(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], fontsize=16)
-
-    ax.set_xlabel('Month', fontsize=16)
-    ax.set_ylabel('Year', fontsize=16)
-    ax.set_title('Extreme Event Explorer: Heatwaves and Cold Spells Timeline')
-
-    for spine in ax.spines.values():
-        spine.set_visible(False)
-
-    plt.tight_layout()
-    plt.show()
-
-# Example usage:
-

@@ -1,13 +1,11 @@
-def read_epw_file(epw_file_path):
-    import pandas as pd
-    return pd.read_csv(epw_file_path, header=None, skiprows=8, sep=',', names=[
-        'year', 'month', 'day', 'hour', 'minute', 'data_source_unct', 'temp_air', 'temp_dew', 'relative_humidity',
-        'atmospheric_pressure', 'etr', 'etrn', 'ghi_infrared', 'ghi', 'dni', 'dhi', 'global_hor_illum',
-        'direct_normal_illum', 'diffuse_horizontal_illum', 'zenith_luminance', 'wind_direction', 'wind_speed',
-        'total_sky_cover', 'opaque_sky_cover', 'visibility', 'ceiling_height', 'present_weather_observation',
-        'present_weather_codes', 'precipitable_water', 'aerosol_optical_depth', 'snow_depth',
-        'days_since_last_snowfall', 'albedo', 'liquid_precipitation_depth', 'liquid_precipitation_quantity'
-    ])
+"""RMY: Representative Meteorological Years with embedded extreme events.
 
+Importing the package has no side effects. Typical use:
 
-from .rmy_generation import run_full_rmy_pipeline
+    from rmy import run_full_rmy_pipeline
+    run_full_rmy_pipeline('data/cities/Boston/AMY', 'data/cities/Boston/TMY', 'output')
+"""
+from .rmy_generation import construct_final_rmy, run_full_rmy_pipeline
+from .utils import read_epw_file
+
+__all__ = ['construct_final_rmy', 'run_full_rmy_pipeline', 'read_epw_file']
