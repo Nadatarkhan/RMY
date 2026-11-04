@@ -1,0 +1,138 @@
+📂 Running full RMY pipeline:
+   AMY Folder: data/cities/Las_Vegas/AMY
+   Base Folder: data/cities/Las_Vegas/TMY
+   Output Folder: data/cities/Las_Vegas/RMY
+Starting hybrid method on EPWs in data/cities/Las_Vegas/AMY
+Heat thresholds (all AMY years): percentile Tmin >= 0.0 and Tmax >= 29.4; temperature Tmax >= 30.0; months [6, 7, 8]
+EVT heat index: threshold > 33.17 (quantile 0.990), GPD shape +0.073, scale 1.142, 3.7 exceedance days per year
+GNN: 5833 days from 16 files; loss 7.840 -> 0.238; 125 anomalous days (57 hot, 76 cold)
+Processing file: data/cities/Las_Vegas/AMY/Las_Vegas_72367723054_2009_AMY.epw
+Processing file: data/cities/Las_Vegas/AMY/Las_Vegas_72367723054_2010_AMY.epw
+Processing file: data/cities/Las_Vegas/AMY/Las_Vegas_72367723054_2011_AMY.epw
+Processing file: data/cities/Las_Vegas/AMY/Las_Vegas_72367723054_2012_AMY.epw
+Processing file: data/cities/Las_Vegas/AMY/Las_Vegas_72367723054_2013_AMY.epw
+Processing file: data/cities/Las_Vegas/AMY/Las_Vegas_72367723054_2014_AMY.epw
+Processing file: data/cities/Las_Vegas/AMY/Las_Vegas_72367723054_2015_AMY.epw
+Processing file: data/cities/Las_Vegas/AMY/Las_Vegas_72367723054_2016_AMY.epw
+Processing file: data/cities/Las_Vegas/AMY/Las_Vegas_72367723054_2017_AMY.epw
+Processing file: data/cities/Las_Vegas/AMY/Las_Vegas_72367723054_2018_AMY.epw
+Processing file: data/cities/Las_Vegas/AMY/Las_Vegas_72367723054_2019_AMY.epw
+Processing file: data/cities/Las_Vegas/AMY/Las_Vegas_72367723054_2020_AMY.epw
+Processing file: data/cities/Las_Vegas/AMY/Las_Vegas_72367723054_2021_AMY.epw
+Processing file: data/cities/Las_Vegas/AMY/Las_Vegas_72367723054_2022_AMY.epw
+Processing file: data/cities/Las_Vegas/AMY/Las_Vegas_72367723054_2023_AMY.epw
+Processing file: data/cities/Las_Vegas/AMY/Las_Vegas_72367723054_2024_AMY.epw
+
+📈 Severity scores across all years:
+   - Year 2009: Severity = 25.80
+   - Year 2010: Severity = 28.60
+   - Year 2011: Severity = 68.30
+   - Year 2012: Severity = 64.60
+   - Year 2013: Severity = 29.10
+   - Year 2014: Severity = 14.40
+   - Year 2015: Severity = 12.70
+   - Year 2016: Severity = 70.00
+   - Year 2017: Severity = 32.90
+   - Year 2018: Severity = 47.70
+   - Year 2019: Severity = 32.20
+   - Year 2020: Severity = 70.30
+   - Year 2021: Severity = 26.70
+   - Year 2022: Severity = 37.20
+   - Year 2023: Severity = 103.10
+   - Year 2024: Severity = 32.40
+Heat-wave peak year 2023; runner-up 2020 scores 31.8% lower
+
+Ensemble method run complete.
+Peak severity year identified: 2023
+
+Event Stats for Peak Year:
+   - hwn: 5.00
+   - hwf: 56.00
+   - hwd: 20.00
+   - hwdm: 11.20
+   - hwaa: 37.80
+   - severity: 103.10
+
+✅ Saved all 6 heat wave output CSVs
+ Starting cold spell detection on EPWs in data/cities/Las_Vegas/AMY
+ Seasons: Northern Hemisphere (lat +35.65): summer=[6, 7, 8], winter=[12, 1, 2]
+Cold thresholds (all AMY years): percentile Tmin < -7.8; temperature Tmin < -7.8
+EVT Tmin: threshold < -15.60 (quantile 0.010), GPD shape -0.070, scale 3.527, 3.4 exceedance days per year
+ Processing base EPW file: data/cities/Las_Vegas/TMY/Las_Vegas_NM_723677_TMYx_2009-2023.epw
+ Processing file: data/cities/Las_Vegas/AMY/Las_Vegas_72367723054_2009_AMY.epw
+ Processing file: data/cities/Las_Vegas/AMY/Las_Vegas_72367723054_2010_AMY.epw
+ Processing file: data/cities/Las_Vegas/AMY/Las_Vegas_72367723054_2011_AMY.epw
+ Processing file: data/cities/Las_Vegas/AMY/Las_Vegas_72367723054_2012_AMY.epw
+ Processing file: data/cities/Las_Vegas/AMY/Las_Vegas_72367723054_2013_AMY.epw
+ Processing file: data/cities/Las_Vegas/AMY/Las_Vegas_72367723054_2014_AMY.epw
+ Processing file: data/cities/Las_Vegas/AMY/Las_Vegas_72367723054_2015_AMY.epw
+ Processing file: data/cities/Las_Vegas/AMY/Las_Vegas_72367723054_2016_AMY.epw
+ Processing file: data/cities/Las_Vegas/AMY/Las_Vegas_72367723054_2017_AMY.epw
+ Processing file: data/cities/Las_Vegas/AMY/Las_Vegas_72367723054_2018_AMY.epw
+ Processing file: data/cities/Las_Vegas/AMY/Las_Vegas_72367723054_2019_AMY.epw
+ Processing file: data/cities/Las_Vegas/AMY/Las_Vegas_72367723054_2020_AMY.epw
+ Processing file: data/cities/Las_Vegas/AMY/Las_Vegas_72367723054_2021_AMY.epw
+ Processing file: data/cities/Las_Vegas/AMY/Las_Vegas_72367723054_2022_AMY.epw
+ Processing file: data/cities/Las_Vegas/AMY/Las_Vegas_72367723054_2023_AMY.epw
+ Processing file: data/cities/Las_Vegas/AMY/Las_Vegas_72367723054_2024_AMY.epw
+Cold-spell peak year 2011; runner-up 2022 scores 20.3% lower
+
+ Severity scores across all years:
+   - Year 2009: Severity = 81.40
+   - Year 2010: Severity = 4.50
+   - Year 2011: Severity = 215.80
+   - Year 2012: Severity = 25.20
+   - Year 2013: Severity = 159.70
+   - Year 2014: Severity = 126.40
+   - Year 2015: Severity = 89.10
+   - Year 2016: Severity = 88.40
+   - Year 2017: Severity = 47.10
+   - Year 2018: Severity = 87.40
+   - Year 2019: Severity = 93.50
+   - Year 2020: Severity = 33.90
+   - Year 2021: Severity = 71.20
+   - Year 2022: Severity = 172.10
+   - Year 2023: Severity = 70.50
+   - Year 2024: Severity = 36.60
+
+ Ensemble method run complete.
+ Peak severity year identified: 2011
+
+ Event Stats for Peak Year:
+   - cwn: 7.00
+   - cwf: 30.00
+   - cwd: 7.00
+   - cwdm: 4.29
+   - cwaa: -14.99
+   - severity: 215.80
+
+✅ Saved all 6 cold spell output CSVs.
+Seasons: Northern Hemisphere (lat +35.65): summer=[6, 7, 8], winter=[12, 1, 2]
+Invalid values in the input EPWs: no problems found.
+Heatwave events integrated. Days replaced: 56
+Coldspell events integrated. Days replaced: 30
+Monthly compensation (deviation from base TMY, °C / %RH):
+   - Month  1: -1.11 / +0.6 -> -0.16 / -1.5 (4 days)
+   - Month  2: -5.27 / +6.9 -> -1.28 / +1.0 (10 days)
+   - Month  3: +0.00 / +0.0 -> +0.00 / +0.0 (0 days)
+   - Month  4: +0.00 / +0.0 -> +0.00 / +0.0 (0 days)
+   - Month  5: +0.00 / +0.0 -> +0.00 / +0.0 (0 days)
+   - Month  6: +0.62 / -6.3 -> +0.06 / -1.5 (3 days)
+   - Month  7: +2.36 / -7.4 -> +1.72 / -4.3 (5 days)
+   - Month  8: +1.83 / -10.5 -> +0.19 / -1.2 (9 days)
+   - Month  9: +0.00 / +0.0 -> +0.00 / +0.0 (0 days)
+   - Month 10: +0.00 / +0.0 -> +0.00 / +0.0 (0 days)
+   - Month 11: +0.00 / +0.0 -> +0.00 / +0.0 (0 days)
+   - Month 12: -3.66 / +4.4 -> -0.25 / -1.3 (10 days)
+Wind repair (inserted AMY hours): wind speed 32 h interpolated, 0 h from the TMY; wind direction 117 h interpolated, 4 h from the TMY
+Before smoothing: 44 jumps >8°C/h; largest 18.30°C/h
+After smoothing: 33 jumps >8°C/h; largest 11.00°C/h
+Inserted AMY hours preserved: 3048
+Surrounding hours included in smoothing: 344
+Fields with more missing hours than the base TMY (written with the EPW missing code):
+   - zenith_luminance: 0 -> 3048 hours
+   - total_sky_cover: 0 -> 32 hours
+   - opaque_sky_cover: 0 -> 32 hours
+✅ Final RMY saved to: data/cities/Las_Vegas/RMY/Las_Vegas_NM_723677_RMY_2009-2023.epw
+📂 Heatwave peak AMY: data/cities/Las_Vegas/AMY/Las_Vegas_72367723054_2023_AMY.epw
+📂 Cold-spell peak AMY: data/cities/Las_Vegas/AMY/Las_Vegas_72367723054_2011_AMY.epw

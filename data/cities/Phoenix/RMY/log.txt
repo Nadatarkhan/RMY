@@ -1,0 +1,141 @@
+📂 Running full RMY pipeline:
+   AMY Folder: data/cities/Phoenix/AMY
+   Base Folder: data/cities/Phoenix/TMY
+   Output Folder: data/cities/Phoenix/RMY
+Starting hybrid method on EPWs in data/cities/Phoenix/AMY
+Heat thresholds (all AMY years): percentile Tmin >= 15.0 and Tmax >= 42.2; temperature Tmax >= 42.2; months [6, 7, 8]
+EVT heat index: threshold > 50.47 (quantile 0.990), GPD shape +0.112, scale 1.613, 3.7 exceedance days per year
+GNN: 5844 days from 16 files; loss 7.733 -> 0.235; 179 anomalous days (38 hot, 128 cold)
+Processing file: data/cities/Phoenix/AMY/Phoenix_72278023183_2009_AMY.epw
+Processing file: data/cities/Phoenix/AMY/Phoenix_72278023183_2010_AMY.epw
+Processing file: data/cities/Phoenix/AMY/Phoenix_72278023183_2011_AMY.epw
+Processing file: data/cities/Phoenix/AMY/Phoenix_72278023183_2012_AMY.epw
+Processing file: data/cities/Phoenix/AMY/Phoenix_72278023183_2013_AMY.epw
+Processing file: data/cities/Phoenix/AMY/Phoenix_72278023183_2014_AMY.epw
+Processing file: data/cities/Phoenix/AMY/Phoenix_72278023183_2015_AMY.epw
+Processing file: data/cities/Phoenix/AMY/Phoenix_72278023183_2016_AMY.epw
+Processing file: data/cities/Phoenix/AMY/Phoenix_72278023183_2017_AMY.epw
+Processing file: data/cities/Phoenix/AMY/Phoenix_72278023183_2018_AMY.epw
+Processing file: data/cities/Phoenix/AMY/Phoenix_72278023183_2019_AMY.epw
+Processing file: data/cities/Phoenix/AMY/Phoenix_72278023183_2020_AMY.epw
+Processing file: data/cities/Phoenix/AMY/Phoenix_72278023183_2021_AMY.epw
+Processing file: data/cities/Phoenix/AMY/Phoenix_72278023183_2022_AMY.epw
+Processing file: data/cities/Phoenix/AMY/Phoenix_72278023183_2023_AMY.epw
+Processing file: data/cities/Phoenix/AMY/Phoenix_72278023183_2024_AMY.epw
+
+📈 Severity scores across all years:
+   - Year 2009: Severity = 43.80
+   - Year 2010: Severity = 22.90
+   - Year 2011: Severity = 38.70
+   - Year 2012: Severity = 31.90
+   - Year 2013: Severity = 30.90
+   - Year 2014: Severity = 10.90
+   - Year 2015: Severity = 34.10
+   - Year 2016: Severity = 42.60
+   - Year 2017: Severity = 47.10
+   - Year 2018: Severity = 34.20
+   - Year 2019: Severity = 38.20
+   - Year 2020: Severity = 81.60
+   - Year 2021: Severity = 45.90
+   - Year 2022: Severity = 33.80
+   - Year 2023: Severity = 139.60
+   - Year 2024: Severity = 95.50
+Heat-wave peak year 2023; runner-up 2024 scores 31.6% lower
+
+Ensemble method run complete.
+Peak severity year identified: 2023
+
+Event Stats for Peak Year:
+   - hwn: 5.00
+   - hwf: 53.00
+   - hwd: 31.00
+   - hwdm: 10.60
+   - hwaa: 48.30
+   - severity: 139.60
+
+✅ Saved all 6 heat wave output CSVs
+ Starting cold spell detection on EPWs in data/cities/Phoenix/AMY
+ Seasons: Northern Hemisphere (lat +33.43): summer=[6, 7, 8], winter=[12, 1, 2]
+Cold thresholds (all AMY years): percentile Tmin < 7.8; temperature Tmin < -7.0
+EVT Tmin: threshold < 3.01 (quantile 0.010), GPD shape +0.046, scale 1.195, 3.7 exceedance days per year
+ Processing base EPW file: data/cities/Phoenix/TMY/Phoenix_AZ_722780_TMYx_2009-2023.epw
+ No cold spells detected using any method in data/cities/Phoenix/TMY/Phoenix_AZ_722780_TMYx_2009-2023.epw.
+ Processing file: data/cities/Phoenix/AMY/Phoenix_72278023183_2009_AMY.epw
+ Processing file: data/cities/Phoenix/AMY/Phoenix_72278023183_2010_AMY.epw
+ Processing file: data/cities/Phoenix/AMY/Phoenix_72278023183_2011_AMY.epw
+ Processing file: data/cities/Phoenix/AMY/Phoenix_72278023183_2012_AMY.epw
+ Processing file: data/cities/Phoenix/AMY/Phoenix_72278023183_2013_AMY.epw
+ Processing file: data/cities/Phoenix/AMY/Phoenix_72278023183_2014_AMY.epw
+ Processing file: data/cities/Phoenix/AMY/Phoenix_72278023183_2015_AMY.epw
+ Processing file: data/cities/Phoenix/AMY/Phoenix_72278023183_2016_AMY.epw
+ Processing file: data/cities/Phoenix/AMY/Phoenix_72278023183_2017_AMY.epw
+ Processing file: data/cities/Phoenix/AMY/Phoenix_72278023183_2018_AMY.epw
+ Processing file: data/cities/Phoenix/AMY/Phoenix_72278023183_2019_AMY.epw
+ Processing file: data/cities/Phoenix/AMY/Phoenix_72278023183_2020_AMY.epw
+ Processing file: data/cities/Phoenix/AMY/Phoenix_72278023183_2021_AMY.epw
+ Processing file: data/cities/Phoenix/AMY/Phoenix_72278023183_2022_AMY.epw
+ Processing file: data/cities/Phoenix/AMY/Phoenix_72278023183_2023_AMY.epw
+ Processing file: data/cities/Phoenix/AMY/Phoenix_72278023183_2024_AMY.epw
+Cold-spell peak year 2013; runner-up 2011 scores 1.3% lower  <- close: both years are plausible peaks
+
+ Severity scores across all years:
+   - Year 2009: Severity = 71.00
+   - Year 2010: Severity = 17.40
+   - Year 2011: Severity = 148.50
+   - Year 2012: Severity = 32.50
+   - Year 2013: Severity = 150.50
+   - Year 2014: Severity = 38.60
+   - Year 2015: Severity = 97.10
+   - Year 2016: Severity = 62.00
+   - Year 2017: Severity = 37.80
+   - Year 2018: Severity = 51.30
+   - Year 2019: Severity = 107.50
+   - Year 2020: Severity = 86.90
+   - Year 2021: Severity = 52.90
+   - Year 2022: Severity = 53.30
+   - Year 2023: Severity = 69.30
+   - Year 2024: Severity = 51.00
+
+ Ensemble method run complete.
+ Peak severity year identified: 2013
+
+ Event Stats for Peak Year:
+   - cwn: 10.00
+   - cwf: 47.00
+   - cwd: 9.00
+   - cwdm: 4.70
+   - cwaa: 4.60
+   - severity: 150.50
+
+ Skipped empty file: data/cities/Phoenix/RMY/coldspells/coldspells_events_base.csv
+ Skipped empty file: data/cities/Phoenix/RMY/coldspells/coldspells_stats_base.csv
+✅ Saved all 6 cold spell output CSVs.
+Seasons: Northern Hemisphere (lat +33.43): summer=[6, 7, 8], winter=[12, 1, 2]
+Invalid values in the input EPWs: no problems found.
+WARNING: missing events CSV: data/cities/Phoenix/RMY/coldspells/coldspells_events_base.csv
+Heatwave 30 Jun 2023-30 Jul (31 days) inserted as its most severe 21 days: 09 Jul-29 Jul
+Heatwave events integrated. Days replaced: 43
+Coldspell events integrated. Days replaced: 47
+Monthly compensation (deviation from base TMY, °C / %RH):
+   - Month  1: -1.62 / -17.8 -> -0.66 / -7.0 (10 days)
+   - Month  2: -1.83 / -2.5 -> -0.20 / -0.9 (4 days)
+   - Month  3: +0.00 / +0.0 -> +0.00 / +0.0 (0 days)
+   - Month  4: +0.00 / +0.0 -> +0.00 / +0.0 (0 days)
+   - Month  5: -0.00 / +0.0 -> -0.00 / +0.0 (0 days)
+   - Month  6: +0.01 / -0.6 -> +0.01 / -0.6 (0 days)
+   - Month  7: +2.93 / -7.2 -> +1.95 / -3.4 (8 days)
+   - Month  8: +1.81 / -6.6 -> +0.16 / -1.5 (8 days)
+   - Month  9: +0.00 / +0.0 -> +0.00 / +0.0 (0 days)
+   - Month 10: +0.00 / +0.0 -> +0.00 / +0.0 (0 days)
+   - Month 11: +0.00 / +0.0 -> +0.00 / +0.0 (0 days)
+   - Month 12: -0.30 / -6.1 -> -0.19 / -1.7 (4 days)
+Wind repair (inserted AMY hours): wind speed 0 h interpolated, 0 h from the TMY; wind direction 125 h interpolated, 4 h from the TMY
+Before smoothing: 24 jumps >8°C/h; largest 10.90°C/h
+After smoothing: 22 jumps >8°C/h; largest 10.80°C/h
+Inserted AMY hours preserved: 2976
+Surrounding hours included in smoothing: 288
+Fields with more missing hours than the base TMY (written with the EPW missing code):
+   - zenith_luminance: 0 -> 2976 hours
+✅ Final RMY saved to: data/cities/Phoenix/RMY/Phoenix_AZ_722780_RMY_2009-2023.epw
+📂 Heatwave peak AMY: data/cities/Phoenix/AMY/Phoenix_72278023183_2023_AMY.epw
+📂 Cold-spell peak AMY: data/cities/Phoenix/AMY/Phoenix_72278023183_2013_AMY.epw

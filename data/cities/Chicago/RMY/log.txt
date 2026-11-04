@@ -1,0 +1,137 @@
+📂 Running full RMY pipeline:
+   AMY Folder: data/cities/Chicago/AMY
+   Base Folder: data/cities/Chicago/TMY
+   Output Folder: data/cities/Chicago/RMY
+Starting hybrid method on EPWs in data/cities/Chicago/AMY
+Heat thresholds (all AMY years): percentile Tmin >= 3.3 and Tmax >= 30.0; temperature Tmax >= 30.0; months [6, 7, 8]
+EVT heat index: threshold > 43.61 (quantile 0.990), GPD shape -0.035, scale 4.028, 3.7 exceedance days per year
+GNN: 5844 days from 16 files; loss 7.189 -> 0.210; 231 anomalous days (138 hot, 100 cold)
+Processing file: data/cities/Chicago/AMY/Chicago_72530094846_2009_AMY.epw
+Processing file: data/cities/Chicago/AMY/Chicago_72530094846_2010_AMY.epw
+Processing file: data/cities/Chicago/AMY/Chicago_72530094846_2011_AMY.epw
+Processing file: data/cities/Chicago/AMY/Chicago_72530094846_2012_AMY.epw
+Processing file: data/cities/Chicago/AMY/Chicago_72530094846_2013_AMY.epw
+Processing file: data/cities/Chicago/AMY/Chicago_72530094846_2014_AMY.epw
+Processing file: data/cities/Chicago/AMY/Chicago_72530094846_2015_AMY.epw
+Processing file: data/cities/Chicago/AMY/Chicago_72530094846_2016_AMY.epw
+Processing file: data/cities/Chicago/AMY/Chicago_72530094846_2017_AMY.epw
+Processing file: data/cities/Chicago/AMY/Chicago_72530094846_2018_AMY.epw
+Processing file: data/cities/Chicago/AMY/Chicago_72530094846_2019_AMY.epw
+Processing file: data/cities/Chicago/AMY/Chicago_72530094846_2020_AMY.epw
+Processing file: data/cities/Chicago/AMY/Chicago_72530094846_2021_AMY.epw
+Processing file: data/cities/Chicago/AMY/Chicago_72530094846_2022_AMY.epw
+Processing file: data/cities/Chicago/AMY/Chicago_72530094846_2023_AMY.epw
+Processing file: data/cities/Chicago/AMY/Chicago_72530094846_2024_AMY.epw
+
+📈 Severity scores across all years:
+   - Year 2009: Severity = 14.20
+   - Year 2010: Severity = 55.50
+   - Year 2011: Severity = 64.10
+   - Year 2012: Severity = 145.60
+   - Year 2013: Severity = 40.20
+   - Year 2015: Severity = 12.60
+   - Year 2016: Severity = 34.80
+   - Year 2017: Severity = 24.90
+   - Year 2018: Severity = 62.90
+   - Year 2019: Severity = 36.30
+   - Year 2020: Severity = 91.70
+   - Year 2021: Severity = 62.40
+   - Year 2022: Severity = 39.00
+   - Year 2023: Severity = 37.40
+   - Year 2024: Severity = 54.70
+Heat-wave peak year 2012; runner-up 2020 scores 37.0% lower
+
+Ensemble method run complete.
+Peak severity year identified: 2012
+
+Event Stats for Peak Year:
+   - hwn: 7.00
+   - hwf: 40.00
+   - hwd: 11.00
+   - hwdm: 5.71
+   - hwaa: 39.40
+   - severity: 145.60
+
+✅ Saved all 6 heat wave output CSVs
+ Starting cold spell detection on EPWs in data/cities/Chicago/AMY
+ Seasons: Northern Hemisphere (lat +41.96): summer=[6, 7, 8], winter=[12, 1, 2]
+Cold thresholds (all AMY years): percentile Tmin < -7.6; temperature Tmin < -7.6
+EVT Tmin: threshold < -18.90 (quantile 0.010), GPD shape -0.152, scale 3.335, 3.1 exceedance days per year
+ Processing base EPW file: data/cities/Chicago/TMY/Chicago_IL_725300_TMYx_2009-2023.epw
+ Processing file: data/cities/Chicago/AMY/Chicago_72530094846_2009_AMY.epw
+ Processing file: data/cities/Chicago/AMY/Chicago_72530094846_2010_AMY.epw
+ Processing file: data/cities/Chicago/AMY/Chicago_72530094846_2011_AMY.epw
+ Processing file: data/cities/Chicago/AMY/Chicago_72530094846_2012_AMY.epw
+ Processing file: data/cities/Chicago/AMY/Chicago_72530094846_2013_AMY.epw
+ Processing file: data/cities/Chicago/AMY/Chicago_72530094846_2014_AMY.epw
+ Processing file: data/cities/Chicago/AMY/Chicago_72530094846_2015_AMY.epw
+ Processing file: data/cities/Chicago/AMY/Chicago_72530094846_2016_AMY.epw
+ Processing file: data/cities/Chicago/AMY/Chicago_72530094846_2017_AMY.epw
+ Processing file: data/cities/Chicago/AMY/Chicago_72530094846_2018_AMY.epw
+ Processing file: data/cities/Chicago/AMY/Chicago_72530094846_2019_AMY.epw
+ Processing file: data/cities/Chicago/AMY/Chicago_72530094846_2020_AMY.epw
+ Processing file: data/cities/Chicago/AMY/Chicago_72530094846_2021_AMY.epw
+ Processing file: data/cities/Chicago/AMY/Chicago_72530094846_2022_AMY.epw
+ Processing file: data/cities/Chicago/AMY/Chicago_72530094846_2023_AMY.epw
+ Processing file: data/cities/Chicago/AMY/Chicago_72530094846_2024_AMY.epw
+Cold-spell peak year 2014; runner-up 2015 scores 23.2% lower
+
+ Severity scores across all years:
+   - Year 2009: Severity = 273.88
+   - Year 2010: Severity = 186.30
+   - Year 2011: Severity = 143.52
+   - Year 2012: Severity = 40.84
+   - Year 2013: Severity = 213.32
+   - Year 2014: Severity = 413.04
+   - Year 2015: Severity = 317.22
+   - Year 2016: Severity = 188.94
+   - Year 2017: Severity = 121.98
+   - Year 2018: Severity = 163.32
+   - Year 2019: Severity = 239.24
+   - Year 2020: Severity = 58.86
+   - Year 2021: Severity = 137.50
+   - Year 2022: Severity = 211.70
+   - Year 2023: Severity = 42.56
+   - Year 2024: Severity = 123.22
+
+ Ensemble method run complete.
+ Peak severity year identified: 2014
+
+ Event Stats for Peak Year:
+   - cwn: 6.00
+   - cwf: 53.00
+   - cwd: 15.00
+   - cwdm: 8.83
+   - cwaa: -15.41
+   - severity: 413.04
+
+✅ Saved all 6 cold spell output CSVs.
+Seasons: Northern Hemisphere (lat +41.96): summer=[6, 7, 8], winter=[12, 1, 2]
+Invalid values in the input EPWs: no problems found.
+Heatwave events integrated. Days replaced: 40
+Coldspell events integrated. Days replaced: 53
+Monthly compensation (deviation from base TMY, °C / %RH):
+   - Month  1: -5.80 / -4.8 -> -3.35 / -4.1 (8 days)
+   - Month  2: -4.57 / -9.2 -> -2.85 / -10.9 (4 days)
+   - Month  3: -1.65 / -0.3 -> +0.00 / -0.1 (3 days)
+   - Month  4: +0.00 / +0.0 -> +0.00 / +0.0 (0 days)
+   - Month  5: +0.00 / +0.0 -> +0.00 / +0.0 (0 days)
+   - Month  6: +1.66 / -12.2 -> +0.21 / -9.3 (10 days)
+   - Month  7: +2.79 / -8.0 -> +1.25 / -6.2 (10 days)
+   - Month  8: +0.91 / -1.4 -> +0.13 / -0.7 (2 days)
+   - Month  9: +0.00 / +0.0 -> +0.00 / +0.0 (0 days)
+   - Month 10: +0.00 / +0.0 -> +0.00 / +0.0 (0 days)
+   - Month 11: -1.14 / +0.1 -> -0.00 / -0.2 (3 days)
+   - Month 12: -0.00 / +0.0 -> -0.00 / +0.0 (0 days)
+Wind repair (inserted AMY hours): wind speed 1 h interpolated, 0 h from the TMY; wind direction 26 h interpolated, 0 h from the TMY
+Before smoothing: 19 jumps >8°C/h; largest 22.80°C/h
+After smoothing: 2 jumps >8°C/h; largest 10.40°C/h
+Inserted AMY hours preserved: 3192
+Surrounding hours included in smoothing: 344
+Fields with more missing hours than the base TMY (written with the EPW missing code):
+   - zenith_luminance: 0 -> 3192 hours
+   - total_sky_cover: 0 -> 15 hours
+   - opaque_sky_cover: 0 -> 15 hours
+✅ Final RMY saved to: data/cities/Chicago/RMY/Chicago_IL_725300_RMY_2009-2023.epw
+📂 Heatwave peak AMY: data/cities/Chicago/AMY/Chicago_72530094846_2012_AMY.epw
+📂 Cold-spell peak AMY: data/cities/Chicago/AMY/Chicago_72530094846_2014_AMY.epw

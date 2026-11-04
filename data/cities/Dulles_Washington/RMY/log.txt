@@ -1,0 +1,134 @@
+📂 Running full RMY pipeline:
+   AMY Folder: data/cities/Dulles_Washington/AMY
+   Base Folder: data/cities/Dulles_Washington/TMY
+   Output Folder: data/cities/Dulles_Washington/RMY
+Starting hybrid method on EPWs in data/cities/Dulles_Washington/AMY
+Heat thresholds (all AMY years): percentile Tmin >= 5.0 and Tmax >= 31.7; temperature Tmax >= 31.7; months [6, 7, 8]
+EVT heat index: threshold > 49.43 (quantile 0.990), GPD shape -0.032, scale 2.986, 3.7 exceedance days per year
+GNN: 5844 days from 16 files; loss 7.089 -> 0.230; 246 anomalous days (121 hot, 121 cold)
+Processing file: data/cities/Dulles_Washington/AMY/Dulles_Washington_72403093738_2009_AMY.epw
+Processing file: data/cities/Dulles_Washington/AMY/Dulles_Washington_72403093738_2010_AMY.epw
+Processing file: data/cities/Dulles_Washington/AMY/Dulles_Washington_72403093738_2011_AMY.epw
+Processing file: data/cities/Dulles_Washington/AMY/Dulles_Washington_72403093738_2012_AMY.epw
+Processing file: data/cities/Dulles_Washington/AMY/Dulles_Washington_72403093738_2013_AMY.epw
+Processing file: data/cities/Dulles_Washington/AMY/Dulles_Washington_72403093738_2014_AMY.epw
+Processing file: data/cities/Dulles_Washington/AMY/Dulles_Washington_72403093738_2015_AMY.epw
+Processing file: data/cities/Dulles_Washington/AMY/Dulles_Washington_72403093738_2016_AMY.epw
+Processing file: data/cities/Dulles_Washington/AMY/Dulles_Washington_72403093738_2017_AMY.epw
+Processing file: data/cities/Dulles_Washington/AMY/Dulles_Washington_72403093738_2018_AMY.epw
+Processing file: data/cities/Dulles_Washington/AMY/Dulles_Washington_72403093738_2019_AMY.epw
+Processing file: data/cities/Dulles_Washington/AMY/Dulles_Washington_72403093738_2020_AMY.epw
+Processing file: data/cities/Dulles_Washington/AMY/Dulles_Washington_72403093738_2021_AMY.epw
+Processing file: data/cities/Dulles_Washington/AMY/Dulles_Washington_72403093738_2022_AMY.epw
+Processing file: data/cities/Dulles_Washington/AMY/Dulles_Washington_72403093738_2023_AMY.epw
+Processing file: data/cities/Dulles_Washington/AMY/Dulles_Washington_72403093738_2024_AMY.epw
+
+📈 Severity scores across all years:
+   - Year 2009: Severity = 24.40
+   - Year 2010: Severity = 80.20
+   - Year 2011: Severity = 73.50
+   - Year 2012: Severity = 81.10
+   - Year 2013: Severity = 15.40
+   - Year 2016: Severity = 61.00
+   - Year 2017: Severity = 18.30
+   - Year 2018: Severity = 20.60
+   - Year 2019: Severity = 68.40
+   - Year 2020: Severity = 50.50
+   - Year 2021: Severity = 67.50
+   - Year 2022: Severity = 36.60
+   - Year 2023: Severity = 48.90
+   - Year 2024: Severity = 99.10
+Heat-wave peak year 2024; runner-up 2012 scores 18.2% lower
+
+Ensemble method run complete.
+Peak severity year identified: 2024
+
+Event Stats for Peak Year:
+   - hwn: 6.00
+   - hwf: 33.00
+   - hwd: 8.00
+   - hwdm: 5.50
+   - hwaa: 37.80
+   - severity: 99.10
+
+✅ Saved all 6 heat wave output CSVs
+ Starting cold spell detection on EPWs in data/cities/Dulles_Washington/AMY
+ Seasons: Northern Hemisphere (lat +38.98): summer=[6, 7, 8], winter=[12, 1, 2]
+Cold thresholds (all AMY years): percentile Tmin < -3.9; temperature Tmin < -7.0
+EVT Tmin: threshold < -11.70 (quantile 0.010), GPD shape -0.431, scale 3.529, 3.6 exceedance days per year
+ Processing base EPW file: data/cities/Dulles_Washington/TMY/Dulles_Washington_VA_724030_TMYx_2009-2023.epw
+ Processing file: data/cities/Dulles_Washington/AMY/Dulles_Washington_72403093738_2009_AMY.epw
+ Processing file: data/cities/Dulles_Washington/AMY/Dulles_Washington_72403093738_2010_AMY.epw
+ Processing file: data/cities/Dulles_Washington/AMY/Dulles_Washington_72403093738_2011_AMY.epw
+ Processing file: data/cities/Dulles_Washington/AMY/Dulles_Washington_72403093738_2012_AMY.epw
+ Processing file: data/cities/Dulles_Washington/AMY/Dulles_Washington_72403093738_2013_AMY.epw
+ Processing file: data/cities/Dulles_Washington/AMY/Dulles_Washington_72403093738_2014_AMY.epw
+ Processing file: data/cities/Dulles_Washington/AMY/Dulles_Washington_72403093738_2015_AMY.epw
+ Processing file: data/cities/Dulles_Washington/AMY/Dulles_Washington_72403093738_2016_AMY.epw
+ Processing file: data/cities/Dulles_Washington/AMY/Dulles_Washington_72403093738_2017_AMY.epw
+ Processing file: data/cities/Dulles_Washington/AMY/Dulles_Washington_72403093738_2018_AMY.epw
+ Processing file: data/cities/Dulles_Washington/AMY/Dulles_Washington_72403093738_2019_AMY.epw
+ Processing file: data/cities/Dulles_Washington/AMY/Dulles_Washington_72403093738_2020_AMY.epw
+ Processing file: data/cities/Dulles_Washington/AMY/Dulles_Washington_72403093738_2021_AMY.epw
+ Processing file: data/cities/Dulles_Washington/AMY/Dulles_Washington_72403093738_2022_AMY.epw
+ Processing file: data/cities/Dulles_Washington/AMY/Dulles_Washington_72403093738_2023_AMY.epw
+ No cold spells detected using any method in data/cities/Dulles_Washington/AMY/Dulles_Washington_72403093738_2023_AMY.epw.
+ Processing file: data/cities/Dulles_Washington/AMY/Dulles_Washington_72403093738_2024_AMY.epw
+Cold-spell peak year 2015; runner-up 2014 scores 15.8% lower
+
+ Severity scores across all years:
+   - Year 2009: Severity = 141.10
+   - Year 2010: Severity = 141.80
+   - Year 2011: Severity = 86.70
+   - Year 2012: Severity = 16.80
+   - Year 2013: Severity = 67.30
+   - Year 2014: Severity = 223.00
+   - Year 2015: Severity = 264.80
+   - Year 2016: Severity = 131.60
+   - Year 2017: Severity = 79.40
+   - Year 2018: Severity = 108.90
+   - Year 2019: Severity = 110.60
+   - Year 2020: Severity = 28.60
+   - Year 2021: Severity = 4.50
+   - Year 2022: Severity = 78.90
+   - Year 2024: Severity = 47.70
+
+ Ensemble method run complete.
+ Peak severity year identified: 2015
+
+ Event Stats for Peak Year:
+   - cwn: 8.00
+   - cwf: 45.00
+   - cwd: 11.00
+   - cwdm: 5.62
+   - cwaa: -9.78
+   - severity: 264.80
+
+✅ Saved all 6 cold spell output CSVs.
+Seasons: Northern Hemisphere (lat +38.98): summer=[6, 7, 8], winter=[12, 1, 2]
+Invalid values in the input EPWs: no problems found.
+Heatwave events integrated. Days replaced: 33
+Coldspell events integrated. Days replaced: 45
+Monthly compensation (deviation from base TMY, °C / %RH):
+   - Month  1: -1.01 / +0.6 -> -0.04 / -0.6 (2 days)
+   - Month  2: -0.40 / -1.6 -> -0.06 / -1.5 (2 days)
+   - Month  3: +0.00 / +0.0 -> +0.00 / +0.0 (0 days)
+   - Month  4: +0.00 / +0.0 -> +0.00 / +0.0 (0 days)
+   - Month  5: +0.00 / +0.0 -> +0.00 / +0.0 (0 days)
+   - Month  6: +1.03 / -4.0 -> -0.03 / -1.1 (3 days)
+   - Month  7: +2.02 / +1.3 -> +0.23 / +1.5 (7 days)
+   - Month  8: +0.86 / -1.4 -> +0.05 / -0.7 (3 days)
+   - Month  9: +0.00 / +0.0 -> +0.00 / +0.0 (0 days)
+   - Month 10: +0.00 / +0.0 -> +0.00 / +0.0 (0 days)
+   - Month 11: +0.00 / +0.0 -> +0.00 / +0.0 (0 days)
+   - Month 12: +0.00 / +0.0 -> +0.00 / +0.0 (0 days)
+Wind repair (inserted AMY hours): wind speed 2 h interpolated, 0 h from the TMY; wind direction 76 h interpolated, 0 h from the TMY
+Before smoothing: 15 jumps >8°C/h; largest 13.58°C/h
+After smoothing: 6 jumps >8°C/h; largest 9.40°C/h
+Inserted AMY hours preserved: 2280
+Surrounding hours included in smoothing: 392
+Fields with more missing hours than the base TMY (written with the EPW missing code):
+   - zenith_luminance: 2808 -> 3432 hours
+✅ Final RMY saved to: data/cities/Dulles_Washington/RMY/Dulles_Washington_VA_724030_RMY_2009-2023.epw
+📂 Heatwave peak AMY: data/cities/Dulles_Washington/AMY/Dulles_Washington_72403093738_2024_AMY.epw
+📂 Cold-spell peak AMY: data/cities/Dulles_Washington/AMY/Dulles_Washington_72403093738_2015_AMY.epw

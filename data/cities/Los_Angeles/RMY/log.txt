@@ -1,0 +1,142 @@
+📂 Running full RMY pipeline:
+   AMY Folder: data/cities/Los_Angeles/AMY
+   Base Folder: data/cities/Los_Angeles/TMY
+   Output Folder: data/cities/Los_Angeles/RMY
+Starting hybrid method on EPWs in data/cities/Los_Angeles/AMY
+Heat thresholds (all AMY years): percentile Tmin >= 13.0 and Tmax >= 26.1; temperature Tmax >= 30.0; months [6, 7, 8, 9, 10]
+EVT heat index: threshold > 34.35 (quantile 0.990), GPD shape -0.001, scale 4.435, 3.7 exceedance days per year
+GNN: 5844 days from 16 files; loss 7.933 -> 0.203; 157 anomalous days (109 hot, 61 cold)
+Processing file: data/cities/Los_Angeles/AMY/Los_Angeles_72295023174_2009_AMY.epw
+Processing file: data/cities/Los_Angeles/AMY/Los_Angeles_72295023174_2010_AMY.epw
+Processing file: data/cities/Los_Angeles/AMY/Los_Angeles_72295023174_2011_AMY.epw
+Processing file: data/cities/Los_Angeles/AMY/Los_Angeles_72295023174_2012_AMY.epw
+Processing file: data/cities/Los_Angeles/AMY/Los_Angeles_72295023174_2013_AMY.epw
+Processing file: data/cities/Los_Angeles/AMY/Los_Angeles_72295023174_2014_AMY.epw
+Processing file: data/cities/Los_Angeles/AMY/Los_Angeles_72295023174_2015_AMY.epw
+Processing file: data/cities/Los_Angeles/AMY/Los_Angeles_72295023174_2016_AMY.epw
+Processing file: data/cities/Los_Angeles/AMY/Los_Angeles_72295023174_2017_AMY.epw
+Processing file: data/cities/Los_Angeles/AMY/Los_Angeles_72295023174_2018_AMY.epw
+Processing file: data/cities/Los_Angeles/AMY/Los_Angeles_72295023174_2019_AMY.epw
+Processing file: data/cities/Los_Angeles/AMY/Los_Angeles_72295023174_2020_AMY.epw
+Processing file: data/cities/Los_Angeles/AMY/Los_Angeles_72295023174_2021_AMY.epw
+Processing file: data/cities/Los_Angeles/AMY/Los_Angeles_72295023174_2022_AMY.epw
+Processing file: data/cities/Los_Angeles/AMY/Los_Angeles_72295023174_2023_AMY.epw
+Processing file: data/cities/Los_Angeles/AMY/Los_Angeles_72295023174_2024_AMY.epw
+
+📈 Severity scores across all years:
+   - Year 2009: Severity = 0.00
+   - Year 2010: Severity = 6.00
+   - Year 2011: Severity = 0.00
+   - Year 2012: Severity = 2.10
+   - Year 2013: Severity = 0.00
+   - Year 2014: Severity = 6.60
+   - Year 2015: Severity = 9.80
+   - Year 2016: Severity = 13.40
+   - Year 2017: Severity = 37.00
+   - Year 2018: Severity = 1.20
+   - Year 2019: Severity = 16.80
+   - Year 2020: Severity = 5.70
+   - Year 2021: Severity = 0.00
+   - Year 2022: Severity = 16.00
+   - Year 2023: Severity = 0.00
+   - Year 2024: Severity = 9.00
+Heat-wave peak year 2017; runner-up 2019 scores 54.6% lower
+
+Ensemble method run complete.
+Peak severity year identified: 2017
+
+Event Stats for Peak Year:
+   - hwn: 5.00
+   - hwf: 23.00
+   - hwd: 6.00
+   - hwdm: 4.60
+   - hwaa: 39.40
+   - severity: 37.00
+
+✅ Saved all 6 heat wave output CSVs
+ Starting cold spell detection on EPWs in data/cities/Los_Angeles/AMY
+ Seasons: Northern Hemisphere (lat +33.94): summer=[6, 7, 8], winter=[12, 1, 2]
+Cold thresholds (all AMY years): percentile Tmin < 9.4; temperature Tmin < -7.0
+EVT Tmin: threshold < 6.10 (quantile 0.010), GPD shape -0.374, scale 1.403, 2.6 exceedance days per year
+ Processing base EPW file: data/cities/Los_Angeles/TMY/Los_Angeles_CA_722950_TMYx_2009-2023.epw
+ No cold spells detected using any method in data/cities/Los_Angeles/TMY/Los_Angeles_CA_722950_TMYx_2009-2023.epw.
+ Processing file: data/cities/Los_Angeles/AMY/Los_Angeles_72295023174_2009_AMY.epw
+ Processing file: data/cities/Los_Angeles/AMY/Los_Angeles_72295023174_2010_AMY.epw
+ Processing file: data/cities/Los_Angeles/AMY/Los_Angeles_72295023174_2011_AMY.epw
+ Processing file: data/cities/Los_Angeles/AMY/Los_Angeles_72295023174_2012_AMY.epw
+ Processing file: data/cities/Los_Angeles/AMY/Los_Angeles_72295023174_2013_AMY.epw
+ Processing file: data/cities/Los_Angeles/AMY/Los_Angeles_72295023174_2014_AMY.epw
+ Processing file: data/cities/Los_Angeles/AMY/Los_Angeles_72295023174_2015_AMY.epw
+ Processing file: data/cities/Los_Angeles/AMY/Los_Angeles_72295023174_2016_AMY.epw
+ Processing file: data/cities/Los_Angeles/AMY/Los_Angeles_72295023174_2017_AMY.epw
+ Processing file: data/cities/Los_Angeles/AMY/Los_Angeles_72295023174_2018_AMY.epw
+ Processing file: data/cities/Los_Angeles/AMY/Los_Angeles_72295023174_2019_AMY.epw
+ Processing file: data/cities/Los_Angeles/AMY/Los_Angeles_72295023174_2020_AMY.epw
+ Processing file: data/cities/Los_Angeles/AMY/Los_Angeles_72295023174_2021_AMY.epw
+ Processing file: data/cities/Los_Angeles/AMY/Los_Angeles_72295023174_2022_AMY.epw
+ Processing file: data/cities/Los_Angeles/AMY/Los_Angeles_72295023174_2023_AMY.epw
+ Processing file: data/cities/Los_Angeles/AMY/Los_Angeles_72295023174_2024_AMY.epw
+Cold-spell peak year 2013; runner-up 2021 scores 23.7% lower
+
+ Severity scores across all years:
+   - Year 2009: Severity = 59.90
+   - Year 2010: Severity = 27.10
+   - Year 2011: Severity = 72.00
+   - Year 2012: Severity = 39.30
+   - Year 2013: Severity = 94.90
+   - Year 2014: Severity = 15.60
+   - Year 2015: Severity = 50.00
+   - Year 2016: Severity = 20.40
+   - Year 2017: Severity = 24.80
+   - Year 2018: Severity = 28.20
+   - Year 2019: Severity = 61.90
+   - Year 2020: Severity = 22.40
+   - Year 2021: Severity = 72.40
+   - Year 2022: Severity = 52.40
+   - Year 2023: Severity = 67.80
+   - Year 2024: Severity = 35.70
+
+ Ensemble method run complete.
+ Peak severity year identified: 2013
+
+ Event Stats for Peak Year:
+   - cwn: 6.00
+   - cwf: 42.00
+   - cwd: 10.00
+   - cwdm: 7.00
+   - cwaa: 7.14
+   - severity: 94.90
+
+ Skipped empty file: data/cities/Los_Angeles/RMY/coldspells/coldspells_events_base.csv
+ Skipped empty file: data/cities/Los_Angeles/RMY/coldspells/coldspells_stats_base.csv
+✅ Saved all 6 cold spell output CSVs.
+Seasons: Northern Hemisphere (lat +33.94): summer=[6, 7, 8], winter=[12, 1, 2]
+Invalid values in the input EPWs: no problems found.
+WARNING: missing events CSV: data/cities/Los_Angeles/RMY/coldspells/coldspells_events_base.csv
+Heatwave events integrated. Days replaced: 23
+Coldspell events integrated. Days replaced: 42
+Monthly compensation (deviation from base TMY, °C / %RH):
+   - Month  1: -1.28 / -8.5 -> -0.38 / -2.0 (10 days)
+   - Month  2: -1.23 / +0.2 -> -0.18 / -1.8 (3 days)
+   - Month  3: +0.00 / +0.0 -> +0.00 / +0.0 (0 days)
+   - Month  4: +0.00 / +0.0 -> +0.00 / +0.0 (0 days)
+   - Month  5: +0.00 / +0.0 -> +0.00 / +0.0 (0 days)
+   - Month  6: +0.00 / +0.0 -> +0.00 / +0.0 (0 days)
+   - Month  7: +0.49 / +0.2 -> +0.25 / +0.4 (2 days)
+   - Month  8: +0.47 / +0.8 -> +0.16 / +1.4 (2 days)
+   - Month  9: +0.61 / -0.7 -> +0.24 / +0.9 (1 days)
+   - Month 10: +1.44 / -7.3 -> +0.13 / -0.4 (6 days)
+   - Month 11: +0.00 / +0.0 -> +0.00 / +0.0 (0 days)
+   - Month 12: -1.06 / -8.2 -> -0.23 / -0.6 (9 days)
+Wind repair (inserted AMY hours): wind speed 1 h interpolated, 0 h from the TMY; wind direction 129 h interpolated, 0 h from the TMY
+Before smoothing: 14 jumps >8°C/h; largest 12.80°C/h
+After smoothing: 10 jumps >8°C/h; largest 10.20°C/h
+Inserted AMY hours preserved: 2352
+Surrounding hours included in smoothing: 320
+Fields with more missing hours than the base TMY (written with the EPW missing code):
+   - zenith_luminance: 0 -> 2352 hours
+   - total_sky_cover: 0 -> 19 hours
+   - opaque_sky_cover: 0 -> 19 hours
+✅ Final RMY saved to: data/cities/Los_Angeles/RMY/Los_Angeles_CA_722950_RMY_2009-2023.epw
+📂 Heatwave peak AMY: data/cities/Los_Angeles/AMY/Los_Angeles_72295023174_2017_AMY.epw
+📂 Cold-spell peak AMY: data/cities/Los_Angeles/AMY/Los_Angeles_72295023174_2013_AMY.epw
