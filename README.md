@@ -58,7 +58,8 @@ data/
 ├── cities/             ← one folder per city (8 US cities included)
 │   └── <City>/
 │       ├── AMY/        ← AMY EPWs, one per year (the year must be in the file name)
-│       └── TMY/        ← exactly one base TMY EPW
+│       ├── TMY/        ← exactly one base TMY EPW
+│       └── RMY/        ← RMY outputs for this city: RMY EPW, event CSVs, timeline plot, log
 ├── RMY/                ← published RMY EPWs
 └── FRMY/               ← published FRMY EPWs
 examples/               ← Google Colab notebook
