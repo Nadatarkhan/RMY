@@ -128,6 +128,60 @@ def label_rmy_header(header_lines, amy_years, peak_heat_year=None, peak_cold_yea
     return lines
 
 
+def typical_extreme_periods_line(df):
+    """EPW 'TYPICAL/EXTREME PERIODS' line computed from the hourly data in `df`.
+
+    Seasons follow the climate: Summer is the three consecutive months with the highest
+    mean dry-bulb temperature, then Autumn, Winter and Spring in three-month blocks (this
+    also works in the southern hemisphere). Weeks are any 7 consecutive days inside the
+    season (a winter week may cross 31 December):
+      Summer extreme: highest mean daily maximum; Winter extreme: lowest mean daily minimum;
+      Typical (each season): mean daily temperature nearest the season's mean.
+    Ties go to the earliest week. Same six periods and wording as the EnergyPlus/TMYx line.
+    """
+    days = df.groupby(['month', 'day'], sort=False)['temp_air'].agg(['mean', 'max', 'min']).reset_index()
+    month = days['month'].to_numpy()
+    monthly = days.groupby('month')['mean'].mean().reindex(range(1, 13)).to_numpy()
+    first = max(range(12), key=lambda s: np.nanmean(monthly[[(s + k) % 12 for k in range(3)]]))
+    seasons = {name: [(first + 3 * i + k) % 12 + 1 for k in range(3)]
+               for i, name in enumerate(('Summer', 'Autumn', 'Winter', 'Spring'))}
+    n = len(days)
+
+    def pick(season, score):
+        weeks = [np.arange(s, s + 7) % n for s in range(n)
+                 if np.isin(month[np.arange(s, s + 7) % n], seasons[season]).all()]
+        return weeks[int(np.nanargmax([score(w) for w in weeks]))]
+
+    def nearest_mean(season):
+        target = days['mean'][np.isin(month, seasons[season])].mean()
+        return pick(season, lambda w: -abs(days['mean'].iloc[w].mean() - target))
+
+    periods = [
+        ('Summer - Week Nearest Max Temperature For Period', 'Extreme',
+         pick('Summer', lambda w: days['max'].iloc[w].mean())),
+        ('Summer - Week Nearest Average Temperature For Period', 'Typical', nearest_mean('Summer')),
+        ('Winter - Week Nearest Min Temperature For Period', 'Extreme',
+         pick('Winter', lambda w: -days['min'].iloc[w].mean())),
+        ('Winter - Week Nearest Average Temperature For Period', 'Typical', nearest_mean('Winter')),
+        ('Autumn - Week Nearest Average Temperature For Period', 'Typical', nearest_mean('Autumn')),
+        ('Spring - Week Nearest Average Temperature For Period', 'Typical', nearest_mean('Spring')),
+    ]
+    date = lambda i: f"{int(days['month'].iloc[i])}/{int(days['day'].iloc[i]):2d}"
+    return 'TYPICAL/EXTREME PERIODS,6,' + ','.join(
+        f'{name},{kind},{date(w[0])},{date(w[-1])}' for name, kind, w in periods)
+
+
+def set_typical_extreme_periods(header_lines, df):
+    """Return the header with only its TYPICAL/EXTREME PERIODS line recomputed from `df`."""
+    lines = list(header_lines)
+    idx = next((i for i, l in enumerate(lines) if l.upper().startswith('TYPICAL/EXTREME PERIODS')), None)
+    if idx is None:
+        raise ValueError('EPW header has no TYPICAL/EXTREME PERIODS line')
+    ending = lines[idx][len(lines[idx].rstrip('\r\n')):]
+    lines[idx] = typical_extreme_periods_line(df) + ending
+    return lines
+
+
 def extract_original_header(epw_path) -> list[str]:
     """Return the 8 raw EPW header lines (with their line endings, CRLF or LF)."""
     with open(epw_path, 'r', newline='') as f:

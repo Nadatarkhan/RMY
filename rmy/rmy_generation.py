@@ -21,7 +21,7 @@ from .heatwaves import run_full_pipeline
 from .seasons import season_plan_for_epw
 from .utils import (
     WEATHER_COLS, extract_original_header, find_epw_by_year, get_peak_year,
-    label_rmy_header, list_epws, read_epw_file, safe_load_events, write_epw,
+    label_rmy_header, list_epws, read_epw_file, safe_load_events, set_typical_extreme_periods, write_epw,
 )
 from .validation import audit_epws, print_report
 
@@ -490,6 +490,7 @@ def construct_final_rmy(base_epw_path, epw_dir, hot_dir, cold_dir, output_path,
 
     amy_years = [int(read_epw_file(p, mask=False)['year'].mode().iloc[0]) for p in epw_list]
     header = label_rmy_header(header, amy_years, heat_year, cold_year)
+    header = set_typical_extreme_periods(header, final)   # design weeks of the RMY itself
     write_epw(final, header, output_path)
     _report_missing_hours(base_epw, final)
 

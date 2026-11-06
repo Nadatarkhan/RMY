@@ -23,14 +23,15 @@ def run(tmp_path_factory):
     return out, rmy_path
 
 
-def test_rmy_header_changes_only_comments_2(run):
+def test_rmy_header_changes_only_design_weeks_and_comments_2(run):
     _, rmy_path = run
     base = list_epws(BASE_DIR)[0]
     old, new = extract_original_header(base), extract_original_header(rmy_path)
     assert len(new) == 8
     changed = [i for i in range(8) if old[i] != new[i]]
-    assert changed == [6]                                   # COMMENTS 2 only
-    assert [l.count(',') for l in new] == [l.count(',') for l in old]
+    assert changed in ([2, 6], [6])                         # TYPICAL/EXTREME PERIODS and COMMENTS 2 only
+    assert [l.count(',') for l in new] == [l.count(',') for l in old]   # same six periods as the TMYx
+    assert new[2].startswith('TYPICAL/EXTREME PERIODS,6,Summer - Week Nearest Max Temperature For Period,Extreme,')
     assert new[6].startswith('COMMENTS 2,"RMY extreme weather file: heat waves and cold spells '
                              'from AMYs 2009-2024 inserted (peak heat year 2022; peak cold year 2015); ')
     assert new[6].endswith(old[6][len('COMMENTS 2,"'):])     # original text kept
