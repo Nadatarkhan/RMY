@@ -25,7 +25,7 @@ Requirements: `pip install -r amy_sourcing/requirements.txt`.
 
 ## API key
 
-Stations in the Americas use NSRDB solar radiation, which needs a free NREL API key and the email it is registered to: sign up at <https://developer.nrel.gov/signup/>. Each user needs their own key; never put a key in code or in a shared notebook. The code removes keys and emails from every report and message it saves. Stations outside the Americas use PVGIS and need no key.
+Stations in the Americas use NSRDB solar radiation, which needs a free NREL API key and the email it is registered to: see <https://developer.nlr.gov/docs/climate/guide/>. Each user needs their own key; never put a key in code or in a shared notebook. The code removes keys and emails from every report and message it saves. Stations outside the Americas use PVGIS and need no key.
 
 ## Outputs
 

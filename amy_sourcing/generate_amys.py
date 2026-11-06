@@ -1792,7 +1792,7 @@ def generate_amys(station_number, output_dir, nsrdb_api_key=None, nsrdb_email=No
 
     station_number: 6-character USAF/WMO or 11-character USAF+WBAN (e.g. '72509014739').
     output_dir: AMYs go to <output_dir>/<City>/AMY/, reports to <City>/AMY_reports/.
-    nsrdb_api_key, nsrdb_email: free NREL developer key (developer.nrel.gov/signup),
+    nsrdb_api_key, nsrdb_email: free NREL developer key (https://developer.nlr.gov/docs/climate/guide/),
         needed for stations in the Americas (NSRDB). Not needed elsewhere (PVGIS).
     city: optional file-safe city name; otherwise from the override list or NOAA.
     radiation_source: None picks NSRDB in the Americas and PVGIS elsewhere.
@@ -1817,7 +1817,7 @@ def generate_amys(station_number, output_dir, nsrdb_api_key=None, nsrdb_email=No
     source = (radiation_source or ('NSRDB' if is_americas_location(st) else 'AUTO')).upper()
     if source in ('NSRDB', 'AUTO') and is_americas_location(st) and not (nsrdb_api_key and nsrdb_email):
         raise ValueError('This station is in the Americas, so solar radiation comes from NSRDB, which '
-                         'needs your own free NREL API key and email (developer.nrel.gov/signup).')
+                         'needs your own free NREL API key and email (https://developer.nlr.gov/docs/climate/guide/).')
 
     end = last_complete_year(st, 'NSRDB' if source == 'NSRDB' else 'PVGIS')
     first_allowed = max(int(str(st['begin'])[:4]),
