@@ -308,9 +308,8 @@ def build_header(header: List[str], selected: Dict[int, dict], header_name: str,
                       f'dry-bulb temperature, relative humidity and global horizontal radiation, '
                       f'with wind speed as secondary parameter"{eol}')
         if update_comments_2 and line.upper().startswith('COMMENTS 2'):
-            out[i] = (f'COMMENTS 2,"Location, design conditions, ground temperatures and '
-                      f'typical/extreme periods copied from {header_name}; not recalculated '
-                      f'for this file"{eol}')
+            out[i] = (f'COMMENTS 2,"Location, design conditions and ground temperatures copied '
+                      f'from {header_name}; not recalculated for this file"{eol}')
     return out
 
 
