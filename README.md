@@ -62,9 +62,11 @@ data/
 │       └── RMY/        ← RMY outputs for this city: RMY EPW, event CSVs, timeline plot, log
 ├── RMY/                ← published RMY EPWs
 └── FRMY/               ← published FRMY EPWs
-examples/               ← Google Colab notebook
+amy_sourcing/           ← AMY generation from a NOAA station number (NOAA + NSRDB)
+examples/               ← Google Colab notebooks
 images/                 ← figures used in this README
 rmy/                    ← the Python package
+tmy/                    ← TMY generation from AMYs (ISO 15927-4)
 tests/                  ← automated checks
 ```
 
@@ -118,6 +120,10 @@ coldspells/               → cold-spell events and yearly statistics
 ## Try it on Google Colab
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Nadatarkhan/RMY/blob/main/examples/RMY_Generation_Colab.ipynb)
+
+End to end from a NOAA station number (AMYs → TMY → RMY, with plots; needs a free [NREL API key](https://developer.nrel.gov/signup/) for stations in the Americas):
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Nadatarkhan/RMY/blob/main/examples/RMY_End_to_End_Colab.ipynb)
 
 ---
 ## What's Next?
