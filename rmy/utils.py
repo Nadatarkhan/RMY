@@ -73,15 +73,20 @@ def write_epw(df, header_lines, path):
 
     Line endings follow the header (CRLF or LF) so the file is not mixed.
     NaN in a checked field is written as that field's EPW missing code.
+    Numbers are rounded to 4 decimals, so floating-point leftovers such as
+    8.88178e-16 are written as 0 rather than in scientific notation.
     """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     newline = '\r\n' if header_lines and header_lines[0].endswith('\r\n') else '\n'
+    rows = fill_missing_codes(df)
+    floats = rows.select_dtypes('float').columns
+    rows[floats] = rows[floats].round(4) + 0.0          # + 0.0 turns -0.0 into 0.0
     with open(path, 'w', newline='') as out:
         for line in header_lines:
             out.write(line.rstrip('\r\n') + newline)
-        fill_missing_codes(df).to_csv(out, index=False, header=False, float_format='%g',
-                                      na_rep='999', lineterminator=newline)
+        rows.to_csv(out, index=False, header=False, float_format='%g',
+                    na_rep='999', lineterminator=newline)
     return path
 
 

@@ -43,6 +43,19 @@ def test_rmy_header_changes_only_design_weeks_and_comments_2(run):
     assert len(read_epw_file(rmy_path)) == len(read_epw_file(base)) == 8760
 
 
+def test_write_epw_never_uses_scientific_notation(run, tmp_path):
+    from rmy.utils import write_epw
+    _, rmy_path = run
+    assert b'e-' not in Path(rmy_path).read_bytes().split(b'\n', 8)[8]
+    df = read_epw_file(rmy_path)
+    header = extract_original_header(rmy_path)
+    df.loc[0:3, 'temp_air'] = [8.88178e-16, -1e-12, 14.77777777, -3.25]
+    out = write_epw(df, header, tmp_path / 'x.epw')
+    first = [l.split(',')[6] for l in out.read_text().splitlines()[8:12]]
+    assert first == ['0', '0', '14.7778', '-3.25']
+    pd.testing.assert_frame_equal(read_epw_file(out).iloc[4:], df.iloc[4:], atol=5e-5, check_exact=False)
+
+
 def test_rmy_keeps_base_timestamps(run):
     _, rmy_path = run
     base = read_epw_file(list_epws(BASE_DIR)[0])
