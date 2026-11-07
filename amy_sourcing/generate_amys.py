@@ -838,6 +838,9 @@ def repair_wind_direction(surface,mode='CIRCULAR_LINEAR',max_gap=2):
         'wind_speed_clipped_high_hours':int(ws_hi),
         'wind_speed_max_original_missing_run_hours':int(max_missing_run(pd.Series(initial_ws_missing.map({True:np.nan,False:0}),index=s.index))),
         'wind_direction_max_original_missing_run_hours':int(max_missing_run(pd.Series(initial_wd_missing.map({True:np.nan,False:0}),index=s.index))),
+        # Same, without hours reported as calm or variable (no direction by definition, not outages).
+        'wind_direction_max_outage_run_hours':int(max_missing_run(pd.Series(
+            (initial_wd_missing & ~types.isin(['C','V']) & ~s.WS_original.eq(0)).map({True:np.nan,False:0}),index=s.index))),
         'wind_speed_max_filled_run_hours':int(np.max(s.WS_GAP_H.to_numpy()[ws_fill.to_numpy()],initial=0)),
         'wind_direction_max_filled_run_hours':int(np.max(s.WD_GAP_H.to_numpy()[wd_fill.to_numpy()],initial=0)),
         'wind_speed_remaining_missing_hours':int(s.WS.isna().sum()),
@@ -1607,13 +1610,15 @@ def create_station_year(session,st,year,cache_dir,out_dir,key,email,preferred='A
                          +f"DB/DP/PR={report['DB_max_gap_hours']}/{report['DP_max_gap_hours']}/{report['PR_max_gap_hours']} h")
     # Wind reconstruction may create complete EPWs but carries its own risks.
     wind_longest=max(report['wind_speed_max_original_missing_run_hours'],
-                     report['wind_direction_max_original_missing_run_hours'])
+                     report['wind_direction_max_outage_run_hours'])
     wind_missing=report['wind_speed_remaining_missing_hours']+report['wind_direction_remaining_missing_hours']
     wind_high_risk=(wind_missing>0 or wind_longest>=wind_high_risk_gap)
+    # Hours reported as calm or variable (VRB) have no direction by definition and occur at
+    # almost every US airport in every year: they are still counted in the report, but only
+    # real outages (and extrapolation or clipping) trigger the wind review grades.
     wind_review=(wind_longest>=wind_review_gap or
                  report['wind_speed_extrapolated_start_hours']+report['wind_speed_extrapolated_end_hours']>0 or
                  report['wind_direction_extrapolated_start_hours']+report['wind_direction_extrapolated_end_hours']>0 or
-                 report['wind_direction_variable_imputed_hours']>0 or
                  report['wind_speed_clipped_low_hours']+report['wind_speed_clipped_high_hours']>0)
     report['wind_high_risk_flag']=bool(wind_high_risk)
     report['wind_review_flag']=bool(wind_review)

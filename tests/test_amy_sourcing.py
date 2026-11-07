@@ -104,3 +104,17 @@ def test_americas_station_without_key_is_refused(tmp_path, monkeypatch):
     monkeypatch.setattr(ga, 'station_catalog', _fake_station_catalog)
     with contextlib.redirect_stdout(io.StringIO()), pytest.raises(ValueError, match='NREL API key'):
         ga.generate_amys('72509014739', tmp_path, None, None, tz_offset=-5)
+
+
+def test_calm_and_variable_hours_are_not_wind_outages():
+    # 8 calm hours, 8 variable (VRB) hours, then a real 3-hour outage.
+    n = 24
+    ws = [3.0] * 2 + [0.0] * 8 + [2.0] * 8 + [4.0, np.nan, np.nan, np.nan, 5.0, 6.0]
+    wd = [200.0] * 2 + [np.nan] * 16 + [210.0, np.nan, np.nan, np.nan, 220.0, 230.0]
+    wt = ['N'] * 2 + ['C'] * 8 + ['V'] * 8 + ['N', '', '', '', 'N', 'N']
+    s = pd.DataFrame({'WS': ws, 'WD': wd, 'WIND_TYPE': wt},
+                     index=pd.date_range('2020-01-01', periods=n, freq='h'))
+    _, rep = ga.repair_wind_direction(s, mode='CIRCULAR_LINEAR')
+    assert rep['wind_direction_max_original_missing_run_hours'] == 16   # unchanged report field
+    assert rep['wind_direction_max_outage_run_hours'] == 3               # real outage only
+    assert rep['wind_direction_variable_imputed_hours'] == 8             # still reported
