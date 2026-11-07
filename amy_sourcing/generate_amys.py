@@ -1681,8 +1681,10 @@ def create_station_year(session,st,year,cache_dir,out_dir,key,email,preferred='A
         report['qc_grade']='HIGH_RISK_WIND' if report['qc_grade']=='GOOD' else report['qc_grade']+'+WIND'
     elif wind_review and report['qc_grade']=='GOOD':
         report['qc_grade']='REVIEW_WIND'
-    if report['opaque_sky_total_proxy_hours']+report['opaque_sky_GA_proxy_hours']>.25*n and report['qc_grade']=='GOOD':
-        report['qc_grade']='REVIEW_ATMOSPHERE'
+    # No REVIEW_ATMOSPHERE grade for opaque sky cover taken from total cover
+    # (TOTAL_COVER_PROXY): US stations report no opaque cover, so this documented method
+    # applies to every hour of every year and the grade said nothing about the year.
+    # The proxy hours are still counted in the report (opaque_sky_*_proxy_hours).
     if report['precip_multi_hour_reports']>0 and report['qc_grade']=='GOOD': report['qc_grade']='REVIEW_PRECIP'
     if prov['radiation_is_reanalysis']:
         report['qc_grade']='REVIEW_REANALYSIS_SOLAR' if report['qc_grade']=='GOOD' else report['qc_grade']+'+ERA5_SOLAR'
