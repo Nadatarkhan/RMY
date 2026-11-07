@@ -45,6 +45,20 @@ NSRDB_EXTENDED_ATTRIBUTES = [
     'ghi', 'dni', 'dhi', 'aod', 'total_precipitable_water',
     'surface_albedo', 'solar_zenith_angle', 'cloud_type', 'fill_flag'
 ]
+# CSV column names of the optional NSRDB fields, lower case without spaces or symbols.
+# The GOES v4 CSV names some fields differently from the API attribute
+# ('Aerosol Optical Depth' for aod, 'Precipitable Water' for total_precipitable_water).
+NSRDB_FIELD_COLUMNS = {
+    'AOD': ('aod', 'aerosolopticaldepth'),
+    'PW_CM': ('totalprecipitablewater', 'precipitablewater'),
+    'ALBEDO': ('surfacealbedo',), 'ZENITH_DEG': ('solarzenithangle',),
+    'CLOUD_TYPE': ('cloudtype',), 'FILL_FLAG': ('fillflag',),
+}
+
+
+def _nsrdb_column(lookup, field):
+    """The CSV column holding an optional NSRDB field, or None."""
+    return next((lookup[k] for k in NSRDB_FIELD_COLUMNS[field] if k in lookup), None)
 # NOAA sky cover codes 00..08 represent 0..8 oktas (not 0..10 tenths).
 # Approximate octas -> tenths using centers of documented NCEI ranges.
 NOAA_OKTAS_TO_TENTHS = {0:0., 1:1., 2:2.5, 3:4., 4:5.,
@@ -481,12 +495,10 @@ def nsrdb_radiation(session, year, station, cache_dir, key, email, tz_offset):
                   for v in ['ghi','dni','dhi']}
     # Optional NSRDB ancillary fields are returned with irradiance and retain
     # their original time alignment; missing attrs must NOT masquerade as zero.
-    additional = {'aod':'AOD','totalprecipitablewater':'PW_CM',
-                  'surfacealbedo':'ALBEDO','solarzenithangle':'ZENITH_DEG',
-                  'cloudtype':'CLOUD_TYPE','fillflag':'FILL_FLAG'}
-    for key,outcol in additional.items():
-        rad_values[outcol] = (pd.to_numeric(d[lower[key]],errors='coerce').to_numpy()
-                              if key in lower else np.full(len(d),np.nan))
+    for outcol in NSRDB_FIELD_COLUMNS:
+        column = _nsrdb_column(lower, outcol)
+        rad_values[outcol] = (pd.to_numeric(d[column],errors='coerce').to_numpy()
+                              if column is not None else np.full(len(d),np.nan))
     # NLR metadata specifies precipitable water in centimeters.
     pwunit = next((str(v).strip().lower() for k,v in metadata.items()
                    if 'precipitable water units' in k.lower()), 'cm')
@@ -686,9 +698,9 @@ def optional_nsrdb_ancillary_retry(session,year,st,cache_dir,key,email,tz,rad):
         if stamp.isna().any() or stamp.duplicated().any(): raise ValueError('Ancillary dates invalid')
         supplement=pd.DataFrame(index=pd.DatetimeIndex(stamp))
         for col,attr in desired.items():
-            key0=re.sub('[^a-z0-9]','',attr)
-            if attr not in missing or key0 not in lookup: continue
-            values=pd.to_numeric(dd[lookup[key0]],errors='coerce').to_numpy(dtype=float,copy=True)
+            column=_nsrdb_column(lookup,col)
+            if attr not in missing or column is None: continue
+            values=pd.to_numeric(dd[column],errors='coerce').to_numpy(dtype=float,copy=True)
             if col=='PW_CM':
                 # API standard NSRDB unit for total precipitable water: cm.
                 values[(values<0)|(values>20)]=np.nan

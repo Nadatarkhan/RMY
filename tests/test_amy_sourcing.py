@@ -118,3 +118,25 @@ def test_calm_and_variable_hours_are_not_wind_outages():
     assert rep['wind_direction_max_original_missing_run_hours'] == 16   # unchanged report field
     assert rep['wind_direction_max_outage_run_hours'] == 3               # real outage only
     assert rep['wind_direction_variable_imputed_hours'] == 8             # still reported
+
+
+def test_nsrdb_aerosol_and_precipitable_water_are_read_under_their_csv_names(tmp_path):
+    # Column names exactly as the NSRDB GOES v4 CSV gives them (Las Vegas run, 2010-2024).
+    st = {'station_id': '72386023169', 'lat': 36.072, 'lon': -115.163}
+    idx = pd.date_range('2023-01-01 00:30', periods=8760, freq='h')
+    body = pd.DataFrame({'Year': idx.year, 'Month': idx.month, 'Day': idx.day, 'Hour': idx.hour,
+                         'Minute': 30, 'GHI': 0, 'DNI': 0, 'DHI': 0,
+                         'Aerosol Optical Depth': 0.08, 'Precipitable Water': 1.25,
+                         'Surface Albedo': 0.2, 'Solar Zenith Angle': 95.0,
+                         'Cloud Type': 0, 'Fill Flag': 0})
+    cache = tmp_path / 'radiation' / 'nsrdb' / st['station_id'] / '2023_local_extended_v4.csv'
+    cache.parent.mkdir(parents=True)
+    cache.write_text('Source,Time Zone,Precipitable Water Units\nNSRDB,-8,cm\n'
+                     + body.to_csv(index=False))
+    with contextlib.redirect_stdout(io.StringIO()):
+        rad, _ = ga.nsrdb_radiation(None, 2023, st, tmp_path, 'key', 'a@b.c', -8)
+    assert (rad['AOD'] == 0.08).all() and (rad['PW_CM'] == 1.25).all()
+    assert (rad['ALBEDO'] == 0.2).all() and rad['CLOUD_TYPE'].notna().all()
+    epw_pw = ga.optional_epw_numeric(rad['PW_CM'], 10, 0, 999, 999, 1)     # cm -> mm, as in build_epw
+    epw_aod = ga.optional_epw_numeric(rad['AOD'], 1, 0, .999, .999, 3)
+    assert (epw_pw == 12.5).all() and (epw_aod == 0.08).all()
