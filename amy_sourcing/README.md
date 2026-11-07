@@ -36,6 +36,8 @@ Stations in the Americas use NSRDB solar radiation, which needs a free NREL API 
 <out>/_cache/              downloads, reused on later runs
 ```
 
+`<City>` is found automatically from the station's coordinates: the largest town or city within 30 km in the station's own country (otherwise the nearest within 75 km), followed by the US state or the country code, for example `Las_Vegas_NV`, `Athens_OH` or `Dubai_AE`. To choose your own, pass `city="..."` (`--city` on the command line).
+
 ## Data and methods
 
 - **Meteorology**: NOAA Global Hourly (ISD) station observations, from NOAA's public archive on AWS S3. Short gaps in dry bulb, dew point and pressure are interpolated; a year with a gap longer than 24 h (72 h for pressure) is flagged and not used. Wind speed and direction gaps are interpolated (direction around the compass).
@@ -43,5 +45,6 @@ Stations in the Americas use NSRDB solar radiation, which needs a free NREL API 
 - **Illuminance and zenith luminance**: Perez et al. (1990) luminous efficacy model.
 - **Sky cover**: gaps filled by linear interpolation (up to 5 h) or from the NSRDB cloud type mapped to the station's own observed cover, with EPW data-source flags B, C or E.
 - **Longwave (horizontal infrared)**: EnergyPlus Clark-Allen/Walton model from dry bulb, dew point and the filled opaque sky cover.
+- **City names**: GeoNames city list ([geonames.org](https://www.geonames.org/), CC BY 4.0), through the offline `geonamescache` package.
 
 The functions are those of the AMY Generator V10.1 notebook (Nada Tarkhan); `generate_amys()` adds the station-to-years entry point.

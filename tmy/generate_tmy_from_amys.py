@@ -289,18 +289,183 @@ def smooth_month_joins(values: Dict[int, np.ndarray], starts: Sequence[int],
     return touched
 
 
+# ------------------------------------- header: design conditions and ground temperatures
+# Used only when the header EPW has none ('DESIGN CONDITIONS,0', 'GROUND TEMPERATURES,0'),
+# e.g. AMYs built from NOAA data; published values in a header EPW are kept.
+
+WD_COL = 20                       # Wind direction (degrees)
+SOIL_DIFFUSIVITY = 2.322576e-3 * 24  # m2/day (2.322576E-03 m2/h, the EnergyPlus standard soil)
+MID_MONTH_DAY = np.array([15, 46, 74, 105, 135, 166, 196, 227, 258, 288, 319, 349], dtype=float)
+
+
+def _saturation_pressure(t_c):
+    """Saturation vapour pressure (Pa) over ice below 0 C and over water above
+    (Hyland-Wexler, ASHRAE Handbook - Fundamentals 2017, ch. 1, Eq. 5 and 6)."""
+    t = np.asarray(t_c, dtype=float) + 273.15
+    ice = np.exp(-5.6745359e3 / t + 6.3925247 - 9.677843e-3 * t + 6.2215701e-7 * t ** 2
+                 + 2.0747825e-9 * t ** 3 - 9.484024e-13 * t ** 4 + 4.1635019 * np.log(t))
+    water = np.exp(-5.8002206e3 / t + 1.3914993 - 4.8640239e-2 * t + 4.1764768e-5 * t ** 2
+                   - 1.4452093e-8 * t ** 3 + 6.5459673 * np.log(t))
+    return np.where(t < 273.15, ice, water)
+
+
+def _humidity_ratio(p_w, p):
+    """Humidity ratio (kg/kg) from vapour pressure and air pressure (Pa)."""
+    return 0.621945 * p_w / (p - p_w)
+
+
+def _wet_bulb(db, dp, p, iterations=40):
+    """Thermodynamic wet-bulb temperature (C), by bisection on ASHRAE Eq. 33 and 35."""
+    w = _humidity_ratio(_saturation_pressure(dp), p)
+    lo, hi = np.minimum(dp, db) - 1.0, np.asarray(db, dtype=float).copy()
+    for _ in range(iterations):
+        t = (lo + hi) / 2
+        ws = _humidity_ratio(_saturation_pressure(t), p)
+        w_t = np.where(t >= 0,
+                       ((2501 - 2.326 * t) * ws - 1.006 * (db - t)) / (2501 + 1.86 * db - 4.186 * t),
+                       ((2830 - 0.24 * t) * ws - 1.006 * (db - t)) / (2830 + 1.86 * db - 2.1 * t))
+        too_wet = w_t > w            # the wet bulb is lower
+        hi, lo = np.where(too_wet, t, hi), np.where(too_wet, lo, t)
+    return (lo + hi) / 2
+
+
+def _coincident(x, design, y, min_hours=20, tol=0.5):
+    """Mean of y over the hours whose x is within tol of the design value (at least the
+    min_hours nearest hours), as for the ASHRAE mean coincident values."""
+    dist = np.abs(x - design)
+    n = max(int((dist <= tol).sum()), min(min_hours, len(x)))
+    return float(np.mean(y[np.argsort(dist, kind='stable')[:n]]))
+
+
+def _prevailing_direction(wd, ws):
+    """Most frequent wind direction (degrees, 10-degree sectors), calm hours left out."""
+    d = wd[(ws > 0) & np.isfinite(wd)]
+    if len(d) == 0:
+        return 0
+    sectors = (np.rint(d / 10) * 10) % 360
+    values, counts = np.unique(sectors, return_counts=True)
+    return int(values[np.argmax(counts)])
+
+
+def design_conditions_line(hours: pd.DataFrame, eol: str = '\n') -> str:
+    """EPW 'DESIGN CONDITIONS' line (ASHRAE 2009 layout, as written by the EnergyPlus
+    Weather Converter) calculated from multi-year hourly data with the ASHRAE Handbook -
+    Fundamentals ch. 14 definitions: annual percentiles of the pooled hours, mean
+    coincident values, coldest/hottest month, and extreme annual dry-bulb statistics with
+    Gumbel return periods. `hours` has columns year, month, hour, db, dp, p, ws, wd."""
+    h = hours.dropna(subset=['db', 'dp', 'ws']).copy()
+    p_std = float(np.nanmedian(h['p'])) if h['p'].notna().any() else 101325.0
+    h['p'] = h['p'].fillna(p_std)
+    h['w'] = _humidity_ratio(_saturation_pressure(h['dp']), h['p'])
+    h['wb'] = _wet_bulb(h['db'].to_numpy(), h['dp'].to_numpy(), h['p'].to_numpy())
+    h['en'] = 1.006 * h['db'] + h['w'] * (2501 + 1.86 * h['db'])
+    db, dp, wb, en, ws, wd = (h[c].to_numpy(float) for c in ('db', 'dp', 'wb', 'en', 'ws', 'wd'))
+    pct = lambda v, q: float(np.percentile(v, q))
+    hr = lambda d: 1000 * float(_humidity_ratio(_saturation_pressure(d), p_std))   # g/kg
+    f1 = lambda v: f'{v:.1f}'
+    monthly = h.groupby('month')['db'].mean()
+    cold, hot = int(monthly.idxmin()), int(monthly.idxmax())
+
+    heating = [str(cold)]
+    db996, db990 = pct(db, 0.4), pct(db, 1.0)
+    heating += [f1(db996), f1(db990)]
+    for q in (0.4, 1.0):                                  # humidification
+        d = pct(dp, q)
+        heating += [f1(d), f1(hr(d)), f1(_coincident(dp, d, db))]
+    cm = (h['month'] == cold).to_numpy()
+    for q in (99.6, 99.0):                                # coldest-month wind
+        s = pct(ws[cm], q)
+        heating += [f1(s), f1(_coincident(ws[cm], s, db[cm]))]
+    tail = db <= db996
+    heating += [f1(ws[tail].mean()), str(_prevailing_direction(wd[tail], ws[tail]))]
+
+    hot_days = h[h['month'] == hot].groupby(['year', 'day'])['db']
+    cooling = [str(hot), f1((hot_days.max() - hot_days.min()).mean())]
+    db004 = pct(db, 99.6)
+    for q in (99.6, 99.0, 98.0):                          # dry bulb / mean coincident wet bulb
+        t = pct(db, q)
+        cooling += [f1(t), f1(_coincident(db, t, wb))]
+    for q in (99.6, 99.0, 98.0):                          # wet bulb / mean coincident dry bulb
+        t = pct(wb, q)
+        cooling += [f1(t), f1(_coincident(wb, t, db))]
+    tail = db >= db004
+    cooling += [f1(ws[tail].mean()), str(_prevailing_direction(wd[tail], ws[tail]))]
+    for q in (99.6, 99.0, 98.0):                          # dehumidification
+        d = pct(dp, q)
+        cooling += [f1(d), f1(hr(d)), f1(_coincident(dp, d, db))]
+    for q in (99.6, 99.0, 98.0):                          # enthalpy (kJ/kg)
+        e = pct(en, q)
+        cooling += [f1(e), f1(_coincident(en, e, db, tol=1.0))]
+    n_years = h['year'].nunique()
+    work = h['hour'].between(9, 16) & h['db'].between(12.8, 20.6)   # 8:00-16:00, 12.8-20.6 C
+    cooling.append(str(int(round(work.sum() / n_years))))
+
+    extremes = [f1(pct(ws, q)) for q in (99.0, 97.5, 95.0)] + [f1(wb.max())]
+    yearly = h.groupby('year')['db'].agg(['min', 'max'])
+    m_min, m_max = yearly['min'].mean(), yearly['max'].mean()
+    s_min, s_max = (yearly['min'].std(ddof=1), yearly['max'].std(ddof=1)) if n_years > 1 else (0.0, 0.0)
+    extremes += [f1(m_min), f1(m_max), f1(s_min), f1(s_max)]
+    for n in (5, 10, 20, 50):                             # Gumbel return periods (ASHRAE)
+        f = -np.sqrt(6) / np.pi * (0.5772 + np.log(np.log(n / (n - 1))))
+        extremes += [f1(m_min - f * s_min), f1(m_max + f * s_max)]
+
+    years = sorted(h['year'].unique())
+    source = f'Calculated from AMYs {years[0]}-{years[-1]} (ASHRAE Handbook method)'
+    return ','.join(['DESIGN CONDITIONS', '1', source, '', 'Heating', *heating,
+                     'Cooling', *cooling, 'Extremes', *extremes]) + eol
+
+
+def ground_temperatures_line(month: np.ndarray, db: np.ndarray, eol: str = '\n') -> str:
+    """EPW 'GROUND TEMPERATURES' line: undisturbed ground temperatures at 0.5, 2 and 4 m
+    from the monthly mean dry-bulb temperatures (Kusuda and Achenbach 1965, as used by
+    EnergyPlus), with the EnergyPlus standard soil diffusivity:
+        T(z, t) = Tm - A exp(-z sqrt(pi / (365 a))) cos(2 pi / 365 (t - t0 - z / 2 sqrt(365 / (pi a))))
+    Tm, A and t0 (day of the coldest surface temperature) come from a one-harmonic fit
+    of the 12 monthly means."""
+    means = pd.Series(db).groupby(np.asarray(month)).mean().reindex(range(1, 13)).to_numpy()
+    w = 2 * np.pi / 365
+    basis = np.column_stack([np.ones(12), np.cos(w * MID_MONTH_DAY), np.sin(w * MID_MONTH_DAY)])
+    tm, a, b = np.linalg.lstsq(basis, means, rcond=None)[0]
+    amp, t0 = np.hypot(a, b), (np.arctan2(b, a) + np.pi) / w
+    parts = ['GROUND TEMPERATURES', '3']
+    for z in (0.5, 2.0, 4.0):
+        damp = np.exp(-z * np.sqrt(np.pi / (365 * SOIL_DIFFUSIVITY)))
+        lag = z / 2 * np.sqrt(365 / (np.pi * SOIL_DIFFUSIVITY))
+        temps = tm - amp * damp * np.cos(w * (MID_MONTH_DAY - t0 - lag))
+        parts += [f'{z:g}' if z != 0.5 else '.5', '', '', ''] + [f'{t:.2f}' for t in temps]
+    return ','.join(parts) + eol
+
+
+def _header_line_is_empty(line: str) -> bool:
+    fields = line.strip().split(',')
+    return len(fields) < 3 or fields[1].strip() in ('', '0')
+
+
 # ------------------------------------------------------------------------- header (6)
 
 def build_header(header: List[str], selected: Dict[int, dict], header_name: str,
-                 update_comments_1: bool = True, update_comments_2: bool = True) -> List[str]:
+                 update_comments_1: bool = True, update_comments_2: bool = True,
+                 design_line: Optional[str] = None, ground_line: Optional[str] = None) -> List[str]:
     """Header for the generated file: the 8 lines of the header EPW, with COMMENTS 1
     reporting this file's period of record and source year of every month (ISO 15927-4
-    clause 6), and COMMENTS 2 stating where the remaining metadata came from."""
+    clause 6), and COMMENTS 2 stating where the remaining metadata came from.
+    design_line / ground_line replace DESIGN CONDITIONS / GROUND TEMPERATURES only where
+    the header EPW has none."""
     out = list(header)
     eol = '\r\n' if header[0].endswith('\r\n') else '\n'
     n_years = max(r['n_candidates'] for r in selected.values())
     first, last = min(r['first_year'] for r in selected.values()), max(r['last_year'] for r in selected.values())
     months = '; '.join(f'{MONTH_NAMES[m - 1]}={selected[m]["year"]}' for m in range(1, 13))
+    copied, calculated = ['Location'], []
+    for i, line in enumerate(out):
+        for key, new, what in (('DESIGN CONDITIONS', design_line, 'design conditions'),
+                               ('GROUND TEMPERATURES', ground_line, 'ground temperatures')):
+            if line.upper().startswith(key):
+                if new is not None and _header_line_is_empty(line):
+                    out[i] = new.rstrip('\r\n') + eol
+                    calculated.append(what)
+                else:
+                    copied.append(what)
     for i, line in enumerate(out):
         if update_comments_1 and line.upper().startswith('COMMENTS 1'):
             out[i] = (f'COMMENTS 1,"ISO 15927-4 reference year from AMY EPWs - #years=[{n_years}] '
@@ -308,8 +473,15 @@ def build_header(header: List[str], selected: Dict[int, dict], header_name: str,
                       f'dry-bulb temperature, relative humidity and global horizontal radiation, '
                       f'with wind speed as secondary parameter"{eol}')
         if update_comments_2 and line.upper().startswith('COMMENTS 2'):
-            out[i] = (f'COMMENTS 2,"Location, design conditions and ground temperatures copied '
-                      f'from {header_name}; not recalculated for this file"{eol}')
+            names = ', '.join(copied[:-1]) + ' and ' + copied[-1] if len(copied) > 1 else copied[0]
+            note = f'{names} copied from {header_name}; not recalculated for this file'
+            if 'design conditions' in calculated:
+                note += ('; design conditions calculated from the AMYs with the ASHRAE Handbook '
+                         'method (not the published ASHRAE values)')
+            if 'ground temperatures' in calculated:
+                note += ("; ground temperatures calculated from this TMY's monthly dry-bulb "
+                         'temperatures (Kusuda-Achenbach; soil diffusivity 0.0557 m2/day)')
+            out[i] = f'COMMENTS 2,"{note}"{eol}'
     return out
 
 
@@ -331,6 +503,7 @@ def generate_tmy_from_amys(
     set_year: Optional[int] = None,
     update_header_years: bool = True,
     add_header_generation_note: bool = True,
+    fill_design_conditions: bool = True,
     verbose: bool = True,
 ) -> Dict[int, str]:
     """
@@ -353,6 +526,9 @@ def generate_tmy_from_amys(
     set_year: Optional year written into the year column of every row.
     update_header_years: Rewrite COMMENTS 1 with this file's period and month years.
     add_header_generation_note: Rewrite COMMENTS 2 with a note on the header source.
+    fill_design_conditions: Where the header EPW has no design conditions or ground
+        temperatures, calculate them (from all AMYs, and from this TMY's monthly
+        temperatures). Published values in the header EPW are always kept.
     verbose: Print progress.
 
     Returns
@@ -377,6 +553,7 @@ def generate_tmy_from_amys(
         print(f'Found {len(files)} AMY EPW files in {amy_dir}')
 
     candidates: Dict[int, List[dict]] = {m: [] for m in range(1, 13)}
+    design_hours: List[pd.DataFrame] = []
     expected_cols = None
     fill_log = []
     seen_years: Dict[int, str] = {}
@@ -415,6 +592,15 @@ def generate_tmy_from_amys(
         month_col = pd.to_numeric(raw.iloc[:, MONTH_COL], errors='coerce').to_numpy()
         day_col = pd.to_numeric(raw.iloc[:, DAY_COL], errors='coerce').to_numpy()
         hour_col = pd.to_numeric(raw.iloc[:, HOUR_COL], errors='coerce').to_numpy()
+        if fill_design_conditions:
+            wd = (pd.to_numeric(raw.iloc[:, WD_COL], errors='coerce').to_numpy(dtype=float, copy=True)
+                  if WD_COL < raw.shape[1] else np.full(len(raw), np.nan))
+            wd[(wd < 0) | (wd > 360)] = np.nan
+            design_hours.append(pd.DataFrame({
+                'year': year, 'month': month_col, 'day': day_col, 'hour': hour_col,
+                **{k: values.get(c, np.full(len(raw), np.nan)) for k, c in
+                   (('db', TEMP_COL), ('dp', DEWPOINT_COL), ('p', PRESSURE_COL), ('ws', WS_COL))},
+                'wd': wd}))
         for m in range(1, 13):
             idx = np.flatnonzero(month_col == m)
             if len(idx) not in MONTH_LENGTHS:
@@ -484,9 +670,15 @@ def generate_tmy_from_amys(
     if set_year is not None:
         out.iloc[:, YEAR_COL] = str(int(set_year))
 
+    design_line = ground_line = None
+    if fill_design_conditions:
+        design_line = design_conditions_line(pd.concat(design_hours, ignore_index=True))
+        ground_line = ground_temperatures_line(pd.to_numeric(out.iloc[:, MONTH_COL]).to_numpy(),
+                                               values[TEMP_COL])
     header = build_header(read_epw_header(header_epw), selected, header_epw.name,
                           update_comments_1=update_header_years,
-                          update_comments_2=add_header_generation_note)
+                          update_comments_2=add_header_generation_note,
+                          design_line=design_line, ground_line=ground_line)
     eol = '\r\n' if header[0].endswith('\r\n') else '\n'
     output_epw.parent.mkdir(parents=True, exist_ok=True)
     with output_epw.open('w', encoding='utf-8', newline='') as f:
@@ -535,6 +727,9 @@ def parse_args() -> argparse.Namespace:
                         help='Keep COMMENTS 1 of the header EPW unchanged.')
     parser.add_argument('--no-header-generation-note', action='store_true',
                         help='Keep COMMENTS 2 of the header EPW unchanged.')
+    parser.add_argument('--no-design-conditions', action='store_true',
+                        help='Do not calculate design conditions and ground temperatures '
+                             'missing from the header EPW.')
     return parser.parse_args()
 
 
@@ -551,7 +746,8 @@ def main() -> None:
         min_years=args.min_years, max_gap=args.max_gap,
         min_wind_completeness=args.min_wind_completeness, set_year=args.set_year,
         update_header_years=not args.no_update_header_years,
-        add_header_generation_note=not args.no_header_generation_note, verbose=True)
+        add_header_generation_note=not args.no_header_generation_note,
+        fill_design_conditions=not args.no_design_conditions, verbose=True)
 
 
 if __name__ == '__main__':

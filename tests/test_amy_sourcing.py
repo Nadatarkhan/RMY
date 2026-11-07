@@ -140,3 +140,15 @@ def test_nsrdb_aerosol_and_precipitable_water_are_read_under_their_csv_names(tmp
     epw_pw = ga.optional_epw_numeric(rad['PW_CM'], 10, 0, 999, 999, 1)     # cm -> mm, as in build_epw
     epw_aod = ga.optional_epw_numeric(rad['AOD'], 1, 0, .999, .999, 3)
     assert (epw_pw == 12.5).all() and (epw_aod == 0.08).all()
+
+
+def test_city_name_comes_from_the_station_coordinates():
+    pytest.importorskip('geonamescache')
+    us = {'country': 'US'}
+    assert ga.city_from_coordinates({**us, 'lat': 36.072, 'lon': -115.163}) == 'Las_Vegas_NV'
+    assert ga.city_from_coordinates({**us, 'lat': 39.217, 'lon': -82.233}) == 'Athens_OH'
+    # Border airports keep their own country's city (not Ciudad Juarez or Mexicali).
+    assert ga.city_from_coordinates({**us, 'lat': 31.812, 'lon': -106.377}) == 'El_Paso_TX'
+    assert ga.city_from_coordinates({**us, 'lat': 18.433, 'lon': -66.011}) == 'San_Juan_PR'
+    assert ga.city_from_coordinates({'country': 'AE', 'lat': 25.255, 'lon': 55.364}) == 'Dubai_AE'
+    assert ga.city_from_coordinates({**us, 'lat': 0.0, 'lon': -140.0}) is None   # open ocean

@@ -1230,6 +1230,48 @@ ERA5_TIMESERIES_DATASET='reanalysis-era5-single-levels-timeseries'
 ERA5_TIMESERIES_VARIABLES=['surface_thermal_radiation_downwards','total_cloud_cover']
 
 
+US_TERRITORIES = ('US', 'PR', 'VI', 'GU', 'AS', 'MP')
+
+
+def city_from_coordinates(st, radius_km=30.0, fallback_km=75.0):
+    """City name for a station from its coordinates, e.g. 'Las_Vegas_NV' or 'Dubai_AE'.
+
+    Uses the offline GeoNames city list (towns of 5000+ people) of the geonamescache
+    package: the largest city within radius_km of the station, otherwise the nearest
+    city within fallback_km. Only cities in the station's country are considered (US
+    stations: the US and its territories), so a border airport is not named after the
+    city across the border. US names end in the state, others in the ISO country code.
+    Returns None if the package is missing or no city is near, so the caller can fall
+    back to the NOAA station name.
+    """
+    try:
+        import geonamescache
+        cities = pd.DataFrame(geonamescache.GeonamesCache(min_city_population=5000).get_cities().values())
+    except Exception:
+        return None
+    import unicodedata
+    la, lo = np.radians(float(st['lat'])), np.radians(float(st['lon']))
+    lat, lon = np.radians(cities.latitude.to_numpy(float)), np.radians(cities.longitude.to_numpy(float))
+    cities['km'] = 6371.0 * 2 * np.arcsin(np.sqrt(np.sin((lat - la) / 2) ** 2
+                                                  + np.cos(la) * np.cos(lat) * np.sin((lon - lo) / 2) ** 2))
+    if str(st.get('country', '')).strip().upper() == 'US':
+        cities = cities[cities.countrycode.isin(US_TERRITORIES)]
+    elif not cities.empty:
+        cities = cities[cities.countrycode == cities.loc[cities.km.idxmin(), 'countrycode']]
+    near = cities[cities.km <= radius_km]
+    if not near.empty:
+        best = near.sort_values(['population', 'km'], ascending=[False, True]).iloc[0]
+    else:
+        near = cities[cities.km <= fallback_km]
+        if near.empty:
+            return None
+        best = near.loc[near.km.idxmin()]
+    name = unicodedata.normalize('NFKD', str(best['name'])).encode('ascii', 'ignore').decode()
+    region = best.admin1code if best.countrycode == 'US' else best.countrycode
+    label = re.sub(r'[^A-Za-z0-9]+', '_', f'{name} {region}').strip('_')
+    return label or None
+
+
 def clean_city_name(st, city_override=None):
     """File-safe city name; explicit override recommended for ambiguous stations."""
     label=str(city_override or st.get('name') or 'UnknownCity').strip()
@@ -1830,7 +1872,8 @@ def generate_amys(station_number, output_dir, nsrdb_api_key=None, nsrdb_email=No
     if str(st['timezone_resolution']).startswith('longitude'):
         raise ImportError('Could not determine the station time zone: install timezonefinder '
                           '(pip install timezonefinder) or pass tz_offset, e.g. -5 for US Eastern.')
-    city = clean_city_name(st, city or STATION_CITY_OVERRIDES.get(st['station_id']))
+    city = clean_city_name(st, city or STATION_CITY_OVERRIDES.get(st['station_id'])
+                           or city_from_coordinates(st))
     source = (radiation_source or ('NSRDB' if is_americas_location(st) else 'AUTO')).upper()
     if source in ('NSRDB', 'AUTO') and is_americas_location(st) and not (nsrdb_api_key and nsrdb_email):
         raise ValueError('This station is in the Americas, so solar radiation comes from NSRDB, which '

@@ -168,3 +168,40 @@ def test_fewer_than_ten_years_is_refused(tmp_path):
     with pytest.raises(ValueError, match='at least 10 years'):
         tm.generate_tmy_from_amys(AMY_DIR, tmp_path / 'x.epw', HEADER_EPW,
                                   years=(2009, 2015), verbose=False)
+
+
+def test_missing_design_conditions_and_ground_temperatures_are_calculated(tmp_path):
+    header = sorted(AMY_DIR.glob('*.epw'))[-1]              # NOAA-based AMY: both lines are 0
+    out = tmp_path / 'tmy.epw'
+    tm.generate_tmy_from_amys(AMY_DIR, out, header, years=(2009, 2023), verbose=False)
+    new = open(out, newline='').read().splitlines()[:8]
+    old = open(header, newline='').read().splitlines()[:8]
+    assert old[1] == 'DESIGN CONDITIONS,0' and old[3] == 'GROUND TEMPERATURES,0'
+    f = new[1].split(',')
+    assert f[:5] == ['DESIGN CONDITIONS', '1', 'Calculated from AMYs 2009-2023 (ASHRAE Handbook method)',
+                     '', 'Heating']
+    h, c, e = f.index('Heating'), f.index('Cooling'), f.index('Extremes')
+    assert (c - h - 1, e - c - 1, len(f) - e - 1) == (15, 32, 16)     # ASHRAE 2009 EPW layout
+    heat, cool = [float(x) for x in f[h + 1:c]], [float(x) for x in f[c + 1:e]]
+    assert heat[0] == 1 and cool[0] == 7                       # coldest January, hottest July
+    assert -16 < heat[1] < -9 and heat[1] < heat[2]            # 99.6% below 99% (published: -13.1, -10.2)
+    assert 31 < cool[2] < 35 and cool[2] > cool[4] > cool[6]  # 0.4% > 1% > 2% (published 0.4%: 32.8)
+    g = new[3].split(',')
+    assert g[:3] == ['GROUND TEMPERATURES', '3', '.5'] and len(g) == 2 + 3 * 16
+    t = np.array([g[6 + 16 * i:18 + 16 * i] for i in range(3)], dtype=float)
+    assert np.allclose(t.mean(axis=1), t[0].mean(), atol=0.3)  # same annual mean at each depth
+    assert np.ptp(t[0]) > np.ptp(t[1]) > np.ptp(t[2])          # the swing damps with depth
+    assert t[2].argmax() > t[0].argmax()                       # and arrives later
+    assert 'design conditions calculated from the AMYs' in new[6]
+    assert "ground temperatures calculated from this TMY's monthly" in new[6]
+    assert new[6].startswith('COMMENTS 2,"Location copied from ')
+
+
+def test_wet_bulb_and_gumbel_follow_ashrae():
+    db, dp, p = np.array([30.0, 10.0, -5.0, 25.0]), np.array([20.0, 10.0, -12.0, 5.0]), 101325.0
+    wb = tm._wet_bulb(db, dp, np.full(4, p))
+    assert abs(wb[1] - 10.0) < 1e-3                            # saturated air: wet bulb = dry bulb
+    assert ((dp <= wb + 1e-6) & (wb <= db + 1e-6)).all()
+    assert abs(wb[0] - 22.9) < 0.15                            # 30 C, 20 C dew point (55% RH): 22.9 C
+    f5 = -np.sqrt(6) / np.pi * (0.5772 + np.log(np.log(5 / 4)))
+    assert abs(f5 - 0.7195) < 1e-3                             # ASHRAE factor for 5 years
