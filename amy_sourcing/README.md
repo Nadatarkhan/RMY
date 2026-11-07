@@ -41,9 +41,10 @@ Stations in the Americas use NSRDB solar radiation, which needs a free NREL API 
 ## Data and methods
 
 - **Meteorology**: NOAA Global Hourly (ISD) station observations, from NOAA's public archive on AWS S3. Short gaps in dry bulb, dew point and pressure are interpolated; a year with a gap longer than 24 h (72 h for pressure) is flagged and not used. Wind speed and direction gaps are interpolated (direction around the compass).
-- **Solar radiation**: NSRDB GOES v4 (satellite, about 4 km) in the Americas; PVGIS-SARAH3, then PVGIS-ERA5, elsewhere. Hourly values are aligned to EPW hours in local standard time.
+- **Solar radiation**: NSRDB GOES v4 (satellite, about 4 km) in the Americas; PVGIS-SARAH3, then PVGIS-ERA5, elsewhere. Hourly values are aligned to EPW hours in local standard time. PVGIS gives one snapshot per hour (SARAH: about 10 minutes past the hour, UTC); each EPW hour gets the value at its midpoint, by interpolating the clearness index between snapshots.
 - **Illuminance and zenith luminance**: Perez et al. (1990) luminous efficacy model.
-- **Sky cover**: gaps filled by linear interpolation (up to 5 h) or from the NSRDB cloud type mapped to the station's own observed cover, with EPW data-source flags B, C or E.
+- **Sky cover**: METARs reporting CAVOK, NSC, SKC, NCD or CLR without cloud groups count as clear sky (0), not missing. Remaining gaps filled by linear interpolation (up to 5 h) or from the NSRDB cloud type mapped to the station's own observed cover, with EPW data-source flags B, C or E.
+- **Precipitation**: NOAA accumulation reports of 1 to 6 hours, the shortest available each hour, with the period in the EPW precipitation quantity field. Longer (12 and 24 hour) totals are not used: they overlap the shorter ones and carry decoding errors.
 - **Longwave (horizontal infrared)**: EnergyPlus Clark-Allen/Walton model from dry bulb, dew point and the filled opaque sky cover.
 - **City names**: GeoNames city list ([geonames.org](https://www.geonames.org/), CC BY 4.0), through the offline `geonamescache` package.
 

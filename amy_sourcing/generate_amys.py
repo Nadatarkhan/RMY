@@ -261,7 +261,14 @@ def parse_noaa_cloud(row, variable):
             except (TypeError,ValueError): continue
             if rank is not None and oktas in NOAA_OKTAS_TO_TENTHS:
                 layers.append((rank,NOAA_OKTAS_TO_TENTHS[oktas]))
-        if not layers: return np.nan,None
+        if not layers:
+            # A METAR saying CAVOK, NSC, SKC, NCD or CLR (outside its trend part) has no
+            # cloud groups in NOAA's data: it reports clear sky, not missing cover. It
+            # gets the lowest quality rank, so any real cloud group in the hour wins.
+            body=re.split(r'\b(?:BECMG|TEMPO|NOSIG|RMK|PROB\d\d|FM\d{4,6})\b',str(row.get('REM','') or ''))[0]
+            if re.search(r'\b(?:CAVOK|NSC|SKC|NCD|CLR)\b',body):
+                return 0.0,len(QUALITY_GROUPS)
+            return np.nan,None
         return max(v for _,v in layers),min(r for r,_ in layers)
     raise ValueError(variable)
 
@@ -270,7 +277,8 @@ def parse_noaa_precip(row):
     """Valid NOAA AA1..AA4 interval-accumulation reports (mm and hours).
 
     Prefer a short valid reporting period, particularly one-hour accumulations;
-    do NOT reinterpret a 6-hour amount as one-hour rainfall. One report per
+    do NOT reinterpret a 6-hour amount as one-hour rainfall. Periods of 1 to 6
+    hours only (longer totals overlap and are error-prone). One report per
     observation is retained. Repeated overlapping accumulation reports require
     additional reconciliation before computing climatological annual totals.
     """
@@ -281,7 +289,10 @@ def parse_noaa_precip(row):
         try: duration=int(t[0]); depth=float(t[1])/10 if t[1].strip() else 0.0
         except (TypeError,ValueError): continue
         rank=quality_rank(t[3])
-        if rank is None or duration not in (1,2,3,4,5,6,9,12,15,18,24) or not 0<=depth<999: continue
+        # Totals over more than 6 hours are not used: they overlap the shorter reports
+        # (the same rain counted again), and 12/24-hour SYNOP totals carry decoding
+        # artefacts (e.g. 50, 99 or 100 mm on dry days at desert stations).
+        if rank is None or duration not in (1,2,3,4,5,6) or not 0<=depth<999: continue
         candidates.append((duration,rank,depth,grp))
     if not candidates: return np.nan,np.nan,None,None
     period,rank,depth,source=min(candidates,key=lambda x:(x[0],x[1]))
@@ -1428,14 +1439,13 @@ def radiation_source_priority(st, preferred='AUTO'):
 
 
 def pvgis_hourly_utc(session, year, st, cache_dir, database):
-    """Fetch PVGIS 5.3 hourly horizontal radiation in UTC.
+    """Fetch PVGIS 5.3 hourly horizontal radiation samples, at their own UTC times.
 
     A single components=1 response supplies direct and diffuse radiation on a
-    horizontal 0-degree plane (Gb(i), Gd(i), Gr(i)). The horizontal global is
-    derived as direct + diffuse + reflected; reflected should be ~0 at 0 tilt.
-    Samples with :00..:40 use their stated hour, :45..:59 are rounded to the
-    nearest whole UTC hour (e.g., historical SARAH eastern satellite timing).
-    Any ambiguous sampling/duplicate timestamps cause a hard failure.
+    horizontal 0-degree plane (Gb(i), Gd(i), Gr(i)); reflected is ~0 at 0 tilt.
+    Each value is a snapshot at its time stamp (SARAH: about hh:10 UTC, the
+    satellite scan time), not an hourly mean, so the samples are returned with
+    their exact times; merge_pvgis_local_year moves them to the EPW hour midpoints.
     """
     if not PVGIS5_3_BOUNDS[0] <= int(year) <= PVGIS5_3_BOUNDS[1]:
         raise ValueError(f'PVGIS 5.3 {database}: {year} outside 2005–2023 availability')
@@ -1465,44 +1475,21 @@ def pvgis_hourly_utc(session, year, st, cache_dir, database):
         raw=pd.to_datetime(df['time'],format='%Y%m%d:%H%M',errors='coerce')
         if raw.isna().any(): raise ValueError('PVGIS timestamps are invalid')
         minutes=raw.dt.minute
-        if ((minutes>40)&(minutes<45)).any():
-            raise ValueError('PVGIS sampled near HH:42; ambiguous hourly alignment')
-        # Satellite snapshots may use different minute offsets. Do not apply
-        # a timezone correction until AFTER aligning to their intended UTC hour.
-        normalized=raw.dt.floor('h').copy(deep=True)
-        near_next=(minutes>=45).to_numpy(dtype=bool)
-        # Use an owned ndarray rather than modifying a pandas DatetimeArray view.
-        snapped=normalized.to_numpy(dtype='datetime64[ns]',copy=True)
-        snapped[near_next]+=np.timedelta64(1,'h')
-        times=pd.DatetimeIndex(snapped)
-        if times.has_duplicates: raise ValueError('Duplicate PVGIS UTC hour labels')
-        beam=pd.to_numeric(df['Gb(i)'],errors='coerce').to_numpy(dtype=float)
-        diffuse=pd.to_numeric(df['Gd(i)'],errors='coerce').to_numpy(dtype=float)
+        times=pd.DatetimeIndex(raw)
+        if times.has_duplicates: raise ValueError('Duplicate PVGIS UTC time stamps')
+        beam=pd.to_numeric(df['Gb(i)'],errors='coerce').to_numpy(dtype=float,copy=True)
+        diffuse=pd.to_numeric(df['Gd(i)'],errors='coerce').to_numpy(dtype=float,copy=True)
         refl=pd.to_numeric(df['Gr(i)'],errors='coerce').to_numpy(dtype=float) if 'Gr(i)' in df else np.zeros(len(df))
-        # On a level plane the reflected component is 0; retain any unexpected
-        # positive reflection as part of the returned global, with a QA counter.
-        elevation=pd.to_numeric(df['H_sun'],errors='coerce').to_numpy(dtype=float)
-        sinel=np.sin(np.deg2rad(elevation))
-        ghi=beam+diffuse+refl
-        dni=np.zeros(len(df),dtype=float)
-        day=np.isfinite(sinel)&(sinel>0.035)
-        dni[day]=beam[day]/sinel[day]
-        invalid=~(np.isfinite(beam)&np.isfinite(diffuse)&np.isfinite(refl)&np.isfinite(elevation))
-        ghi[invalid]=np.nan
-        dni[invalid]=np.nan
-        # Nighttime output should not derive positive DNI from a negative sun angle.
-        dni[(~day)&(~invalid)]=0
-        out=pd.DataFrame({'GHI':ghi,'DNI':dni,'DHI':diffuse,
-            'ZENITH_DEG':np.clip(90-elevation,0,180),
-            'PW_CM':np.nan,'AOD':np.nan,'ALBEDO':np.nan,
-            'CLOUD_TYPE':np.nan,'FILL_FLAG':np.nan},index=times).sort_index()
-        if int((out['DHI']>out['GHI']+5).sum()):
-            raise ValueError('PVGIS DHI exceeds GHI by more than 5 W/m2')
+        # On a level plane the reflected component is 0; it is counted for QA only.
+        invalid=~(np.isfinite(beam)&np.isfinite(diffuse))
+        beam[invalid]=np.nan; diffuse[invalid]=np.nan
+        out=pd.DataFrame({'BEAM_H':beam,'DHI':diffuse},index=times).sort_index()
         info={'pvgis_database':database,'pvgis_url':PVGIS_URL,
               'pvgis_utc_year':int(year),'pvgis_sample_minute_modes':','.join(str(int(m)) for m in sorted(minutes.unique())),
               'pvgis_nonzero_reflection_hours':int((np.abs(refl)>0.01).sum()),
               'pvgis_raw_json':str(cache),
-              'pvgis_timestamp_processing':'PVGIS sample UTC hour; :00-:40 floor, :45-:59 nearest next hour'}
+              'pvgis_timestamp_processing':'PVGIS snapshots moved to EPW hour midpoints by '
+                                            'interpolating the clearness index in time'}
         return out,info
     except Exception:
         # JSON that reached the cache but failed structural validation must not
@@ -1516,12 +1503,75 @@ def pvgis_hourly_utc(session, year, st, cache_dir, database):
         raise
 
 
-def merge_pvgis_local_year(session, year, st, cache_dir, db, tz_offset):
-    """Convert PVGIS UTC hourly means to local-standard EPW hourly bins.
+def solar_geometry_utc(times, lat, lon):
+    """cos(zenith) and extraterrestrial normal irradiance (W/m2) at UTC times.
 
-    Uses adjacent UTC-year data when necessary. For half-hour and 45-minute
-    standard offsets, compute overlap-weighted hourly means from two source
-    hours, rather than dropping half-hour timestamps or using DST.
+    Spencer (1971) declination and equation of time (NOAA general solar position
+    formulas, about 0.1 degree), sufficient for hourly weather files.
+    """
+    t=pd.DatetimeIndex(times)
+    doy=t.dayofyear.to_numpy(dtype=float)
+    hours=(t.hour+t.minute/60+t.second/3600).to_numpy(dtype=float)
+    g=2*np.pi/365*(doy-1+(hours-12)/24)
+    decl=(0.006918-0.399912*np.cos(g)+0.070257*np.sin(g)-0.006758*np.cos(2*g)
+          +0.000907*np.sin(2*g)-0.002697*np.cos(3*g)+0.00148*np.sin(3*g))
+    eot=229.18*(0.000075+0.001868*np.cos(g)-0.032077*np.sin(g)
+                -0.014615*np.cos(2*g)-0.040849*np.sin(2*g))          # minutes
+    hour_angle=np.deg2rad((hours*60+eot+4*lon)/4-180)
+    phi=np.deg2rad(lat)
+    cosz=np.sin(phi)*np.sin(decl)+np.cos(phi)*np.cos(decl)*np.cos(hour_angle)
+    e0=1367.0*(1.0+0.033*np.cos(2*np.pi*doy/365.25))
+    return np.clip(cosz,-1,1),e0
+
+
+def pvgis_to_hour_midpoints(samples, mid_utc, lat, lon, min_cosz=0.05):
+    """Move PVGIS snapshots (BEAM_H, DHI at their own UTC times) to hour midpoints.
+
+    The beam and diffuse clearness indices (irradiance / horizontal extraterrestrial)
+    are interpolated linearly in time between the two snapshots around each midpoint
+    and multiplied by the extraterrestrial irradiance at the midpoint, so the solar
+    geometry is exact at the midpoint. A snapshot with the sun lower than min_cosz
+    gives no reliable clearness; then the other snapshot's is used, or the irradiance
+    itself is interpolated if neither is usable. Midpoints with the sun below the
+    horizon are 0. DNI = beam / cos(zenith) for a sun at least 2 degrees high.
+    """
+    st_times=pd.DatetimeIndex(samples.index)
+    s_ns=st_times.asi8.astype(float); m_ns=pd.DatetimeIndex(mid_utc).asi8.astype(float)
+    s_cz,s_e0=solar_geometry_utc(st_times,lat,lon)
+    m_cz,m_e0=solar_geometry_utc(mid_utc,lat,lon)
+    s_eh=s_e0*np.maximum(s_cz,0); m_eh=m_e0*np.maximum(m_cz,0)
+    i1=np.clip(np.searchsorted(s_ns,m_ns),1,len(s_ns)-1); i0=i1-1
+    span=s_ns[i1]-s_ns[i0]
+    w=np.clip((m_ns-s_ns[i0])/np.where(span>0,span,1),0,1)
+    too_far=(np.minimum(np.abs(m_ns-s_ns[i0]),np.abs(m_ns-s_ns[i1]))>2*3600e9)
+    usable=s_cz>min_cosz
+    out={}
+    for col,cap in (('BEAM_H',1.2),('DHI',1.0)):
+        v=samples[col].to_numpy(dtype=float)
+        k=np.where(usable,np.clip(v/np.where(usable,s_eh,1),0,cap),np.nan)
+        k0,k1,u0,u1=k[i0],k[i1],usable[i0],usable[i1]
+        kt=np.where(u0&u1,(1-w)*k0+w*k1,np.where(u0,k0,np.where(u1,k1,np.nan)))
+        value=kt*m_eh
+        direct=(1-w)*v[i0]+w*v[i1]                     # low sun on both sides
+        value=np.where(np.isfinite(kt),value,direct)
+        value=np.where(m_cz>0,np.maximum(value,0),0.0)
+        value[too_far|~np.isfinite(v[i0])|~np.isfinite(v[i1])]=np.nan
+        out[col]=value
+    beam,dhi=out['BEAM_H'],out['DHI']
+    dni=np.where(m_cz>0.035,beam/np.where(m_cz>0.035,m_cz,1),0.0)
+    dni=np.where(np.isfinite(beam),dni,np.nan)
+    return pd.DataFrame({'GHI':beam+dhi,'DNI':dni,'DHI':dhi,
+                         'ZENITH_DEG':np.rad2deg(np.arccos(m_cz)),
+                         'PW_CM':np.nan,'AOD':np.nan,'ALBEDO':np.nan,
+                         'CLOUD_TYPE':np.nan,'FILL_FLAG':np.nan},index=pd.DatetimeIndex(mid_utc))
+
+
+def merge_pvgis_local_year(session, year, st, cache_dir, db, tz_offset):
+    """PVGIS radiation for the EPW hours of one local-standard-time year.
+
+    Uses adjacent UTC-year data when necessary. Every EPW hour gets the value at its
+    midpoint (pvgis_to_hour_midpoints), which also handles half-hour and 45-minute
+    time zones; no DST.
     """
     requested=int(year)
     tz=float(tz_offset)
@@ -1531,21 +1581,12 @@ def merge_pvgis_local_year(session, year, st, cache_dir, db, tz_offset):
         frames.append(part);info.append(metadata)
     utc=pd.concat(frames).sort_index()
     if utc.index.has_duplicates: raise ValueError('PVGIS years contain overlapping UTC hours')
-    local=utc.copy()
-    local.index=utc.index+pd.Timedelta(hours=tz)
     target=expected_local_index(requested)
-    frac=tz%1
-    if np.isclose(frac,0):
-        result=local.reindex(target)
-        method='UTC + local standard offset; exact hourly match; no DST'
-    else:
-        # Local source hourly intervals start at xx:frac (e.g. 00:30 in India).
-        # EPW hour starting at t overlaps source intervals beginning t-frac
-        # and t+1-frac, with overlap weights (1-frac) and frac respectively.
-        earlier=local.reindex(target-pd.Timedelta(hours=frac)).set_axis(target)
-        later=local.reindex(target+pd.Timedelta(hours=1-frac)).set_axis(target)
-        result=(1-frac)*earlier+frac*later
-        method=f'UTC -> local standard time with {frac:g}h interval-overlap weighted hourly averages; no DST'
+    # Each EPW hour (local standard time, no DST) is represented by its midpoint.
+    mid_utc=target+pd.Timedelta(minutes=30)-pd.Timedelta(hours=tz)
+    result=pvgis_to_hour_midpoints(utc,mid_utc,float(st['lat']),float(st['lon']))
+    result.index=target
+    method='PVGIS snapshots -> local standard hour midpoints (clearness interpolated in time); no DST'
     missing=int(result[['GHI','DNI','DHI']].isna().any(axis=1).sum())
     if missing:
         raise ValueError(f'PVGIS {db} incomplete after time-zone merge: {missing}/{len(target)} local hours missing; '

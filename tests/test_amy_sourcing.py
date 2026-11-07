@@ -152,3 +152,45 @@ def test_city_name_comes_from_the_station_coordinates():
     assert ga.city_from_coordinates({**us, 'lat': 18.433, 'lon': -66.011}) == 'San_Juan_PR'
     assert ga.city_from_coordinates({'country': 'AE', 'lat': 25.255, 'lon': 55.364}) == 'Dubai_AE'
     assert ga.city_from_coordinates({**us, 'lat': 0.0, 'lon': -140.0}) is None   # open ocean
+
+
+def test_pvgis_snapshots_are_moved_to_the_hour_midpoints():
+    # PVGIS SARAH snapshots at hh:10 UTC of a clear sky (beam 70%, diffuse 10% of the
+    # horizontal extraterrestrial irradiance); Cairo, local standard time UTC+2.
+    lat, lon, tz = 30.122, 31.406, 2
+    t = pd.date_range('2022-06-17 00:10', '2022-06-24 00:10', freq='h')
+    cz, e0 = ga.solar_geometry_utc(t, lat, lon)
+    eh = e0 * np.maximum(cz, 0)
+    samples = pd.DataFrame({'BEAM_H': 0.7 * eh, 'DHI': 0.1 * eh}, index=t)
+    local = pd.date_range('2022-06-18', '2022-06-23', freq='h', inclusive='left')
+    mid = local + pd.Timedelta(minutes=30) - pd.Timedelta(hours=tz)
+    r = ga.pvgis_to_hour_midpoints(samples, mid, lat, lon)
+    mcz, me0 = ga.solar_geometry_utc(mid, lat, lon)
+    assert np.allclose(r['GHI'], 0.8 * me0 * np.maximum(mcz, 0), atol=0.01)   # exact at midpoints
+    assert (r.loc[mcz <= 0, ['GHI', 'DNI', 'DHI']] == 0).all().all()        # night is 0
+    # The daily radiation centroid falls on solar noon (it was ~20 min late before).
+    hours = local.hour.to_numpy() + 0.5                 # EPW hour midpoints
+    g = r['GHI'].to_numpy()
+    centroid = (hours * g).sum() / g.sum() * 60        # minutes after local midnight (5-day mean)
+    noon = (12 - (lon - 15 * tz) / 15) * 60 + 1.5      # equation of time in mid-June: about -1.5 min
+    assert abs(centroid - noon) < 2
+    etr, etrn = ga.extraterrestrial_from_nsrdb(2022, local, r)
+    assert (etrn[mcz < -0.01] == 0).all()                # no extraterrestrial normal at night
+
+
+def test_cavok_and_other_clear_sky_metars_mean_zero_cover():
+    cover = lambda rem, **groups: ga.parse_noaa_cloud({'REM': rem, **groups}, 'TC_GA_PROXY')[0]
+    assert cover('MET051METAR HECA 021030Z 03002KT CAVOK 19/10 Q1020 NOSIG=') == 0.0
+    assert cover('MET045METAR XXXX 021000Z 03003KT 9999 NSC 18/09 Q1020=') == 0.0
+    # Clear sky only in the trend part (BECMG/TEMPO) is not clear now.
+    assert np.isnan(cover('MET060METAR XXXX 021000Z 00000KT 0800 FG VV002 12/12 Q1020 BECMG NSC='))
+    assert np.isnan(cover(''))                                                  # no report text
+    assert cover('METAR XXXX CAVOK', GA1='04,1,+01500,1,99,9') == 5.0           # a real layer wins
+
+
+def test_precipitation_totals_over_six_hours_are_not_used():
+    p = lambda **groups: ga.parse_noaa_precip(groups)[:2]
+    assert np.isnan(p(AA1='24,1000,3,1')[0])                         # 24 h SYNOP total: ignored
+    assert np.isnan(p(AA1='12,0500,9,1')[0])
+    assert p(AA1='24,1000,3,1', AA2='06,0010,9,1') == (1.0, 6.0)     # the 6 h total is kept
+    assert p(AA1='01,0025,9,1', AA2='03,0050,9,1') == (2.5, 1.0)     # shortest period preferred
