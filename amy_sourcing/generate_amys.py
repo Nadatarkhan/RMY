@@ -1685,7 +1685,9 @@ def create_station_year(session,st,year,cache_dir,out_dir,key,email,preferred='A
     # (TOTAL_COVER_PROXY): US stations report no opaque cover, so this documented method
     # applies to every hour of every year and the grade said nothing about the year.
     # The proxy hours are still counted in the report (opaque_sky_*_proxy_hours).
-    if report['precip_multi_hour_reports']>0 and report['qc_grade']=='GOOD': report['qc_grade']='REVIEW_PRECIP'
+    # No REVIEW_PRECIP grade for multi-hour precipitation reports: their totals are written
+    # with the accumulation period in the EPW liquid precipitation quantity field, and most
+    # US stations have a few every year. They are still counted (precip_multi_hour_reports).
     if prov['radiation_is_reanalysis']:
         report['qc_grade']='REVIEW_REANALYSIS_SOLAR' if report['qc_grade']=='GOOD' else report['qc_grade']+'+ERA5_SOLAR'
     try:
