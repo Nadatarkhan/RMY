@@ -194,3 +194,15 @@ def test_precipitation_totals_over_six_hours_are_not_used():
     assert np.isnan(p(AA1='12,0500,9,1')[0])
     assert p(AA1='24,1000,3,1', AA2='06,0010,9,1') == (1.0, 6.0)     # the 6 h total is kept
     assert p(AA1='01,0025,9,1', AA2='03,0050,9,1') == (2.5, 1.0)     # shortest period preferred
+
+
+def test_sky_fill_thresholds():
+    # Linear up to 12 h (B), blended cloud-type estimate for 13-36 h (C), estimate beyond (E).
+    def flags_for_gap(n):
+        cover = np.r_[np.full(30, 5.0), np.full(n, np.nan), np.full(30, 5.0)]
+        ctype = np.r_[np.zeros(30), np.full(n, 3.0), np.full(30, 3.0)]   # type 3 seen with 5 tenths
+        _, _, flags, _ = ga.infill_sky_cover(cover, cover.copy(), ctype)
+        return set(flags['total'][30:30 + n])
+    assert flags_for_gap(12) == {'B'}
+    assert flags_for_gap(13) == {'C'} and flags_for_gap(36) == {'C'}
+    assert flags_for_gap(37) == {'E'}
