@@ -269,3 +269,21 @@ def test_era5_infill_respects_the_cap_and_failures():
     with contextlib.redirect_stdout(io.StringIO()):
         out, rep = ga.era5_infill(_era5_surface([slice(100, 130)]), st, '/tmp/era5_test_cache_none', fs=Broken())
     assert out.DB.iloc[100:130].isna().all() and rep['era5_infill_status'].startswith('ERA5 unavailable')
+
+
+def test_era5_infill_leaves_calm_and_variable_hours_without_direction(monkeypatch):
+    monkeypatch.setattr(ga, 'era5_point_month', _fake_era5())
+    st = {'lat': 42.0, 'lon': -71.0, 'tz_offset': -5}
+    s = _era5_surface([])
+    s['WIND_TYPE'] = 'N'
+    s.iloc[200:230, s.columns.get_loc('WS')] = 0.0                          # 30 h calm night
+    s.iloc[200:230, s.columns.get_loc('WD')] = np.nan
+    s.iloc[200:230, s.columns.get_loc('WIND_TYPE')] = 'C'
+    s.iloc[300:320, s.columns.get_loc('WD')] = np.nan                        # 20 h variable wind
+    s.iloc[300:320, s.columns.get_loc('WIND_TYPE')] = 'V'
+    s.iloc[500:530, s.columns.get_loc('WD')] = np.nan                        # 30 h real outage
+    s.iloc[500:530, s.columns.get_loc('WS')] = np.nan
+    with contextlib.redirect_stdout(io.StringIO()):
+        out, rep = ga.era5_infill(s, st, '/tmp', fs=object())
+    assert out.WD.iloc[200:230].isna().all() and out.WD.iloc[300:320].isna().all()
+    assert out.WD.iloc[500:530].notna().all() and rep['era5_infill_WD_hours'] == 30

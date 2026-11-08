@@ -1710,8 +1710,16 @@ def era5_infill(surface, st, cache_dir, min_gap=ERA5_INFILL_MIN_GAP, max_share=E
     s['ERA5_FILLED'] = ''
     report = {'era5_infill_min_gap_hours': int(min_gap), 'era5_infill_max_share': float(max_share)}
     targets = {}
+    # Calm (type C or zero speed) and variable (type V) reports have no direction by definition:
+    # they are not gaps, so ERA5 must not give them one (calm hours are set to 0 deg later).
+    types = (s['WIND_TYPE'] if 'WIND_TYPE' in s else pd.Series('', index=s.index)).fillna('').astype(str).str.upper()
+    ws = pd.to_numeric(s['WS'], errors='coerce')
+    not_a_gap = {'WS': types.eq('C'), 'WD': ws.eq(0) | types.isin(['C', 'V'])}
     for v in ERA5_FOR:
-        mask = _long_runs(pd.to_numeric(s[v], errors='coerce').isna().to_numpy(), min_gap)
+        missing = pd.to_numeric(s[v], errors='coerce').isna()
+        if v in not_a_gap:
+            missing &= ~not_a_gap[v]
+        mask = _long_runs(missing.to_numpy(), min_gap)
         report[f'era5_infill_{v}_long_gap_hours'] = int(mask.sum())
         if mask.any() and mask.mean() <= max_share:
             targets[v] = mask
