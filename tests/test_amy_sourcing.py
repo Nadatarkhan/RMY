@@ -206,3 +206,65 @@ def test_sky_fill_thresholds():
     assert flags_for_gap(12) == {'B'}
     assert flags_for_gap(13) == {'C'} and flags_for_gap(36) == {'C'}
     assert flags_for_gap(37) == {'E'}
+
+
+def test_longwave_uses_dilley_obrien_clear_sky_with_walton_clouds():
+    db, dp = pd.Series([20.0]), pd.Series([10.0])
+    clear, rep = ga.energyplus_infrared(db, dp, pd.Series([0.0]))
+    # Dilley and O'Brien (1998) by hand: e = 1.2271 kPa, w = 4650 e / T = 19.47 kg/m2
+    assert abs(clear[0] - (59.38 + 113.7 * (293.15 / 273.16) ** 6 + 96.96 * np.sqrt(19.465 / 25))) < 0.1
+    overcast, _ = ga.energyplus_infrared(db, dp, pd.Series([10.0]))
+    assert abs(overcast[0] / clear[0] - (1 + 0.224 - 0.35 + 0.28)) < 1e-9     # Walton correction kept
+    old, _ = ga.energyplus_infrared(db, dp, pd.Series([0.0]), clear_sky='CLARK_ALLEN')
+    assert abs(old[0] - 5.6697e-8 * 293.15 ** 4 * (0.787 + 0.764 * np.log(283.15 / 273))) < 1e-6
+    assert "Dilley-O'Brien" in rep['infrared_method']
+
+
+def _era5_surface(gap_slices):
+    idx = pd.date_range('2022-01-01', '2022-03-01', freq='h', inclusive='left')
+    hod = idx.hour.to_numpy()
+    s = pd.DataFrame({'DB': 10 + 5 * np.sin(2 * np.pi * (hod - 9) / 24), 'DP': np.full(len(idx), 2.0),
+                      'PR': np.full(len(idx), 1013.0), 'WS': np.full(len(idx), 3.0), 'WD': np.full(len(idx), 90.0)},
+                     index=idx)
+    for sl in gap_slices:
+        s.iloc[sl] = np.nan
+    return s
+
+
+def _fake_era5(offset_c=-2.0):
+    """ERA5 = the true station series shifted by offset_c (C) in temperature; UTC = local + 5 h."""
+    def month(fs, ym, field, lat, lon, cache_dir):
+        t = pd.date_range(f'{ym[:4]}-{ym[4:]}-01', periods=24 * 31, freq='h')
+        local = t - pd.Timedelta(hours=5)
+        hod = local.hour.to_numpy()
+        val = {'2t': 10 + 5 * np.sin(2 * np.pi * (hod - 9) / 24) + offset_c, '2d': np.full(len(t), 1.0),
+               'msl': np.full(len(t), 1012.0), '10u': np.full(len(t), -2.0), '10v': np.zeros(len(t))}[field]
+        return pd.Series(val, index=t)
+    return month
+
+
+def test_era5_infill_fills_long_gaps_with_bias_corrected_values(monkeypatch):
+    monkeypatch.setattr(ga, 'era5_point_month', _fake_era5())
+    st = {'lat': 42.0, 'lon': -71.0, 'tz_offset': -5}
+    surface = _era5_surface([slice(100, 130), slice(500, 506)])            # 30 h and 6 h gaps
+    with contextlib.redirect_stdout(io.StringIO()):
+        out, rep = ga.era5_infill(surface, st, '/tmp', fs=object())
+    truth = _era5_surface([])
+    np.testing.assert_allclose(out.DB.iloc[100:130], truth.DB.iloc[100:130], atol=1e-6)   # bias removed
+    assert out.DB.iloc[500:506].isna().all()                                 # short gap left for linear filling
+    assert (out.ERA5_FILLED.iloc[100:130].str.split(',').apply(set) == {'DB', 'DP', 'PR', 'WS', 'WD'}).all()
+    np.testing.assert_allclose(out.WD.iloc[100:130], 90.0)                  # wind from the east (u < 0)
+    assert rep['era5_infill_DB_hours'] == 30 and rep['era5_infill_months'] == '202201'
+
+
+def test_era5_infill_respects_the_cap_and_failures():
+    st = {'lat': 42.0, 'lon': -71.0, 'tz_offset': -5}
+    big = _era5_surface([slice(0, 200)])                                     # 200 of 1416 h > 5%
+    out, rep = ga.era5_infill(big, st, '/tmp', fs=object())
+    assert out.DB.iloc[:200].isna().all() and '> 5%' in rep['era5_infill_DB_skipped']
+    class Broken:
+        def ls(self, *_):
+            raise OSError('no network')
+    with contextlib.redirect_stdout(io.StringIO()):
+        out, rep = ga.era5_infill(_era5_surface([slice(100, 130)]), st, '/tmp/era5_test_cache_none', fs=Broken())
+    assert out.DB.iloc[100:130].isna().all() and rep['era5_infill_status'].startswith('ERA5 unavailable')

@@ -3,3 +3,6 @@ pandas
 requests
 timezonefinder
 geonamescache
+h5py
+fsspec
+s3fs

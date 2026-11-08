@@ -40,12 +40,12 @@ Stations in the Americas use NSRDB solar radiation, which needs a free NREL API 
 
 ## Data and methods
 
-- **Meteorology**: NOAA Global Hourly (ISD) station observations, from NOAA's public archive on AWS S3. Short gaps in dry bulb, dew point and pressure are interpolated; a year with a gap longer than 24 h (72 h for pressure) is flagged and not used. Wind speed and direction gaps are interpolated (direction around the compass).
+- **Meteorology**: NOAA Global Hourly (ISD) station observations, from NOAA's public archive on AWS S3. Gaps of up to 12 h in dry bulb, dew point and pressure are interpolated, and wind speed and direction gaps are interpolated (direction around the compass). Gaps of 13 h or more (typically archive outages) are filled from the ERA5 reanalysis (NCAR copy on AWS, no key needed), corrected by the station's mean ERA5 bias for that month and hour of day; each variable is filled this way only if its long gaps cover no more than 5% of the year, the values are marked in the provenance file, and the ERA5 points are cached. If ERA5 cannot be reached the gaps are left as they are. A year that still has a gap longer than 24 h (72 h for pressure) is flagged and not used.
 - **Solar radiation**: NSRDB GOES v4 (satellite, about 4 km) in the Americas; PVGIS-SARAH3, then PVGIS-ERA5, elsewhere. Hourly values are aligned to EPW hours in local standard time. PVGIS gives one snapshot per hour (SARAH: about 10 minutes past the hour, UTC); each EPW hour gets the value at its midpoint, by interpolating the clearness index between snapshots.
 - **Illuminance and zenith luminance**: Perez et al. (1990) luminous efficacy model.
 - **Sky cover**: METARs reporting CAVOK, NSC, SKC, NCD or CLR without cloud groups count as clear sky (0), not missing. Remaining gaps filled by linear interpolation (up to 12 h) or from the NSRDB cloud type mapped to the station's own observed cover (blended to the recorded values for 13-36 h, used directly for longer gaps), with EPW data-source flags B, C or E.
 - **Precipitation**: NOAA accumulation reports of 1 to 6 hours, the shortest available each hour, with the period in the EPW precipitation quantity field. Longer (12 and 24 hour) totals are not used: they overlap the shorter ones and carry decoding errors.
-- **Longwave (horizontal infrared)**: EnergyPlus Clark-Allen/Walton model from dry bulb, dew point and the filled opaque sky cover.
+- **Longwave (horizontal infrared)**: Dilley-O'Brien clear-sky model with the EnergyPlus (Walton) cloud correction, from dry bulb, dew point and the filled opaque sky cover. (The EnergyPlus Clark-Allen clear-sky model, which reads high, is kept as an option.)
 - **City names**: GeoNames city list ([geonames.org](https://www.geonames.org/), CC BY 4.0), through the offline `geonamescache` package.
 
 The functions are those of the AMY Generator V10.1 notebook (Nada Tarkhan); `generate_amys()` adds the station-to-years entry point.
