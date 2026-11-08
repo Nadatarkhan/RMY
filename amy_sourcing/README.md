@@ -45,7 +45,7 @@ Stations in the Americas use NSRDB solar radiation, which needs a free NREL API 
 - **Illuminance and zenith luminance**: Perez et al. (1990) luminous efficacy model.
 - **Sky cover**: METARs reporting CAVOK, NSC, SKC, NCD or CLR without cloud groups count as clear sky (0), not missing. Remaining gaps filled by linear interpolation (up to 12 h) or from the NSRDB cloud type mapped to the station's own observed cover (blended to the recorded values for 13-36 h, used directly for longer gaps), with EPW data-source flags B, C or E.
 - **Precipitation**: NOAA accumulation reports of 1 to 6 hours, the shortest available each hour, with the period in the EPW precipitation quantity field. Longer (12 and 24 hour) totals are not used: they overlap the shorter ones and carry decoding errors.
-- **Longwave (horizontal infrared)**: Dilley-O'Brien clear-sky model with the EnergyPlus (Walton) cloud correction, from dry bulb, dew point and the filled opaque sky cover. (The EnergyPlus Clark-Allen clear-sky model, which reads high, is kept as an option.)
+- **Longwave (horizontal infrared)**: EnergyPlus Clark-Allen/Walton model from dry bulb, dew point and the filled opaque sky cover. (The Dilley-O'Brien clear-sky model is available as an option.)
 - **City names**: GeoNames city list ([geonames.org](https://www.geonames.org/), CC BY 4.0), through the offline `geonamescache` package.
 
 The functions are those of the AMY Generator V10.1 notebook (Nada Tarkhan); `generate_amys()` adds the station-to-years entry point.

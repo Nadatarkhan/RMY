@@ -909,18 +909,20 @@ def precip_diagnostics(surface):
         'precip_raw_nonoverlap_annual_total_not_estimated':True,
         'precip_event_time_resolution_caveat':'NOAA AA observed period totals may overlap across neighboring reports; DO NOT sum as independent hourly precipitation.'}
 
-# Clear-sky longwave model. DILLEY_OBRIEN (Dilley and O'Brien 1998, Q. J. R. Meteorol. Soc.
-# 124: 1391-1401) replaced the EnergyPlus default CLARK_ALLEN emissivity: against ERA5 at
-# twenty stations (2022) it reduced the mean bias from +23 to +4 W/m2 and the RMSE from 33
-# to 21 W/m2. The Walton cloud correction of EnergyPlus is kept in both cases.
-LONGWAVE_CLEAR_SKY_MODEL = 'DILLEY_OBRIEN'
+# Clear-sky longwave model. CLARK_ALLEN is the EnergyPlus default, so the EPW matches what
+# EnergyPlus computes itself. DILLEY_OBRIEN (Dilley and O'Brien 1998, Q. J. R. Meteorol. Soc.
+# 124: 1391-1401) is available: it agreed better with ERA5, but against SURFRAD ground
+# measurements at seven US sites (2023, airport inputs) it read 12 W/m2 low, while Clark-Allen
+# read 9 W/m2 high with a similar RMSE (25 vs 24 W/m2). The Walton cloud correction of
+# EnergyPlus is used in both cases.
+LONGWAVE_CLEAR_SKY_MODEL = 'CLARK_ALLEN'
 
 
 def energyplus_infrared(db_c, dp_c, opaque_tenths, cloud_missing_policy='DEFAULT_5', clear_sky=None):
     """Horizontal infrared (downward longwave) radiation in W/m2.
 
-    Clear sky: Dilley-O'Brien (default) or the EnergyPlus Clark-Allen emissivity
-    (clear_sky='CLARK_ALLEN'); clouds: the EnergyPlus Walton correction of the opaque
+    Clear sky: the EnergyPlus Clark-Allen emissivity (default) or Dilley-O'Brien
+    (clear_sky='DILLEY_OBRIEN'); clouds: the EnergyPlus Walton correction of the opaque
     cover. For absent opaque cloud cover, DEFAULT_5 uses 5 tenths, while LEAVE_MISSING
     keeps the hour missing. Returns (estimated_ir, report).
     """
@@ -1982,7 +1984,7 @@ STATION_CITY_OVERRIDES = {
 }
 
 # Settings of the AMY Generator V10.1 notebook. ERA5 longwave is off: the modeled
-# longwave (Dilley-O'Brien/Walton, with filled sky cover) is complete, and ERA5 longwave
+# longwave (Clark-Allen/Walton, with filled sky cover) is complete, and ERA5 longwave
 # would need a Copernicus key. Long gaps are filled from ERA5 (no key needed).
 GENERATION_SETTINGS = dict(
     max_db_gap=24, max_dp_gap=24, max_pr_gap=72, write_flagged=True,

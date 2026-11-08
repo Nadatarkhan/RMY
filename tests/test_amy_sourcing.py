@@ -208,15 +208,16 @@ def test_sky_fill_thresholds():
     assert flags_for_gap(37) == {'E'}
 
 
-def test_longwave_uses_dilley_obrien_clear_sky_with_walton_clouds():
+def test_longwave_default_is_energyplus_clark_allen_with_dilley_obrien_option():
     db, dp = pd.Series([20.0]), pd.Series([10.0])
     clear, rep = ga.energyplus_infrared(db, dp, pd.Series([0.0]))
-    # Dilley and O'Brien (1998) by hand: e = 1.2271 kPa, w = 4650 e / T = 19.47 kg/m2
-    assert abs(clear[0] - (59.38 + 113.7 * (293.15 / 273.16) ** 6 + 96.96 * np.sqrt(19.465 / 25))) < 0.1
+    assert abs(clear[0] - 5.6697e-8 * 293.15 ** 4 * (0.787 + 0.764 * np.log(283.15 / 273))) < 1e-6
+    assert 'Clark-Allen' in rep['infrared_method']
     overcast, _ = ga.energyplus_infrared(db, dp, pd.Series([10.0]))
-    assert abs(overcast[0] / clear[0] - (1 + 0.224 - 0.35 + 0.28)) < 1e-9     # Walton correction kept
-    old, _ = ga.energyplus_infrared(db, dp, pd.Series([0.0]), clear_sky='CLARK_ALLEN')
-    assert abs(old[0] - 5.6697e-8 * 293.15 ** 4 * (0.787 + 0.764 * np.log(283.15 / 273))) < 1e-6
+    assert abs(overcast[0] / clear[0] - (1 + 0.224 - 0.35 + 0.28)) < 1e-9     # Walton cloud correction
+    do, rep = ga.energyplus_infrared(db, dp, pd.Series([0.0]), clear_sky='DILLEY_OBRIEN')
+    # Dilley and O'Brien (1998) by hand: e = 1.2271 kPa, w = 4650 e / T = 19.47 kg/m2
+    assert abs(do[0] - (59.38 + 113.7 * (293.15 / 273.16) ** 6 + 96.96 * np.sqrt(19.465 / 25))) < 0.1
     assert "Dilley-O'Brien" in rep['infrared_method']
 
 
