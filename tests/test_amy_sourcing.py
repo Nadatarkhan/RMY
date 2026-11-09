@@ -287,3 +287,21 @@ def test_era5_infill_leaves_calm_and_variable_hours_without_direction(monkeypatc
         out, rep = ga.era5_infill(s, st, '/tmp', fs=object())
     assert out.WD.iloc[200:230].isna().all() and out.WD.iloc[300:320].isna().all()
     assert out.WD.iloc[500:530].notna().all() and rep['era5_infill_WD_hours'] == 30
+
+
+def test_era5_prefetch_skips_cached_months_and_never_raises(tmp_path, monkeypatch):
+    jobs = [('202101', f, 5.605, -0.167, str(tmp_path)) for f in ('2t', '2d')]
+    for ym, f, lat, lon, cd in jobs:                                         # already cached: nothing to do
+        p = tmp_path / 'era5_point' / f'{lat:.3f}_{lon:.3f}' / f'{ym}_{f}.csv'
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text('utc,v\n')
+    called = []
+    monkeypatch.setattr('subprocess.run', lambda *a, **k: called.append(1))
+    ga._era5_prefetch(jobs)
+    assert not called
+    monkeypatch.undo()
+    monkeypatch.setattr('sys.executable', str(tmp_path / 'no_python_here'))  # helper cannot start
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        ga._era5_prefetch([('202102', f, 5.605, -0.167, str(tmp_path)) for f in ('2t', '2d')])
+    assert 'one at a time' in out.getvalue()

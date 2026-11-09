@@ -1689,6 +1689,51 @@ def era5_point_month(fs, ym, field, lat, lon, cache_dir):
     return s
 
 
+ERA5_PARALLEL_DOWNLOADS = 6
+
+
+def _era5_fetch_one(job):
+    """Download (or read from the cache) one ERA5 field-month; run in a worker process."""
+    ym, field, lat, lon, cache_dir = job
+    import fsspec
+    era5_point_month(fsspec.filesystem('s3', anon=True), ym, field, lat, lon, cache_dir)
+    return job
+
+
+def _era5_pool(jobs, workers):
+    """Run _era5_fetch_one over jobs in worker processes (called inside the helper process)."""
+    import multiprocessing
+    from concurrent.futures import ProcessPoolExecutor
+    with ProcessPoolExecutor(max_workers=min(workers, len(jobs)),
+                             mp_context=multiprocessing.get_context('spawn')) as ex:
+        for _ in ex.map(_era5_fetch_one, jobs):
+            pass
+
+
+def _era5_prefetch(jobs, workers=ERA5_PARALLEL_DOWNLOADS):
+    """Fill the ERA5 point cache for several field-months at once.
+
+    The downloads run in worker processes (h5py reads one at a time within a process, so
+    threads would not help), started from a separate helper Python so that this works the
+    same from a notebook, the command line or any script. Anything not fetched here is
+    fetched one at a time afterwards, so this step can only save time."""
+    todo = [list(j) for j in jobs
+            if not (Path(j[4]) / 'era5_point' / f'{j[2]:.3f}_{j[3]:.3f}' / f'{j[0]}_{j[1]}.csv').exists()]
+    if len(todo) < 2 or workers < 2:
+        return
+    import subprocess, sys
+    code = ('import sys, json; sys.path.insert(0, %r); import generate_amys as g; '
+            'g._era5_pool(json.loads(sys.stdin.read()), %d)' % (str(Path(__file__).resolve().parent), workers))
+    try:
+        r = subprocess.run([sys.executable, '-c', code], input=json.dumps(todo), text=True,
+                           capture_output=True, timeout=3600)
+        if r.returncode != 0:
+            raise RuntimeError(r.stderr.strip().splitlines()[-1] if r.stderr.strip() else f'exit {r.returncode}')
+    except Exception as exc:
+        print(f'[AMY ERA5 INFILL] parallel download unavailable ({type(exc).__name__}: {str(exc)[:120]}); '
+              'downloading one at a time', flush=True)
+
+
 def _long_runs(missing, min_gap):
     """Boolean mask of the hours that belong to runs of missing values of >= min_gap hours."""
     m = np.asarray(missing, dtype=bool)
@@ -1735,11 +1780,15 @@ def era5_infill(surface, st, cache_dir, min_gap=ERA5_INFILL_MIN_GAP, max_share=E
         need |= m
     months = sorted({f'{t.year}{t.month:02d}' for t in utc[need]})
     try:
+        fields = sorted({f for v in targets for f in ERA5_FOR[v]})
+        lat, lon = float(st['lat']), float(st['lon'])
         if fs is None:
+            # Each field-month is a separate ~40 MB read; download them in parallel processes
+            # (h5py reads one at a time within a process, so threads would not help).
+            _era5_prefetch([(ym, f, lat, lon, str(cache_dir)) for f in fields for ym in months])
             import fsspec
             fs = fsspec.filesystem('s3', anon=True)
-        fields = sorted({f for v in targets for f in ERA5_FOR[v]})
-        era = {f: pd.concat([era5_point_month(fs, ym, f, float(st['lat']), float(st['lon']), cache_dir) for ym in months])
+        era = {f: pd.concat([era5_point_month(fs, ym, f, lat, lon, cache_dir) for ym in months])
                for f in fields}
     except Exception as exc:
         report['era5_infill_status'] = f'ERA5 unavailable, gaps left: {type(exc).__name__}: {exc}'[:300]
