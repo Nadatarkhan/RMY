@@ -51,7 +51,7 @@ independent.
 
 ## Notes
 
-* The method is imported from this repository; the paper describes commit `530e5d7`.
+* The method is imported from this repository; the paper describes commit `5fe6000`.
   `15_clear_sky_reports.py` loads the earlier version (commit `7b6d07e`) from the git history to
   show the effect of the clear-sky rule, so it needs a git checkout, not a downloaded archive.
 * The scripts were collected and tidied for release after the analyses were run. Scripts
