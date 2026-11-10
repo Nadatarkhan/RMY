@@ -1,0 +1,122 @@
+[
+ {
+  "id": "72509014739",
+  "city": "Boston",
+  "tz": -5,
+  "region": "US"
+ },
+ {
+  "id": "72530094846",
+  "city": "Chicago",
+  "tz": -6,
+  "region": "US"
+ },
+ {
+  "id": "72403093738",
+  "city": "Washington Dulles",
+  "tz": -5,
+  "region": "US"
+ },
+ {
+  "id": "72367723054",
+  "city": "Las Vegas, NM",
+  "tz": -7,
+  "region": "US"
+ },
+ {
+  "id": "72295023174",
+  "city": "Los Angeles",
+  "tz": -8,
+  "region": "US"
+ },
+ {
+  "id": "72278023183",
+  "city": "Phoenix",
+  "tz": -7,
+  "region": "US"
+ },
+ {
+  "id": "72494023234",
+  "city": "San Francisco",
+  "tz": -8,
+  "region": "US"
+ },
+ {
+  "id": "72793024233",
+  "city": "Seattle",
+  "tz": -8,
+  "region": "US"
+ },
+ {
+  "id": "74486094789",
+  "city": "New York",
+  "tz": -5,
+  "region": "US"
+ },
+ {
+  "id": "72243012960",
+  "city": "Houston",
+  "tz": -6,
+  "region": "US"
+ },
+ {
+  "id": "03772099999",
+  "city": "London",
+  "tz": 0,
+  "region": "INT"
+ },
+ {
+  "id": "07157099999",
+  "city": "Paris",
+  "tz": 1,
+  "region": "INT"
+ },
+ {
+  "id": "08221099999",
+  "city": "Madrid",
+  "tz": 1,
+  "region": "INT"
+ },
+ {
+  "id": "62366099999",
+  "city": "Cairo",
+  "tz": 2,
+  "region": "INT"
+ },
+ {
+  "id": "63740099999",
+  "city": "Nairobi",
+  "tz": 3,
+  "region": "INT"
+ },
+ {
+  "id": "41194099999",
+  "city": "Dubai",
+  "tz": 4,
+  "region": "INT"
+ },
+ {
+  "id": "54511099999",
+  "city": "Beijing",
+  "tz": 8,
+  "region": "INT"
+ },
+ {
+  "id": "47671099999",
+  "city": "Tokyo",
+  "tz": 9,
+  "region": "INT"
+ },
+ {
+  "id": "48698099999",
+  "city": "Singapore",
+  "tz": 8,
+  "region": "INT"
+ },
+ {
+  "id": "94767099999",
+  "city": "Sydney",
+  "tz": 10,
+  "region": "INT"
+ }
+]

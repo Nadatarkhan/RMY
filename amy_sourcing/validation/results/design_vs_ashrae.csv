@@ -1,0 +1,301 @@
+city,region,item,calc,ashrae,diff
+Boston,US,"Heating dry bulb, 99.6%",-12.2,-13.1,0.9000000000000004
+Boston,US,"Heating dry bulb, 99%",-9.4,-10.2,0.7999999999999989
+Boston,US,"Humidification dew point, 99.6%",-22.8,-23.7,0.8999999999999986
+Boston,US,"Cooling dry bulb, 0.4%",32.8,32.8,0.0
+Boston,US,"Mean coincident wet bulb, 0.4%",22.9,22.9,0.0
+Boston,US,"Cooling dry bulb, 1%",31.1,31.1,0.0
+Boston,US,"Evaporation wet bulb, 0.4%",24.5,24.4,0.1000000000000014
+Boston,US,"Dehumidification dew point, 0.4%",22.8,22.6,0.1999999999999993
+Boston,US,"Enthalpy, 0.4% (kJ/kg)",73.8,73.5,0.2999999999999971
+Boston,US,"Daily range, hottest month",8.1,8.0,0.0999999999999996
+Boston,US,Mean annual maximum dry bulb,35.9,35.5,0.3999999999999986
+Boston,US,Mean annual minimum dry bulb,-16.6,-16.4,-0.2000000000000028
+Boston,US,50-year maximum dry bulb,40.0,39.6,0.3999999999999986
+Boston,US,50-year minimum dry bulb,-25.6,-24.8,-0.8000000000000007
+Boston,US,"Extreme wind speed, 1% (m/s)",11.8,11.8,0.0
+Chicago,US,"Heating dry bulb, 99.6%",-18.3,-18.1,-0.1999999999999993
+Chicago,US,"Heating dry bulb, 99%",-15.6,-15.3,-0.2999999999999989
+Chicago,US,"Humidification dew point, 99.6%",-23.9,-23.6,-0.2999999999999971
+Chicago,US,"Cooling dry bulb, 0.4%",33.3,32.9,0.3999999999999986
+Chicago,US,"Mean coincident wet bulb, 0.4%",23.1,23.2,-0.0999999999999978
+Chicago,US,"Cooling dry bulb, 1%",31.7,31.5,0.1999999999999993
+Chicago,US,"Evaporation wet bulb, 0.4%",25.0,25.1,-0.1000000000000014
+Chicago,US,"Dehumidification dew point, 0.4%",23.3,23.4,-0.0999999999999978
+Chicago,US,"Enthalpy, 0.4% (kJ/kg)",77.2,77.5,-0.2999999999999971
+Chicago,US,"Daily range, hottest month",9.4,9.5,-0.0999999999999996
+Chicago,US,Mean annual maximum dry bulb,35.6,35.4,0.2000000000000028
+Chicago,US,Mean annual minimum dry bulb,-21.6,-21.7,0.0999999999999978
+Chicago,US,50-year maximum dry bulb,40.6,40.4,0.2000000000000028
+Chicago,US,50-year minimum dry bulb,-31.6,-30.6,-1.0
+Chicago,US,"Extreme wind speed, 1% (m/s)",10.8,10.6,0.200000000000001
+Washington Dulles,US,"Heating dry bulb, 99.6%",-10.6,-10.4,-0.1999999999999993
+Washington Dulles,US,"Heating dry bulb, 99%",-7.8,-8.0,0.2000000000000001
+Washington Dulles,US,"Humidification dew point, 99.6%",-19.4,-19.1,-0.2999999999999971
+Washington Dulles,US,"Cooling dry bulb, 0.4%",34.4,34.0,0.3999999999999986
+Washington Dulles,US,"Mean coincident wet bulb, 0.4%",23.7,23.6,0.0999999999999978
+Washington Dulles,US,"Cooling dry bulb, 1%",32.8,32.6,0.1999999999999957
+Washington Dulles,US,"Evaporation wet bulb, 0.4%",25.2,25.2,0.0
+Washington Dulles,US,"Dehumidification dew point, 0.4%",23.3,23.4,-0.0999999999999978
+Washington Dulles,US,"Enthalpy, 0.4% (kJ/kg)",77.3,77.1,0.2000000000000028
+Washington Dulles,US,"Daily range, hottest month",10.8,10.7,0.1000000000000014
+Washington Dulles,US,Mean annual maximum dry bulb,36.6,36.1,0.5
+Washington Dulles,US,Mean annual minimum dry bulb,-13.7,-14.0,0.3000000000000007
+Washington Dulles,US,50-year maximum dry bulb,41.5,41.3,0.2000000000000028
+Washington Dulles,US,50-year minimum dry bulb,-22.7,-21.6,-1.099999999999998
+Washington Dulles,US,"Extreme wind speed, 1% (m/s)",10.8,10.2,0.6000000000000014
+"Las Vegas, NM",US,"Heating dry bulb, 99.6%",-13.9,-13.6,-0.3000000000000007
+"Las Vegas, NM",US,"Heating dry bulb, 99%",-11.1,-11.0,-0.0999999999999996
+"Las Vegas, NM",US,"Humidification dew point, 99.6%",-23.9,-23.1,-0.7999999999999972
+"Las Vegas, NM",US,"Cooling dry bulb, 0.4%",32.2,31.8,0.4000000000000021
+"Las Vegas, NM",US,"Mean coincident wet bulb, 0.4%",13.4,13.3,0.0999999999999996
+"Las Vegas, NM",US,"Cooling dry bulb, 1%",30.6,30.5,0.1000000000000014
+"Las Vegas, NM",US,"Evaporation wet bulb, 0.4%",16.9,16.7,0.1999999999999993
+"Las Vegas, NM",US,"Dehumidification dew point, 0.4%",14.4,14.4,0.0
+"Las Vegas, NM",US,"Enthalpy, 0.4% (kJ/kg)",55.8,55.6,0.1999999999999957
+"Las Vegas, NM",US,"Daily range, hottest month",15.1,15.2,-0.0999999999999996
+"Las Vegas, NM",US,Mean annual maximum dry bulb,34.7,34.2,0.5
+"Las Vegas, NM",US,Mean annual minimum dry bulb,-19.7,-19.6,-0.0999999999999978
+"Las Vegas, NM",US,50-year maximum dry bulb,38.1,37.5,0.6000000000000014
+"Las Vegas, NM",US,50-year minimum dry bulb,-28.8,-27.8,-1.0
+"Las Vegas, NM",US,"Extreme wind speed, 1% (m/s)",14.4,14.2,0.200000000000001
+Los Angeles,US,"Heating dry bulb, 99.6%",7.2,7.2,0.0
+Los Angeles,US,"Heating dry bulb, 99%",8.3,8.3,0.0
+Los Angeles,US,"Humidification dew point, 99.6%",-11.7,-11.2,-0.5
+Los Angeles,US,"Cooling dry bulb, 0.4%",29.4,29.3,0.0999999999999978
+Los Angeles,US,"Mean coincident wet bulb, 0.4%",17.6,17.1,0.5
+Los Angeles,US,"Cooling dry bulb, 1%",27.8,27.4,0.4000000000000021
+Los Angeles,US,"Evaporation wet bulb, 0.4%",21.6,21.4,0.2000000000000028
+Los Angeles,US,"Dehumidification dew point, 0.4%",20.0,19.8,0.1999999999999993
+Los Angeles,US,"Enthalpy, 0.4% (kJ/kg)",63.1,62.4,0.7000000000000028
+Los Angeles,US,"Daily range, hottest month",6.2,5.5,0.7000000000000002
+Los Angeles,US,Mean annual maximum dry bulb,35.5,34.7,0.7999999999999972
+Los Angeles,US,Mean annual minimum dry bulb,5.0,4.8,0.2000000000000001
+Los Angeles,US,50-year maximum dry bulb,42.6,41.7,0.8999999999999986
+Los Angeles,US,50-year minimum dry bulb,2.5,1.9,0.6000000000000001
+Los Angeles,US,"Extreme wind speed, 1% (m/s)",9.3,9.1,0.200000000000001
+Phoenix,US,"Heating dry bulb, 99.6%",4.4,4.2,0.2000000000000001
+Phoenix,US,"Heating dry bulb, 99%",5.6,5.7,-0.1000000000000005
+Phoenix,US,"Humidification dew point, 99.6%",-17.2,-16.8,-0.3999999999999986
+Phoenix,US,"Cooling dry bulb, 0.4%",44.4,44.0,0.3999999999999986
+Phoenix,US,"Mean coincident wet bulb, 0.4%",21.0,20.8,0.1999999999999993
+Phoenix,US,"Cooling dry bulb, 1%",43.3,42.8,0.5
+Phoenix,US,"Evaporation wet bulb, 0.4%",24.0,24.1,-0.1000000000000014
+Phoenix,US,"Dehumidification dew point, 0.4%",22.0,21.9,0.1000000000000014
+Phoenix,US,"Enthalpy, 0.4% (kJ/kg)",74.0,74.1,-0.0999999999999943
+Phoenix,US,"Daily range, hottest month",11.1,11.2,-0.0999999999999996
+Phoenix,US,Mean annual maximum dry bulb,46.7,46.1,0.6000000000000014
+Phoenix,US,Mean annual minimum dry bulb,1.4,1.5,-0.1
+Phoenix,US,50-year maximum dry bulb,49.5,49.4,0.1000000000000014
+Phoenix,US,50-year minimum dry bulb,-3.2,-2.5,-0.7000000000000002
+Phoenix,US,"Extreme wind speed, 1% (m/s)",8.8,8.7,0.1000000000000014
+San Francisco,US,"Heating dry bulb, 99.6%",5.0,4.7,0.2999999999999998
+San Francisco,US,"Heating dry bulb, 99%",6.1,5.8,0.2999999999999998
+San Francisco,US,"Humidification dew point, 99.6%",-3.3,-3.3,0.0
+San Francisco,US,"Cooling dry bulb, 0.4%",28.9,28.5,0.3999999999999986
+San Francisco,US,"Mean coincident wet bulb, 0.4%",17.5,17.1,0.3999999999999986
+San Francisco,US,"Cooling dry bulb, 1%",26.1,25.7,0.4000000000000021
+San Francisco,US,"Evaporation wet bulb, 0.4%",18.9,18.9,0.0
+San Francisco,US,"Dehumidification dew point, 0.4%",16.7,16.4,0.3000000000000007
+San Francisco,US,"Enthalpy, 0.4% (kJ/kg)",53.8,53.3,0.5
+San Francisco,US,"Daily range, hottest month",8.9,8.8,0.0999999999999996
+San Francisco,US,Mean annual maximum dry bulb,34.3,34.1,0.1999999999999957
+San Francisco,US,Mean annual minimum dry bulb,3.1,2.6,0.5
+San Francisco,US,50-year maximum dry bulb,40.4,40.4,0.0
+San Francisco,US,50-year minimum dry bulb,0.2,-0.4,0.6000000000000001
+San Francisco,US,"Extreme wind speed, 1% (m/s)",12.9,12.9,0.0
+Seattle,US,"Heating dry bulb, 99.6%",-3.3,-2.9,-0.3999999999999999
+Seattle,US,"Heating dry bulb, 99%",-1.1,-1.0,-0.1
+Seattle,US,"Humidification dew point, 99.6%",-12.2,-11.3,-0.8999999999999986
+Seattle,US,"Cooling dry bulb, 0.4%",31.1,30.4,0.7000000000000028
+Seattle,US,"Mean coincident wet bulb, 0.4%",18.7,18.5,0.1999999999999993
+Seattle,US,"Cooling dry bulb, 1%",28.9,28.2,0.6999999999999993
+Seattle,US,"Evaporation wet bulb, 0.4%",19.5,19.4,0.1000000000000014
+Seattle,US,"Dehumidification dew point, 0.4%",16.1,16.2,-0.0999999999999978
+Seattle,US,"Enthalpy, 0.4% (kJ/kg)",55.8,55.6,0.1999999999999957
+Seattle,US,"Daily range, hottest month",10.6,10.3,0.2999999999999989
+Seattle,US,Mean annual maximum dry bulb,34.7,34.1,0.6000000000000014
+Seattle,US,Mean annual minimum dry bulb,-6.0,-5.5,-0.5
+Seattle,US,50-year maximum dry bulb,41.1,41.1,0.0
+Seattle,US,50-year minimum dry bulb,-12.0,-11.7,-0.3000000000000007
+Seattle,US,"Extreme wind speed, 1% (m/s)",9.3,9.2,0.1000000000000014
+New York,US,"Heating dry bulb, 99.6%",-9.4,-10.0,0.5999999999999996
+New York,US,"Heating dry bulb, 99%",-7.2,-7.8,0.5999999999999996
+New York,US,"Humidification dew point, 99.6%",-20.6,-21.0,0.3999999999999986
+New York,US,"Cooling dry bulb, 0.4%",32.2,32.2,0.0
+New York,US,"Mean coincident wet bulb, 0.4%",22.6,22.9,-0.2999999999999971
+New York,US,"Cooling dry bulb, 1%",30.6,30.5,0.1000000000000014
+New York,US,"Evaporation wet bulb, 0.4%",25.3,25.2,0.1000000000000014
+New York,US,"Dehumidification dew point, 0.4%",24.4,24.1,0.2999999999999971
+New York,US,"Enthalpy, 0.4% (kJ/kg)",77.5,76.6,0.9000000000000057
+New York,US,"Daily range, hottest month",7.4,7.4,0.0
+New York,US,Mean annual maximum dry bulb,35.4,35.3,0.1000000000000014
+New York,US,Mean annual minimum dry bulb,-13.0,-12.8,-0.1999999999999993
+New York,US,50-year maximum dry bulb,39.7,40.2,-0.5
+New York,US,50-year minimum dry bulb,-20.1,-20.1,0.0
+New York,US,"Extreme wind speed, 1% (m/s)",12.4,12.5,-0.0999999999999996
+Houston,US,"Heating dry bulb, 99.6%",-0.6,-0.2,-0.3999999999999999
+Houston,US,"Heating dry bulb, 99%",1.7,1.5,0.1999999999999999
+Houston,US,"Humidification dew point, 99.6%",-8.9,-8.5,-0.4000000000000003
+Houston,US,"Cooling dry bulb, 0.4%",37.2,36.8,0.4000000000000057
+Houston,US,"Mean coincident wet bulb, 0.4%",24.9,24.8,0.0999999999999978
+Houston,US,"Cooling dry bulb, 1%",36.1,35.6,0.5
+Houston,US,"Evaporation wet bulb, 0.4%",26.8,26.8,0.0
+Houston,US,"Dehumidification dew point, 0.4%",25.6,25.7,-0.0999999999999978
+Houston,US,"Enthalpy, 0.4% (kJ/kg)",84.2,83.9,0.2999999999999971
+Houston,US,"Daily range, hottest month",10.0,10.1,-0.0999999999999996
+Houston,US,Mean annual maximum dry bulb,39.0,38.9,0.1000000000000014
+Houston,US,Mean annual minimum dry bulb,-4.2,-3.4,-0.8000000000000003
+Houston,US,50-year maximum dry bulb,44.2,43.9,0.3000000000000042
+Houston,US,50-year minimum dry bulb,-13.6,-11.0,-2.6
+Houston,US,"Extreme wind speed, 1% (m/s)",9.3,9.3,0.0
+London,INT,"Heating dry bulb, 99.6%",-2.7,-2.2,-0.5
+London,INT,"Heating dry bulb, 99%",-1.3,-1.0,-0.3
+London,INT,"Humidification dew point, 99.6%",-6.0,-5.7,-0.2999999999999998
+London,INT,"Cooling dry bulb, 0.4%",29.2,28.9,0.3000000000000007
+London,INT,"Mean coincident wet bulb, 0.4%",18.8,18.7,0.1000000000000014
+London,INT,"Cooling dry bulb, 1%",26.9,26.6,0.2999999999999971
+London,INT,"Evaporation wet bulb, 0.4%",19.9,19.8,0.0999999999999978
+London,INT,"Dehumidification dew point, 0.4%",17.5,17.5,0.0
+London,INT,"Enthalpy, 0.4% (kJ/kg)",56.8,56.5,0.2999999999999971
+London,INT,"Daily range, hottest month",9.2,9.0,0.1999999999999993
+London,INT,Mean annual maximum dry bulb,33.1,32.8,0.3000000000000042
+London,INT,Mean annual minimum dry bulb,-5.1,-4.9,-0.1999999999999993
+London,INT,50-year maximum dry bulb,40.1,40.5,-0.3999999999999986
+London,INT,50-year minimum dry bulb,-10.5,-9.2,-1.3000000000000007
+London,INT,"Extreme wind speed, 1% (m/s)",10.8,10.6,0.200000000000001
+Paris,INT,"Heating dry bulb, 99.6%",-4.6,-4.3,-0.2999999999999998
+Paris,INT,"Heating dry bulb, 99%",-3.0,-2.7,-0.2999999999999998
+Paris,INT,"Humidification dew point, 99.6%",-8.8,-8.4,-0.4000000000000003
+Paris,INT,"Cooling dry bulb, 0.4%",31.8,31.4,0.4000000000000021
+Paris,INT,"Mean coincident wet bulb, 0.4%",19.6,19.7,-0.0999999999999978
+Paris,INT,"Cooling dry bulb, 1%",29.3,29.1,0.1999999999999993
+Paris,INT,"Evaporation wet bulb, 0.4%",21.0,20.9,0.1000000000000014
+Paris,INT,"Dehumidification dew point, 0.4%",18.4,18.4,0.0
+Paris,INT,"Enthalpy, 0.4% (kJ/kg)",61.0,60.9,0.1000000000000014
+Paris,INT,"Daily range, hottest month",9.8,9.6,0.200000000000001
+Paris,INT,Mean annual maximum dry bulb,36.0,35.1,0.8999999999999986
+Paris,INT,Mean annual minimum dry bulb,-6.3,-6.0,-0.2999999999999998
+Paris,INT,50-year maximum dry bulb,42.5,41.9,0.6000000000000014
+Paris,INT,50-year minimum dry bulb,-13.4,-12.0,-1.4000000000000004
+Paris,INT,"Extreme wind speed, 1% (m/s)",10.8,10.7,0.1000000000000014
+Madrid,INT,"Heating dry bulb, 99.6%",-3.6,-3.7,0.1
+Madrid,INT,"Heating dry bulb, 99%",-2.3,-2.3,0.0
+Madrid,INT,"Humidification dew point, 99.6%",-10.0,-10.4,0.4000000000000003
+Madrid,INT,"Cooling dry bulb, 0.4%",37.7,37.3,0.4000000000000057
+Madrid,INT,"Mean coincident wet bulb, 0.4%",18.5,18.2,0.3000000000000007
+Madrid,INT,"Cooling dry bulb, 1%",36.3,36.0,0.2999999999999971
+Madrid,INT,"Evaporation wet bulb, 0.4%",19.9,19.8,0.0999999999999978
+Madrid,INT,"Dehumidification dew point, 0.4%",16.4,16.3,0.0999999999999978
+Madrid,INT,"Enthalpy, 0.4% (kJ/kg)",59.3,58.5,0.7999999999999972
+Madrid,INT,"Daily range, hottest month",15.9,15.7,0.200000000000001
+Madrid,INT,Mean annual maximum dry bulb,40.0,39.5,0.5
+Madrid,INT,Mean annual minimum dry bulb,-6.0,-6.5,0.5
+Madrid,INT,50-year maximum dry bulb,43.4,43.3,0.1000000000000014
+Madrid,INT,50-year minimum dry bulb,-9.7,-12.0,2.3000000000000007
+Madrid,INT,"Extreme wind speed, 1% (m/s)",9.8,9.6,0.200000000000001
+Cairo,INT,"Heating dry bulb, 99.6%",9.0,8.3,0.6999999999999993
+Cairo,INT,"Heating dry bulb, 99%",10.0,9.4,0.5999999999999996
+Cairo,INT,"Humidification dew point, 99.6%",-5.6,-4.5,-1.0999999999999996
+Cairo,INT,"Cooling dry bulb, 0.4%",39.0,38.7,0.2999999999999971
+Cairo,INT,"Mean coincident wet bulb, 0.4%",20.4,20.9,-0.5
+Cairo,INT,"Cooling dry bulb, 1%",37.3,37.3,0.0
+Cairo,INT,"Evaporation wet bulb, 0.4%",25.4,25.5,-0.1000000000000014
+Cairo,INT,"Dehumidification dew point, 0.4%",24.0,24.0,0.0
+Cairo,INT,"Enthalpy, 0.4% (kJ/kg)",78.5,78.5,0.0
+Cairo,INT,"Daily range, hottest month",10.0,10.2,-0.1999999999999993
+Cairo,INT,Mean annual maximum dry bulb,43.0,42.5,0.5
+Cairo,INT,Mean annual minimum dry bulb,6.8,6.5,0.2999999999999998
+Cairo,INT,50-year maximum dry bulb,48.1,47.2,0.8999999999999986
+Cairo,INT,50-year minimum dry bulb,3.1,3.1,0.0
+Cairo,INT,"Extreme wind speed, 1% (m/s)",9.8,9.5,0.3000000000000007
+Nairobi,INT,"Heating dry bulb, 99.6%",11.0,10.6,0.4000000000000003
+Nairobi,INT,"Heating dry bulb, 99%",12.0,11.7,0.3000000000000007
+Nairobi,INT,"Humidification dew point, 99.6%",4.0,4.1,-0.0999999999999996
+Nairobi,INT,"Cooling dry bulb, 0.4%",29.4,29.5,-0.1000000000000014
+Nairobi,INT,"Mean coincident wet bulb, 0.4%",16.1,16.1,0.0
+Nairobi,INT,"Cooling dry bulb, 1%",29.0,28.7,0.3000000000000007
+Nairobi,INT,"Evaporation wet bulb, 0.4%",19.2,19.3,-0.1000000000000014
+Nairobi,INT,"Dehumidification dew point, 0.4%",18.0,18.1,-0.1000000000000014
+Nairobi,INT,"Enthalpy, 0.4% (kJ/kg)",61.7,62.1,-0.3999999999999986
+Nairobi,INT,"Daily range, hottest month",11.7,11.8,-0.1000000000000014
+Nairobi,INT,Mean annual maximum dry bulb,31.1,31.7,-0.5999999999999979
+Nairobi,INT,Mean annual minimum dry bulb,8.4,7.9,0.5
+Nairobi,INT,50-year maximum dry bulb,33.1,35.3,-2.199999999999996
+Nairobi,INT,50-year minimum dry bulb,6.4,5.3,1.1000000000000003
+Nairobi,INT,"Extreme wind speed, 1% (m/s)",9.3,9.3,0.0
+Dubai,INT,"Heating dry bulb, 99.6%",15.0,14.1,0.9000000000000004
+Dubai,INT,"Heating dry bulb, 99%",16.0,15.2,0.8000000000000007
+Dubai,INT,"Humidification dew point, 99.6%",0.0,-0.4,0.4
+Dubai,INT,"Cooling dry bulb, 0.4%",44.0,43.5,0.5
+Dubai,INT,"Mean coincident wet bulb, 0.4%",23.4,23.6,-0.2000000000000028
+Dubai,INT,"Cooling dry bulb, 1%",42.4,42.3,0.1000000000000014
+Dubai,INT,"Evaporation wet bulb, 0.4%",30.5,30.5,0.0
+Dubai,INT,"Dehumidification dew point, 0.4%",29.0,29.3,-0.3000000000000007
+Dubai,INT,"Enthalpy, 0.4% (kJ/kg)",103.4,101.7,1.7000000000000028
+Dubai,INT,"Daily range, hottest month",8.3,9.0,-0.6999999999999993
+Dubai,INT,Mean annual maximum dry bulb,46.4,46.4,0.0
+Dubai,INT,Mean annual minimum dry bulb,13.2,12.5,0.6999999999999993
+Dubai,INT,50-year maximum dry bulb,48.8,48.4,0.3999999999999986
+Dubai,INT,50-year minimum dry bulb,10.6,9.0,1.5999999999999996
+Dubai,INT,"Extreme wind speed, 1% (m/s)",8.2,8.6,-0.4000000000000003
+Beijing,INT,"Heating dry bulb, 99.6%",-12.3,-12.1,-0.200000000000001
+Beijing,INT,"Heating dry bulb, 99%",-11.0,-10.2,-0.8000000000000007
+Beijing,INT,"Humidification dew point, 99.6%",-28.3,-28.0,-0.3000000000000007
+Beijing,INT,"Cooling dry bulb, 0.4%",36.0,35.8,0.2000000000000028
+Beijing,INT,"Mean coincident wet bulb, 0.4%",21.7,21.9,-0.1999999999999993
+Beijing,INT,"Cooling dry bulb, 1%",34.0,34.2,-0.2000000000000028
+Beijing,INT,"Evaporation wet bulb, 0.4%",27.0,27.3,-0.3000000000000007
+Beijing,INT,"Dehumidification dew point, 0.4%",26.0,26.2,-0.1999999999999993
+Beijing,INT,"Enthalpy, 0.4% (kJ/kg)",85.5,85.6,-0.0999999999999943
+Beijing,INT,"Daily range, hottest month",9.3,9.3,0.0
+Beijing,INT,Mean annual maximum dry bulb,39.1,39.0,0.1000000000000014
+Beijing,INT,Mean annual minimum dry bulb,-15.8,-15.5,-0.3000000000000007
+Beijing,INT,50-year maximum dry bulb,43.8,43.6,0.1999999999999957
+Beijing,INT,50-year minimum dry bulb,-21.9,-22.8,0.9000000000000021
+Beijing,INT,"Extreme wind speed, 1% (m/s)",10.0,10.2,-0.1999999999999993
+Tokyo,INT,"Heating dry bulb, 99.6%",1.0,1.1,-0.1
+Tokyo,INT,"Heating dry bulb, 99%",2.0,2.0,0.0
+Tokyo,INT,"Humidification dew point, 99.6%",-13.0,-13.0,0.0
+Tokyo,INT,"Cooling dry bulb, 0.4%",33.0,32.9,0.1000000000000014
+Tokyo,INT,"Mean coincident wet bulb, 0.4%",26.5,26.2,0.3000000000000007
+Tokyo,INT,"Cooling dry bulb, 1%",32.0,31.9,0.1000000000000014
+Tokyo,INT,"Evaporation wet bulb, 0.4%",27.4,27.4,0.0
+Tokyo,INT,"Dehumidification dew point, 0.4%",26.0,26.3,-0.3000000000000007
+Tokyo,INT,"Enthalpy, 0.4% (kJ/kg)",87.4,86.1,1.3000000000000114
+Tokyo,INT,"Daily range, hottest month",5.6,5.5,0.0999999999999996
+Tokyo,INT,Mean annual maximum dry bulb,35.3,35.0,0.2999999999999971
+Tokyo,INT,Mean annual minimum dry bulb,-1.1,-0.9,-0.2
+Tokyo,INT,50-year maximum dry bulb,39.0,38.6,0.3999999999999986
+Tokyo,INT,50-year minimum dry bulb,-3.7,-3.5,-0.2000000000000001
+Tokyo,INT,"Extreme wind speed, 1% (m/s)",12.4,12.6,-0.1999999999999993
+Singapore,INT,"Heating dry bulb, 99.6%",23.3,23.4,-0.0999999999999978
+Singapore,INT,"Heating dry bulb, 99%",24.0,23.7,0.3000000000000007
+Singapore,INT,"Humidification dew point, 99.6%",20.0,20.5,-0.5
+Singapore,INT,"Cooling dry bulb, 0.4%",33.0,33.4,-0.3999999999999986
+Singapore,INT,"Mean coincident wet bulb, 0.4%",25.9,26.1,-0.2000000000000028
+Singapore,INT,"Cooling dry bulb, 1%",33.0,32.9,0.1000000000000014
+Singapore,INT,"Evaporation wet bulb, 0.4%",27.6,28.0,-0.3999999999999986
+Singapore,INT,"Dehumidification dew point, 0.4%",27.0,27.2,-0.1999999999999993
+Singapore,INT,"Enthalpy, 0.4% (kJ/kg)",88.0,88.0,0.0
+Singapore,INT,"Daily range, hottest month",5.7,5.7,0.0
+Singapore,INT,Mean annual maximum dry bulb,34.3,34.4,-0.1000000000000014
+Singapore,INT,Mean annual minimum dry bulb,22.0,22.0,0.0
+Singapore,INT,50-year maximum dry bulb,35.7,36.3,-0.5999999999999943
+Singapore,INT,50-year minimum dry bulb,20.8,20.9,-0.0999999999999978
+Singapore,INT,"Extreme wind speed, 1% (m/s)",6.7,6.5,0.2000000000000001
+Sydney,INT,"Heating dry bulb, 99.6%",7.1,6.9,0.1999999999999993
+Sydney,INT,"Heating dry bulb, 99%",8.0,7.8,0.2000000000000001
+Sydney,INT,"Humidification dew point, 99.6%",-4.0,-3.6,-0.3999999999999999
+Sydney,INT,"Cooling dry bulb, 0.4%",34.0,33.6,0.3999999999999986
+Sydney,INT,"Mean coincident wet bulb, 0.4%",19.9,19.7,0.1999999999999993
+Sydney,INT,"Cooling dry bulb, 1%",31.1,30.9,0.2000000000000028
+Sydney,INT,"Evaporation wet bulb, 0.4%",23.5,23.5,0.0
+Sydney,INT,"Dehumidification dew point, 0.4%",22.3,22.4,-0.0999999999999978
+Sydney,INT,"Enthalpy, 0.4% (kJ/kg)",70.3,69.8,0.5
+Sydney,INT,"Daily range, hottest month",7.0,6.9,0.0999999999999996
+Sydney,INT,Mean annual maximum dry bulb,40.3,39.7,0.5999999999999943
+Sydney,INT,Mean annual minimum dry bulb,5.4,5.1,0.3000000000000007
+Sydney,INT,50-year maximum dry bulb,48.0,47.4,0.6000000000000014
+Sydney,INT,50-year minimum dry bulb,3.3,2.9,0.3999999999999999
+Sydney,INT,"Extreme wind speed, 1% (m/s)",13.4,13.3,0.0999999999999996
