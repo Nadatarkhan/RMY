@@ -178,3 +178,37 @@ def test_sparse_amys_are_left_out_only_when_enough_years_remain(tmp_path):
     assert [p.name for p in list_amys(tmp_path, verbose=False)] == [f'X_{y}_AMY.epw' for y in range(2010, 2015)]
     (tmp_path / 'X_2014_AMY.epw').unlink()                # only 4 hourly years: keep all
     assert len(list_amys(tmp_path, verbose=False)) == 5
+
+
+def test_blended_humidity_matches_blended_temperature_and_dew_point():
+    from rmy.rmy_generation import relative_humidity
+    n = 48
+    tmy = pd.DataFrame({'temp_air': np.full(n, 10.0), 'temp_dew': np.full(n, 0.0),
+                        'atmospheric_pressure': np.full(n, 101325.0), 'wind_speed': np.full(n, 3.0),
+                        'wind_direction': np.full(n, 200.0)})
+    tmy['relative_humidity'] = relative_humidity(tmy.temp_air, tmy.temp_dew)
+    df = tmy.copy()
+    protected = np.zeros(n, dtype=bool)
+    protected[20:28] = True
+    df.loc[20:27, ['temp_air', 'temp_dew']] = [30.0, 25.0]      # humid inserted block
+    df.loc[20:27, 'relative_humidity'] = relative_humidity(30.0, 25.0)
+    out, _ = smooth_inserted_boundaries(df.copy(), protected, hours=4, base=tmy)
+    blend = list(range(16, 20)) + list(range(28, 32))
+    np.testing.assert_allclose(out.loc[blend, 'relative_humidity'],
+                               relative_humidity(out.loc[blend, 'temp_air'], out.loc[blend, 'temp_dew']))
+
+
+def test_calm_blended_hours_get_direction_zero():
+    from rmy.rmy_generation import set_calm_direction
+    n = 48
+    tmy = pd.DataFrame({'temp_air': np.full(n, 10.0), 'temp_dew': np.full(n, 0.0), 'relative_humidity': np.full(n, 50.0),
+                        'atmospheric_pressure': np.full(n, 101325.0), 'wind_speed': np.full(n, 0.0),
+                        'wind_direction': np.full(n, 270.0)})
+    df = tmy.copy()
+    protected = np.zeros(n, dtype=bool)
+    protected[20:28] = True
+    df.loc[20:27, 'wind_speed'] = 0.0
+    out, _ = smooth_inserted_boundaries(df.copy(), protected, hours=4, base=tmy)
+    assert (out.loc[16:19, 'wind_direction'] == 0).all() and (out.loc[28:31, 'wind_direction'] == 0).all()
+    assert set_calm_direction(out) == n - 8                     # the remaining calm hours
+    assert (out.wind_direction == 0).all()

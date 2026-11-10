@@ -328,6 +328,21 @@ def repair_missing_wind(df, base_epw, inserted_hours, max_gap=3):
     return df, counts
 
 
+def relative_humidity(temp_c, dew_c):
+    """Relative humidity (%) from dry-bulb and dew-point temperature (Magnus, over water),
+    the formula used for the month joins of the TMY."""
+    es = lambda x: np.exp(17.625 * x / (x + 243.04))
+    with np.errstate(invalid='ignore', over='ignore'):
+        return np.clip(100 * es(np.asarray(dew_c, dtype=float)) / es(np.asarray(temp_c, dtype=float)), 0, 100)
+
+
+def set_calm_direction(df):
+    """Wind direction 0 wherever the wind speed is 0 (calm), as in the AMYs. Returns the hours changed."""
+    calm = df['wind_speed'].eq(0) & df['wind_direction'].notna() & df['wind_direction'].ne(0)
+    df.loc[calm, 'wind_direction'] = 0.0
+    return int(calm.sum())
+
+
 def smooth_inserted_boundaries(df, protected, hours=TRANSITION_HOURS, base=None,
                                max_shape_step=8.0):
     """Blend up to `hours` untouched hours around inserted AMY blocks.
@@ -345,7 +360,10 @@ def smooth_inserted_boundaries(df, protected, hours=TRANSITION_HOURS, base=None,
     has missing values, or where the TMY's own temperature jumps by more than
     `max_shape_step` degrees C within one hour, the blended hours are a
     straight line between the two neighboring hours. Dew point in the blended
-    hours is capped at the dry-bulb temperature.
+    hours is capped at the dry-bulb temperature, relative humidity is
+    recalculated from the blended temperature and dew point (blending it
+    separately left it up to 8 points off), and an hour whose blended wind
+    speed is 0 gets wind direction 0 (calm).
     """
     protected = np.asarray(protected, dtype=bool)
     if not protected.any():
@@ -387,6 +405,13 @@ def smooth_inserted_boundaries(df, protected, hours=TRANSITION_HOURS, base=None,
         seg_t = df.loc[start:end, 'temp_air']
         df.loc[start:end, 'temp_dew'] = df.loc[start:end, 'temp_dew'].where(
             ~(df.loc[start:end, 'temp_dew'] > seg_t), seg_t)
+        rh = relative_humidity(seg_t.to_numpy(dtype=float),
+                               df.loc[start:end, 'temp_dew'].to_numpy(dtype=float))
+        ok = np.isfinite(rh)
+        df.loc[np.arange(start, end + 1)[ok], 'relative_humidity'] = rh[ok]
+        if 'wind_direction' in df.columns:
+            calm = df.loc[start:end, 'wind_speed'].eq(0)
+            df.loc[calm[calm].index, 'wind_direction'] = 0.0
         smoothed_hours += end - start + 1
 
     return df, smoothed_hours
@@ -516,6 +541,9 @@ def construct_final_rmy(base_epw_path, epw_dir, hot_dir, cold_dir, output_path,
     pd.testing.assert_frame_equal(final.loc[inserted_hours, SMOOTH_COLS],
                                   event_values, check_exact=True)
     report_temperature_jumps(final, 'After smoothing')
+    n_calm = set_calm_direction(final)
+    if n_calm:
+        print(f'Calm hours given wind direction 0: {n_calm}')
     changed = ~inserted_hours & ~np.isclose(final[SMOOTH_COLS].to_numpy(dtype=float),
                                             base_epw[SMOOTH_COLS].to_numpy(dtype=float),
                                             equal_nan=True).all(axis=1)
