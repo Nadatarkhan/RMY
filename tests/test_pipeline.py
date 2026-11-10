@@ -174,3 +174,31 @@ def test_rmy_is_named_after_the_tmy_with_tmy_replaced_by_rmy(run):
 def test_rmy_file_name(tmy, rmy):
     from rmy.rmy_generation import rmy_file_name
     assert rmy_file_name(tmy) == rmy
+
+
+def test_source_map_accounts_for_every_hour(run):
+    out, rmy_path = run
+    from rmy.rmy_generation import source_map_path
+    m = pd.read_csv(source_map_path(rmy_path))
+    tmy = read_epw_file(next(BASE_DIR.glob('*.epw')))
+    rmy = read_epw_file(rmy_path)
+    assert len(m) == len(rmy)
+    assert set(m.origin) <= {'TMY', 'heat_wave', 'cold_spell', 'compensation', 'blend'}
+    # TMY hours are the base TMY's, with its source years.
+    kept = (m.origin == 'TMY').to_numpy()
+    assert np.allclose(rmy.temp_air[kept], tmy.temp_air[kept], equal_nan=True)
+    assert (m.source_year[kept].to_numpy() == tmy.year[kept].to_numpy()).all()
+    # Inserted heat-wave hours are the peak year's own hours.
+    peak = int(pd.read_csv(out / 'hotspells' / 'heatwave_stats_peak.csv').year.iloc[0])
+    heat = m[m.origin == 'heat_wave']
+    assert len(heat) and (heat.source_year == peak).all()
+    amy = read_epw_file(next(p for p in EPW_DIR.glob('*.epw') if str(peak) in p.name)).set_index(['month', 'day', 'hour'])
+    src = amy.loc[list(zip(heat.month, heat.day, heat.hour)), 'temp_air'].to_numpy()
+    assert np.allclose(rmy.temp_air[heat.index].to_numpy(), src, equal_nan=True)
+
+
+def test_event_csvs_have_no_internal_columns(run):
+    out, _ = run
+    for f in (out / 'hotspells').glob('*events*.csv'):
+        cols = pd.read_csv(f).columns
+        assert '_day0' not in cols and 'source_years' in cols

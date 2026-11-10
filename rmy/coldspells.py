@@ -11,7 +11,6 @@ notebook dropped runs longer than 21 days entirely (review note item 1).
 """
 import os
 from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -21,7 +20,7 @@ from .seasons import season_plan_for_epw
 from .evt import select_pot_threshold
 from .gnn import GNNConfig, detect_gnn_anomalies, gnn_flags_for
 from .heatwaves import exceedance_severity
-from .utils import list_epws, read_epw_raw, report_runner_up
+from .utils import event_dates, event_spans, list_amys, list_epws, read_epw_raw, report_runner_up, without_positions
 
 
 # Fixed Tmin threshold (C) of the 'temperature' method. It is lowered to the
@@ -56,7 +55,8 @@ def cold_thresholds(pooled, tmin_q=0.1, fixed_tmin=FIXED_TMIN_C):
 def calculate_daily_tmin_tmax_cold(epw_data):
     epw_data['temp_air'] = pd.to_numeric(epw_data['temp_air'], errors='coerce')
     epw_data['wind_speed'] = pd.to_numeric(epw_data['wind_speed'], errors='coerce')
-    daily = epw_data.groupby(['year', 'month', 'day']).agg({
+    # File order: calendar order also in a TMY (see calculate_daily_tmin_tmax).
+    daily = epw_data.groupby(['year', 'month', 'day'], sort=False).agg({
         'temp_air': ['min', 'max'],
         'wind_speed': 'mean'
     }).reset_index()
@@ -151,17 +151,19 @@ def calculate_coldspell_stats(events_df, base_df):
         std_tmin = round(period['Tmin (oC)'].std(), 1)
         min_tmin = round(period['Tmin (oC)'].min(), 1)
         avg_ws = round(period['Wind Speed (m/s)'].mean(), 1)
-        bdate = datetime(year, int(period.iloc[0]['MONTH']), int(period.iloc[0]['DAY']))
-        edate = datetime(year, int(period.iloc[-1]['MONTH']), int(period.iloc[-1]['DAY']))
+        begin_date, end_date, source_years = event_dates(period)
         events.append({
-            'begin_date': bdate.strftime('%d/%m/%Y'),
-            'end_date': edate.strftime('%d/%m/%Y'),
+            'begin_date': begin_date,
+            'end_date': end_date,
             'duration': duration,
             'avg_tmin': avg_tmin,
             'std_tmin': std_tmin,
             'min_tmin': min_tmin,
             'avg_wind_speed': avg_ws,
-            'year': year
+            'year': year,
+            'source_years': source_years,
+            '_day0': int(s_idx),
+            '_day1': int(e_idx),
         })
         if year not in stats:
             stats[year] = {'cwn': 0, 'cwf': 0, 'cwd': 0, 'cwdm': [], 'cwaa': np.inf, 'avg_wind_speed': [], 'tmin_all': []}
@@ -182,7 +184,7 @@ def calculate_coldspell_stats(events_df, base_df):
     stats_df = pd.DataFrame.from_dict(stats, orient='index').reset_index().rename(columns={'index': 'year'})
     # keep severity column as-is (negative), selection will use positive scoring later
     stats_df['severity'] = stats_df['cwf'] * stats_df['cwaa']
-    events_df_final = pd.DataFrame(events).sort_values(by='begin_date')
+    events_df_final = pd.DataFrame(events).sort_values(by='_day0')
     return stats_df, events_df_final
 
 
@@ -196,8 +198,7 @@ def resolve_strict_overlaps_cold(events_df):
         return events_df
 
     df = events_df.copy()
-    df['begin_dt'] = pd.to_datetime(df['begin_date'], format='%d/%m/%Y', errors='coerce')
-    df['end_dt'] = pd.to_datetime(df['end_date'], format='%d/%m/%Y', errors='coerce')
+    df['begin_dt'], df['end_dt'] = event_spans(df)
     df = df.dropna(subset=['begin_dt', 'end_dt'])
 
     # Prefer colder metric if available (lower is more severe)
@@ -276,7 +277,7 @@ def process_file_cold(epw_path, methods=('ensemble', 'gnn', 'evt'), winter_month
         print(f" No cold spells detected using any method in {epw_path}.")
         return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
-    all_events_df = pd.concat(combined_events).drop_duplicates().sort_values('begin_date').reset_index(drop=True)
+    all_events_df = pd.concat(combined_events).drop_duplicates().sort_values('_day0').reset_index(drop=True)
 
     # Resolve overlaps within this file's combined events
     if not all_events_df.empty and 'end_date' in all_events_df.columns:
@@ -313,7 +314,7 @@ def save_final_outputs_cold_safe(output_dir, base_stats, base_events, all_stats,
     def safe_save(df, filename):
         path = Path(output_dir) / filename
         if df is not None and not df.empty:
-            df.to_csv(path, index=False)
+            without_positions(df).to_csv(path, index=False)
         else:
             print(f" Skipped empty file: {path}")
 
@@ -349,7 +350,7 @@ def run_full_pipeline_cold(epw_dir, base_dir, output_dir, winter_months=None, us
         print(f" Seasons: {plan.describe()}")
 
     # Thresholds and EVT threshold from all AMY years pooled
-    pooled = pooled_daily_cold(list_epws(epw_dir))
+    pooled = pooled_daily_cold(list_amys(epw_dir))
     if pooled.empty:
         raise ValueError(f"No usable AMY data in {epw_dir}")
     thresholds = cold_thresholds(pooled)
@@ -369,16 +370,14 @@ def run_full_pipeline_cold(epw_dir, base_dir, output_dir, winter_months=None, us
     gnn_daily = None
     if use_gnn:
         try:
-            gnn_daily = detect_gnn_anomalies(list_epws(epw_dir), gnn_config or GNNConfig())
+            gnn_daily = detect_gnn_anomalies(list_amys(epw_dir, verbose=False), gnn_config or GNNConfig())
         except Exception as e:
             print(f" GNN failed ({e}). Continuing with thresholds and EVT only.")
 
     all_stats_list = []
     all_events_list = []
 
-    for epw_file in sorted(os.listdir(epw_dir)):
-        if not epw_file.endswith(".epw"):
-            continue
+    for epw_file in (p.name for p in list_amys(epw_dir, verbose=False)):
         epw_path = os.path.join(epw_dir, epw_file)
         print(f" Processing file: {epw_path}")
         try:

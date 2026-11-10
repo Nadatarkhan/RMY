@@ -21,7 +21,7 @@ from .heatwaves import run_full_pipeline
 from .seasons import season_plan_for_epw
 from .utils import (
     WEATHER_COLS, extract_original_header, find_epw_by_year, get_peak_year,
-    label_rmy_header, list_epws, read_epw_file, safe_load_events, set_typical_extreme_periods, write_epw,
+    label_rmy_header, list_amys, list_epws, read_epw_file, safe_load_events, set_typical_extreme_periods, write_epw,
 )
 from .validation import audit_epws, print_report
 
@@ -87,8 +87,37 @@ def clip_events_to_window(events, source_epw, kind, max_days):
     return events, changes
 
 
-def replace_whole_day(df, source_day, month, day, inserted_hours):
-    """Insert all source-hour weather values, preserving baseline EPW timestamps."""
+def new_source_map(base_epw):
+    """Where each RMY hour comes from, starting as the base TMY (see write_source_map)."""
+    return {'origin': np.full(len(base_epw), 'TMY', dtype=object),
+            'source_year': base_epw['year'].to_numpy(dtype=int, copy=True),
+            'wind_filled': np.zeros(len(base_epw), dtype=bool)}
+
+
+def write_source_map(final, sources, path):
+    """Write the source of every RMY hour next to the RMY.
+
+    origin is TMY (the base TMY's own hour), heat_wave or cold_spell (an event
+    day inserted from the peak AMY), compensation (an AMY day inserted to keep
+    the monthly means), or blend (a TMY hour adjusted to join an inserted
+    block). source_year is the year the weather was observed. The EPW's year
+    column keeps the base TMY's years, so this file is what says that, for
+    example, a heat-wave day came from 2015. wind_filled marks inserted hours
+    whose missing wind was filled (repair_missing_wind).
+    """
+    table = pd.DataFrame({'month': final['month'].to_numpy(), 'day': final['day'].to_numpy(),
+                          'hour': final['hour'].to_numpy(), 'origin': sources['origin'],
+                          'source_year': sources['source_year'], 'wind_filled': sources['wind_filled']})
+    table.to_csv(path, index=False)
+    return table
+
+
+def replace_whole_day(df, source_day, month, day, inserted_hours, sources=None, origin=None):
+    """Insert all source-hour weather values, preserving baseline EPW timestamps.
+
+    With `sources` (new_source_map), the replaced hours are recorded as
+    `origin` from the source day's year.
+    """
     target_idx = df.index[(df['month'] == month) & (df['day'] == day)]
     if target_idx.empty:
         # e.g. February 29 in a 365-day base TMY.
@@ -105,10 +134,14 @@ def replace_whole_day(df, source_day, month, day, inserted_hours):
     for col in WEATHER_COLS:
         df.loc[target_idx, col] = source_day[col].to_numpy()
     inserted_hours[np.asarray(target_idx, dtype=int)] = True
+    if sources is not None:
+        rows = np.asarray(target_idx, dtype=int)
+        sources['origin'][rows] = origin
+        sources['source_year'][rows] = source_day['year'].to_numpy(dtype=int)
     return True
 
 
-def integrate_events(df, matched, unmatched, peak_epw, label, inserted_hours):
+def integrate_events(df, matched, unmatched, peak_epw, label, inserted_hours, sources=None):
     all_events = matched + [(None, e) for e in unmatched.itertuples()]
     replaced = set()
     for _, event in all_events:
@@ -119,7 +152,8 @@ def integrate_events(df, matched, unmatched, peak_epw, label, inserted_hours):
             if source_day.empty:
                 print(f'WARNING: {label} source lacks {month:02d}-{day:02d}')
                 continue
-            if replace_whole_day(df, source_day, month, day, inserted_hours):
+            origin = 'heat_wave' if label == 'Heatwave' else 'cold_spell'
+            if replace_whole_day(df, source_day, month, day, inserted_hours, sources, origin):
                 replaced.add(f'{month:02d}-{day:02d}')
     print(f'{label} events integrated. Days replaced: {len(replaced)}')
     return df, replaced
@@ -132,7 +166,7 @@ def calculate_monthly_avg_conditions(df, months):
 
 def compensate_monthly(df, base_epw, epw_files, months, protected_days, inserted_hours,
                        temp_tol=0.25, rh_tol=2.0, max_days_per_month=10, max_days_total=60,
-                       max_midnight_step=None):
+                       max_midnight_step=None, source_map=None):
     """Pull each month's mean temperature and RH back to the base TMY.
 
     Paper Section 2.4: "the algorithm adjusts monthly and seasonal dry bulb
@@ -227,7 +261,7 @@ def compensate_monthly(df, base_epw, epw_files, months, protected_days, inserted
             if best is None:
                 break
             d, day, dt, drh = best
-            replace_whole_day(df, day, m, d, inserted_hours)
+            replace_whole_day(df, day, m, d, inserted_hours, source_map, 'compensation')
             inserted.add(f'{m:02d}-{d:02d}')
             occupied.add(position[(m, d)])
             del target_sums[d]          # each date is replaced at most once
@@ -411,7 +445,7 @@ def construct_final_rmy(base_epw_path, epw_dir, hot_dir, cold_dir, output_path,
     if len(base_epw) not in (8760, 8784):
         raise ValueError(f'Unexpected baseline length: {len(base_epw)} hours')
 
-    epw_list = list_epws(epw_dir)
+    epw_list = list_amys(epw_dir, verbose=False)
     if not epw_list:
         raise FileNotFoundError(f'No AMY EPWs found in {epw_dir}')
 
@@ -453,19 +487,23 @@ def construct_final_rmy(base_epw_path, epw_dir, hot_dir, cold_dir, output_path,
 
     # Mark every inserted AMY hour. These will be untouched by smoothing.
     inserted_hours = np.zeros(len(base_epw), dtype=bool)
+    sources = new_source_map(base_epw)
     final, rh = integrate_events(base_epw.copy(), mh, uh, peak_heat,
-                                 'Heatwave', inserted_hours)
+                                 'Heatwave', inserted_hours, sources)
     final, rc = integrate_events(final, mc, uc, peak_cold,
-                                 'Coldspell', inserted_hours)
+                                 'Coldspell', inserted_hours, sources)
 
     # Protect both types of extremes against monthly compensation.
     all_extreme_days = rh | rc
     final, _, _ = compensate_monthly(final, base_epw, epw_list, list(range(1, 13)),
-                                     all_extreme_days, inserted_hours)
+                                     all_extreme_days, inserted_hours, source_map=sources)
 
     # Fill wind values missing in the inserted AMY hours (before smoothing,
     # so the boundary blend has wind anchors).
+    wind_missing = final[['wind_speed', 'wind_direction']].isna().any(axis=1).to_numpy()
     final, wind = repair_missing_wind(final, base_epw, inserted_hours)
+    sources['wind_filled'] = (wind_missing & inserted_hours
+                              & final[['wind_speed', 'wind_direction']].notna().any(axis=1).to_numpy())
     print('Wind repair (inserted AMY hours): ' + '; '.join(
         f'{col.replace("_", " ")} {a} h interpolated, {b} h from the TMY'
         for col, (a, b) in wind.items()))
@@ -478,6 +516,10 @@ def construct_final_rmy(base_epw_path, epw_dir, hot_dir, cold_dir, output_path,
     pd.testing.assert_frame_equal(final.loc[inserted_hours, SMOOTH_COLS],
                                   event_values, check_exact=True)
     report_temperature_jumps(final, 'After smoothing')
+    changed = ~inserted_hours & ~np.isclose(final[SMOOTH_COLS].to_numpy(dtype=float),
+                                            base_epw[SMOOTH_COLS].to_numpy(dtype=float),
+                                            equal_nan=True).all(axis=1)
+    sources['origin'][changed] = 'blend'
     print(f'Inserted AMY hours preserved: {int(inserted_hours.sum())}')
     print(f'Surrounding hours included in smoothing: {n_smoothed}')
 
@@ -493,6 +535,12 @@ def construct_final_rmy(base_epw_path, epw_dir, hot_dir, cold_dir, output_path,
     header = set_typical_extreme_periods(header, final)   # design weeks of the RMY itself
     write_epw(final, header, output_path)
     _report_missing_hours(base_epw, final)
+    map_path = source_map_path(output_path)
+    table = write_source_map(final, sources, map_path)
+    counts = table['origin'].value_counts()
+    print('Source of the RMY hours: ' + ', '.join(
+        f'{k} {int(counts.get(k, 0))} h' for k in ('TMY', 'heat_wave', 'cold_spell', 'compensation', 'blend')))
+    print(f'📄 Source year of every hour: {map_path}')
 
     print(f'✅ Final RMY saved to: {output_path}')
     print(f'📂 Heatwave peak AMY: {heat_path}')
@@ -503,6 +551,12 @@ def construct_final_rmy(base_epw_path, epw_dir, hot_dir, cold_dir, output_path,
 # "TMY", "TMYx", "TMY2" or "TMY3" as a word in a file name (any case), but not
 # the "TMY" of "TMY2009", whose digits are a year.
 _TMY_TOKEN = re.compile(r'(?<![A-Za-z])TMY(?:x|[23](?!\d))?(?![A-Za-z])', re.IGNORECASE)
+
+
+def source_map_path(rmy_path):
+    """'.../X_RMY_2009-2023.epw' -> '.../X_RMY_2009-2023.sources.csv'."""
+    rmy_path = Path(rmy_path)
+    return rmy_path.with_name(rmy_path.stem + '.sources.csv')
 
 
 def rmy_file_name(tmy_file_name):

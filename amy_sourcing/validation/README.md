@@ -33,6 +33,7 @@ python 05_holdout_interpolation.py amy_validation_work
 | `14_design_conditions.py` | 4.1, 4.5, Tables 3 and 9, Fig. 4 | `years_selected.csv`, `era5_use_by_year.csv`, `design_vs_ashrae.csv`, `design_summary.csv` |
 | `15_clear_sky_reports.py` | 4.6, Table 10 | `clear_sky_reports.csv` |
 | `16_clear_sky_era5_cloud.py` | 4.6 (sensitivity) | `clear_sky_era5_cloud.csv` |
+| `17_sparse_records.py` | 4.3 (Sparse records) | `sparse_records_karachi_2018.csv` |
 | `figures.py` | Figs. 2–4 | PNG files (`python figures.py --bundled` draws them from `results/`) |
 
 Run `01` before `02`, `06` and `12`; `02` before `04`; and `13` before `14`. The others are
@@ -54,7 +55,7 @@ independent.
   `15_clear_sky_reports.py` loads the earlier version (commit `7b6d07e`) from the git history to
   show the effect of the clear-sky rule, so it needs a git checkout, not a downloaded archive.
 * The scripts were collected and tidied for release after the analyses were run. Scripts
-  `05`, `06`, `10`, `13`, `14`, `15` and `16` were re-run in this form and reproduce the bundled
+  `05`, `06`, `10`, `13`, `14`, `15`, `16` and `17` were re-run in this form and reproduce the bundled
   results exactly, and `figures.py --bundled` redraws Figs. 2–4; the others perform the same
   calculations but were not re-run after tidying.
 * `12_longwave_era5.py` reads whole monthly ERA5 flux fields and takes several hours; the other

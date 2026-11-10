@@ -205,3 +205,23 @@ def test_wet_bulb_and_gumbel_follow_ashrae():
     assert abs(wb[0] - 22.9) < 0.15                            # 30 C, 20 C dew point (55% RH): 22.9 C
     f5 = -np.sqrt(6) / np.pi * (0.5772 + np.log(np.log(5 / 4)))
     assert abs(f5 - 0.7195) < 1e-3                             # ASHRAE factor for 5 years
+
+
+def test_sparse_years_count_in_the_distribution_but_are_not_selected():
+    n = 72
+    cands = [_candidate(2001, 10.0, np.full(n, 3.0)) | {'sparse': True},   # best wind, but sparse
+             _candidate(2002, 10.0, np.full(n, 3.4)),
+             _candidate(2003, 10.0, np.full(n, 2.5)),
+             _candidate(2004, 10.0, np.full(n, 3.6))]
+    best = tm.select_months({1: cands})[1]
+    assert best['year'] == 2002 and not best['sparse']
+    assert '2001' not in best['top3_years']
+    # With fewer than three hourly years, sparse ones remain eligible.
+    best = tm.select_months({1: cands[:3]})[1]
+    assert best['year'] == 2001
+
+
+def test_observed_share_is_read_from_comments_2():
+    header = ['LOCATION,X\n', 'COMMENTS 2,NOAA station weather; observed dry-bulb share 0.329 (sparse record)\n']
+    assert tm.observed_share(header) == pytest.approx(0.329)
+    assert tm.observed_share(['COMMENTS 2,no share here\n']) is None

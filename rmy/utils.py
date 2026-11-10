@@ -31,9 +31,97 @@ CODE_COLS = ['data_source_unct', 'present_weather_observation', 'present_weather
 WEATHER_COLS = [c for c in EPW_COLUMNS if c not in DATE_COLS]
 
 
+# Day positions of an event in its file (first and last day), used to resolve
+# overlapping events; dropped before the event tables are written.
+EVENT_POSITION_COLS = ['_day0', '_day1']
+
+
+def event_dates(spell):
+    """begin_date, end_date (dd/mm/yyyy) and source_years of an event's daily rows.
+
+    `spell` holds consecutive days of one file (YEAR, MONTH, DAY columns). In a
+    TMY the months come from different years, so both dates are given in the
+    year of the first day, and source_years lists every year the days come
+    from ('2018, 2009' for an event from 29 June, taken from 2018, to 1 July,
+    taken from 2009). In an AMY source_years is the single year.
+    """
+    years = [int(y) for y in dict.fromkeys(spell['YEAR'])]
+
+    def on_first_year(row):
+        try:
+            return pd.Timestamp(year=years[0], month=int(row['MONTH']), day=int(row['DAY']))
+        except ValueError:             # 29 February from a leap source year
+            return pd.Timestamp(year=int(row['YEAR']), month=int(row['MONTH']), day=int(row['DAY']))
+
+    begin, end = on_first_year(spell.iloc[0]), on_first_year(spell.iloc[-1])
+    return begin.strftime('%d/%m/%Y'), end.strftime('%d/%m/%Y'), ', '.join(str(y) for y in years)
+
+
+def event_spans(df):
+    """Begin and end of each event, for overlap checks and ordering.
+
+    Day positions in the file when the table has them (the dates of a TMY's
+    events are not on one calendar), otherwise the parsed dates.
+    """
+    if set(EVENT_POSITION_COLS) <= set(df.columns) and df[EVENT_POSITION_COLS].notna().all().all():
+        return df['_day0'].astype(int), df['_day1'].astype(int)
+    return (pd.to_datetime(df['begin_date'], format='%d/%m/%Y', errors='coerce'),
+            pd.to_datetime(df['end_date'], format='%d/%m/%Y', errors='coerce'))
+
+
+def without_positions(df):
+    """The event table without the internal day-position columns."""
+    return df.drop(columns=EVENT_POSITION_COLS, errors='ignore') if df is not None else df
+
+
 def list_epws(folder) -> list[Path]:
     """All .epw files in `folder`, in sorted (filesystem-independent) order."""
     return sorted(Path(folder).glob('*.epw'))
+
+
+# AMY years with fewer observed temperature hours than this share (e.g. a station
+# reporting every 3 hours) are left out of event detection, as long as at least
+# MIN_DENSE_AMYS other years remain (the same share as amy_sourcing's REVIEW_SPARSE).
+SPARSE_OBSERVED_SHARE = 0.5
+MIN_DENSE_AMYS = 5
+_SHARE = re.compile(r'observed dry-bulb share\s+([0-9.]+)')
+
+
+def observed_share(epw_path):
+    """Share of observed temperature hours written by amy_sourcing in COMMENTS 2, or None."""
+    with open(epw_path, encoding='utf-8', errors='ignore') as f:
+        for _, line in zip(range(EPW_HEADER_LINES), f):
+            m = _SHARE.search(line) if line.startswith('COMMENTS') else None
+            if m:
+                return float(m.group(1))
+    return None
+
+
+def list_amys(folder, verbose=True) -> list[Path]:
+    """The AMY EPWs of `folder` used for event detection: sparse years left out.
+
+    Between 3-hourly reports the AMY hours are interpolated, which loses the
+    afternoon peak and the dawn minimum (in a test on Karachi 2018 thinned to
+    3-hourly reports, daily minima came out 1.3 C too warm and heat-wave days
+    fell from 33 to 28). Such years would bias the thresholds and the choice of
+    the peak year, so they are left out when at least MIN_DENSE_AMYS other years
+    remain; otherwise all years are kept, with a warning. Files without the
+    observed share (made elsewhere) are always kept.
+    """
+    files = list_epws(folder)
+    shares = {p: observed_share(p) for p in files}
+    sparse = [p for p, s in shares.items() if s is not None and s < SPARSE_OBSERVED_SHARE]
+    if not sparse:
+        return files
+    dense = [p for p in files if p not in sparse]
+    names = ', '.join(f'{p.name} ({shares[p]:.0%} observed)' for p in sparse)
+    if len(dense) < MIN_DENSE_AMYS:
+        if verbose:
+            print(f'WARNING: sparse AMYs kept, only {len(dense)} years have hourly records: {names}')
+        return files
+    if verbose:
+        print(f'Sparse AMYs left out of event detection and compensation: {names}')
+    return dense
 
 
 def read_epw_raw(path) -> pd.DataFrame:

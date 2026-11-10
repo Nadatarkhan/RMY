@@ -1,0 +1,21 @@
+,value
+reporting_hours_local,02 05 08 11 14 17 20 23
+observed_share_full_%,97.96803652968038
+observed_share_thinned_%,33.17351598173516
+hourly_mae_C,0.6881031202435312
+daily_max_mean_error_C,-0.22054794520547946
+daily_max_mae_C,0.22054794520547946
+daily_max_worst_C,-5.5
+daily_min_mean_error_C,1.260091324200913
+daily_min_mae_C,1.260091324200913
+daily_min_worst_C,6.0
+annual_max_full_C,45.0
+annual_max_thinned_C,45.0
+hours_40C_full,60
+hours_40C_thinned,45
+heat_waves_full,7
+heat_wave_days_full,33
+heat_waves_thinned,6
+heat_wave_days_thinned,28
+heat_waves_full_list,2018-03-27 (4 d); 2018-04-10 (3 d); 2018-04-16 (3 d); 2018-05-17 (7 d); 2018-05-25 (7 d); 2018-10-05 (5 d); 2018-10-15 (4 d)
+heat_waves_thinned_list,2018-03-25 (6 d); 2018-04-10 (3 d); 2018-04-21 (4 d); 2018-05-17 (7 d); 2018-05-28 (4 d); 2018-10-27 (4 d)

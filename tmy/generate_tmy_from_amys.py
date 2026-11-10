@@ -93,6 +93,20 @@ def read_epw_header(epw_path: Path) -> List[str]:
         return [next(f) for _ in range(8)]
 
 
+# Years with fewer observed temperature hours than this share (amy_sourcing writes the
+# share into COMMENTS 2) are sparse records, e.g. 3-hourly synoptic reports.
+SPARSE_OBSERVED_SHARE = 0.5
+
+
+def observed_share(header: Sequence[str]) -> Optional[float]:
+    """Observed dry-bulb share from an AMY header written by amy_sourcing, or None."""
+    for line in header:
+        m = re.search(r'observed dry-bulb share\s+([0-9.]+)', line) if line.startswith('COMMENTS') else None
+        if m:
+            return float(m.group(1))
+    return None
+
+
 def read_epw_data(epw_path: Path) -> pd.DataFrame:
     """Read the EPW hourly data section as text, exactly as written in the file."""
     return pd.read_csv(epw_path, skiprows=8, header=None, dtype=str,
@@ -190,12 +204,16 @@ def select_months(candidates: Dict[int, List[dict]], min_wind_completeness: floa
     multi-year mean is taken over the complete months. If none of the three months is
     complete enough, the one with the lowest rank sum is selected.
 
+    Candidates marked 'sparse' (fewer than SPARSE_OBSERVED_SHARE observed temperature
+    hours) take part in the long-term distributions but are not selected while at least
+    three other candidates remain; this is an addition to the standard.
+
     Ties are not specified in the standard. Months with equal rank sums at the cut-off
     for the three lowest are ordered by the same wind-speed deviation, then by year.
     """
     selected = {}
     for month, cands in candidates.items():
-        rows = [{'year': c['year'], 'file': c['file']} for c in cands]
+        rows = [{'year': c['year'], 'file': c['file'], 'sparse': bool(c.get('sparse', False))} for c in cands]
         for name, col in PRIMARY.items():
             daily = [_daily_means(c['values'], c['day'], col) for c in cands]
             pooled = np.sort(np.concatenate(daily))
@@ -213,6 +231,11 @@ def select_months(candidates: Dict[int, List[dict]], min_wind_completeness: floa
             ok = f >= min_wind_completeness and np.isfinite(w) and np.isfinite(ws_ref)
             r['ws_abs_diff'] = abs(w - ws_ref) if ok else float('inf')
         ranked = sorted(rows, key=lambda r: (r['rank_sum'], r['ws_abs_diff'], r['year']))
+        # Sparse years still count in the long-term distribution (they are often the most
+        # recent), but a month is taken from a year with hourly records when there are at
+        # least three; their interpolated hours lose daily peaks and minima.
+        dense = [r for r in ranked if not r['sparse']]
+        ranked = dense if len(dense) >= 3 else ranked
         best = min(ranked[:3], key=lambda r: (r['ws_abs_diff'], r['rank_sum'], r['year']))
         best['top3_years'] = ' '.join(str(r['year']) for r in ranked[:3])
         best['n_candidates'] = len(rows)
@@ -577,6 +600,12 @@ def generate_tmy_from_amys(
                              f'long-term distribution.')
         seen_years[year] = path.name
 
+        share = observed_share(read_epw_header(path))
+        sparse = share is not None and share < SPARSE_OBSERVED_SHARE
+        if sparse and verbose:
+            print(f'   {path.name}: sparse record ({share:.0%} of temperatures observed); '
+                  f'its months are used only when fewer than three other years are available')
+
         # Clause 4: fill missing values by linear interpolation.
         values = numeric_fields(raw)
         night = None
@@ -621,7 +650,7 @@ def generate_tmy_from_amys(
                     print(f'   {path.name} {MONTH_NAMES[m - 1]}: not a candidate, '
                           f'missing hours remain in {", ".join(gaps)}')
                 continue
-            candidates[m].append({'year': year, 'file': path.name, 'raw': raw.iloc[idx],
+            candidates[m].append({'year': year, 'file': path.name, 'raw': raw.iloc[idx], 'sparse': sparse,
                                   'values': month_vals, 'filled': {c: f[idx] for c, f in filled.items()},
                                   'day': day_col[idx]})
 

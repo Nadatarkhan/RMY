@@ -323,3 +323,14 @@ def test_sparse_records_are_flagged_for_review():
     assert ga.sparse_grade('REVIEW_WIND', 0.33) == 'REVIEW_WIND+SPARSE'
     assert ga.sparse_grade('GOOD', 0.95) == 'GOOD'
     assert ga.sparse_grade('REVIEW_WIND', 0.5) == 'REVIEW_WIND'               # at the threshold: not sparse
+
+
+def test_pvgis_timebase_says_era5_values_are_not_shifted():
+    assert 'no time shift' in ga.pvgis_timebase('PVGIS-ERA5', [30, 30])
+    sarah = ga.pvgis_timebase('PVGIS-SARAH3', [10])
+    assert 'snapshots' in sarah and 'minute(s) 10' in sarah
+
+
+def test_observed_share_note_marks_sparse_records():
+    assert ga.observed_share_comment(0.95) == '; observed dry-bulb share 0.950'
+    assert ga.observed_share_comment(0.33).endswith('(sparse record)')

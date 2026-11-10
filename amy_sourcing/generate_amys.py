@@ -1516,8 +1516,7 @@ def pvgis_hourly_utc(session, year, st, cache_dir, database):
               'pvgis_utc_year':int(year),'pvgis_sample_minute_modes':','.join(str(int(m)) for m in sorted(minutes.unique())),
               'pvgis_nonzero_reflection_hours':int((np.abs(refl)>0.01).sum()),
               'pvgis_raw_json':str(cache),
-              'pvgis_timestamp_processing':'PVGIS snapshots moved to EPW hour midpoints by '
-                                            'interpolating the clearness index in time'}
+              'pvgis_timestamp_processing':pvgis_timebase(database,minutes.unique())}
         return out,info
     except Exception:
         # JSON that reached the cache but failed structural validation must not
@@ -1529,6 +1528,21 @@ def pvgis_hourly_utc(session, year, st, cache_dir, database):
                 if 'outputs' not in test: cache.unlink(missing_ok=True)
             except Exception: cache.unlink(missing_ok=True)
         raise
+
+
+def pvgis_timebase(database, sample_minutes):
+    """How the PVGIS time stamps were turned into EPW hours, for the provenance.
+
+    PVGIS-SARAH3 values are satellite snapshots (about hh:10 UTC) and are moved
+    to the hour midpoints. PVGIS-ERA5 values are hourly means stamped at hh:30
+    UTC, already the midpoints, so the same step leaves them unchanged.
+    """
+    minutes=sorted({int(m) for m in sample_minutes})
+    if minutes==[30]:
+        return (f'{database} hourly values stamped hh:30 UTC, the EPW hour midpoints: '
+                'used as they are, no time shift')
+    return (f'{database} snapshots at minute(s) {",".join(map(str,minutes))} UTC moved to the EPW hour '
+            'midpoints by interpolating the clearness index in time')
 
 
 def solar_geometry_utc(times, lat, lon):
@@ -1614,7 +1628,7 @@ def merge_pvgis_local_year(session, year, st, cache_dir, db, tz_offset):
     mid_utc=target+pd.Timedelta(minutes=30)-pd.Timedelta(hours=tz)
     result=pvgis_to_hour_midpoints(utc,mid_utc,float(st['lat']),float(st['lon']))
     result.index=target
-    method='PVGIS snapshots -> local standard hour midpoints (clearness interpolated in time); no DST'
+    method=info[0]['pvgis_timestamp_processing']+'; local standard time, no DST'
     missing=int(result[['GHI','DNI','DHI']].isna().any(axis=1).sum())
     if missing:
         raise ValueError(f'PVGIS {db} incomplete after time-zone merge: {missing}/{len(target)} local hours missing; '
@@ -1705,6 +1719,16 @@ def sparse_grade(grade, observed_share, threshold=SPARSE_OBSERVED_SHARE):
     if observed_share >= threshold:
         return grade
     return 'REVIEW_SPARSE' if grade == 'GOOD' else grade + '+SPARSE'
+
+
+def observed_share_comment(observed_share, threshold=SPARSE_OBSERVED_SHARE):
+    """Text added to COMMENTS 2: the observed temperature share, read by the TMY and RMY steps.
+
+    A sparse year (below `threshold`) is still written, but the TMY prefers other years for
+    its months and the RMY leaves it out of event detection (rmy.utils.observed_share).
+    """
+    note=f'; observed dry-bulb share {observed_share:.3f}'
+    return note+(' (sparse record)' if observed_share<threshold else '')
 
 
 def _era5_fetch_one(job):
@@ -1968,6 +1992,8 @@ def create_station_year(session,st,year,cache_dir,out_dir,key,email,preferred='A
         headers,epw,irprov=build_epw(st,year,raw,rad,prov['radiation_source'],cloud_missing_policy,
                                       era5_ir=era5_ir,era5_mode=mode)
         report.update(irprov)
+        headers=[h+observed_share_comment(report['DB_observed_share']) if h.startswith('COMMENTS 2,') else h
+                 for h in headers]
         if report['infrared_missing_hours']>0 and report['qc_grade']=='GOOD': report['qc_grade']='REVIEW_LONGWAVE'
         dest=Path(out_dir)/('flagged' if (max_exceed or wind_high_risk) else 'epws')/f'{stem}.epw'
         report['output_epw']=str(write_epw(headers,epw,dest)); report['status']='written'

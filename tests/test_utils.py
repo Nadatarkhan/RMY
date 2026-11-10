@@ -137,3 +137,44 @@ def test_exceedance_severity_ranks_one_extreme_event_above_many_mild_ones():
     cold = pd.DataFrame({'year': [2009, 2013], 'avg_tmin': [-10.0, -4.0], 'duration': [3, 10]})
     sev = exceedance_severity(cold, reference=-3.0, value_col='avg_tmin', sign=-1)
     assert sev[2009] == pytest.approx(21.0) and sev[2013] == pytest.approx(10.0)
+
+
+def test_tmy_days_stay_in_calendar_order_and_events_name_their_source_years():
+    from rmy.heatwaves import calculate_daily_tmin_tmax, calculate_event_stats
+    # A TMY whose June is from 2018 and July from 2009, and an AMY-like April 2019.
+    rows = []
+    for year, month, days in ((2019, 4, 30), (2018, 6, 30), (2009, 7, 31)):
+        for d in range(1, days + 1):
+            for h in range(1, 25):
+                rows.append({'year': year, 'month': month, 'day': d, 'hour': h,
+                             'temp_air': 30.0, 'relative_humidity': 40.0})
+    daily = calculate_daily_tmin_tmax(pd.DataFrame(rows))
+    assert list(daily.MONTH.iloc[[29, 30, 59, 60]]) == [4, 6, 6, 7]     # file order, not year order
+    run = pd.DataFrame({'Start': [58], 'End': [61]})                    # 29 June - 2 July
+    _, events, _ = calculate_event_stats(run, daily)
+    e = events.iloc[0]
+    assert (e.begin_date, e.end_date, e.source_years) == ('29/06/2018', '02/07/2018', '2018, 2009')
+
+
+def test_overlaps_in_a_tmy_are_found_by_day_position():
+    from rmy.heatwaves import resolve_strict_overlaps
+    ev = pd.DataFrame({'begin_date': ['29/06/2018', '01/07/2009'], 'end_date': ['02/07/2018', '03/07/2009'],
+                       'duration': [4, 3], 'max_tmax': [40.0, 41.0], 'year': [2018, 2009],
+                       '_day0': [58, 60], '_day1': [61, 62]})
+    out = resolve_strict_overlaps(ev)
+    assert len(out) == 1 and out.iloc[0].duration == 4
+
+
+def test_sparse_amys_are_left_out_only_when_enough_years_remain(tmp_path):
+    from rmy.utils import list_amys, observed_share
+    def amy(year, share):
+        lines = ['LOCATION,X'] + ['X'] * 4 + ['COMMENTS 1,AMY',
+                 f'COMMENTS 2,NOAA; observed dry-bulb share {share:.3f}', 'DATA PERIODS,1']
+        (tmp_path / f'X_{year}_AMY.epw').write_text('\n'.join(lines) + '\n')
+    for y in range(2010, 2015):
+        amy(y, 0.98)
+    amy(2015, 0.33)
+    assert observed_share(tmp_path / 'X_2015_AMY.epw') == pytest.approx(0.33)
+    assert [p.name for p in list_amys(tmp_path, verbose=False)] == [f'X_{y}_AMY.epw' for y in range(2010, 2015)]
+    (tmp_path / 'X_2014_AMY.epw').unlink()                # only 4 hourly years: keep all
+    assert len(list_amys(tmp_path, verbose=False)) == 5

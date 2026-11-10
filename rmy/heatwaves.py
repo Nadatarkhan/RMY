@@ -22,7 +22,8 @@ import pandas as pd
 from .evt import select_pot_threshold
 from .gnn import GNNConfig, detect_gnn_anomalies, gnn_flags_for
 from .seasons import season_plan_for_epw
-from .utils import calculate_heat_index, list_epws, read_epw_raw, report_runner_up
+from .utils import (calculate_heat_index, event_dates, event_spans, list_amys, list_epws, read_epw_raw,
+                    report_runner_up, without_positions)
 
 warnings.filterwarnings("ignore", category=UserWarning, message="Parsing dates.*")
 
@@ -85,7 +86,10 @@ def calculate_daily_tmin_tmax(epw_data):
         (epw_data['relative_humidity'] != -9999)
     ]
 
-    daily = epw_data.groupby(['year', 'month', 'day'], as_index=False).agg({
+    # File order (sort=False): calendar order also in a TMY, whose months come
+    # from different years. Sorting by year put a TMY's June 2018 next to its
+    # other 2018 months, so runs of days joined days that are not consecutive.
+    daily = epw_data.groupby(['year', 'month', 'day'], as_index=False, sort=False).agg({
         'temp_air': ['min', 'max'],
         'relative_humidity': 'mean'
     })
@@ -314,26 +318,20 @@ def calculate_event_stats(heatwave_df, base_df):
         max_tmax = round(float(spell['Tmax (oC)'].max()), 1)
         avg_hi = round(float(calculate_heat_index(spell['Tmax (oC)'], spell['Humidity (%)']).mean()), 1)
 
-        bdate = pd.Timestamp(
-            year=year,
-            month=int(spell.iloc[0]['MONTH']),
-            day=int(spell.iloc[0]['DAY'])
-        )
-        edate = pd.Timestamp(
-            year=year,
-            month=int(spell.iloc[-1]['MONTH']),
-            day=int(spell.iloc[-1]['DAY'])
-        )
+        begin_date, end_date, source_years = event_dates(spell)
 
         events.append({
-            'begin_date': bdate.strftime('%d/%m/%Y'),
-            'end_date': edate.strftime('%d/%m/%Y'),
+            'begin_date': begin_date,
+            'end_date': end_date,
             'duration': duration,
             'avg_tmax': avg_tmax,
             'std_tmax': std_tmax,
             'max_tmax': max_tmax,
             'avg_heat_index': avg_hi,
-            'year': year
+            'year': year,
+            'source_years': source_years,
+            '_day0': s_idx,
+            '_day1': e_idx,
         })
 
         if year not in stats:
@@ -370,8 +368,7 @@ def calculate_event_stats(heatwave_df, base_df):
 
     events_df = pd.DataFrame(events)
     if not events_df.empty:
-        events_df['begin_dt'] = pd.to_datetime(events_df['begin_date'], format='%d/%m/%Y', errors='coerce')
-        events_df = events_df.sort_values(by='begin_dt').drop(columns='begin_dt').reset_index(drop=True)
+        events_df = events_df.sort_values(by='_day0').reset_index(drop=True)
 
     peak_year = int(stats_df.loc[stats_df['severity'].idxmax(), 'year'])
     return stats_df, events_df, peak_year
@@ -388,8 +385,7 @@ def resolve_strict_overlaps(events_df):
 
     df = events_df.copy()
 
-    df['begin_dt'] = pd.to_datetime(df['begin_date'], format='%d/%m/%Y', errors='coerce')
-    df['end_dt'] = pd.to_datetime(df['end_date'], format='%d/%m/%Y', errors='coerce')
+    df['begin_dt'], df['end_dt'] = event_spans(df)
     df = df.dropna(subset=['begin_dt', 'end_dt'])
 
     df = df.sort_values(
@@ -527,8 +523,7 @@ def process_file(epw_path, gnn_daily=None, evt=None, thresholds=None):
     all_events = pd.concat([static_df, gnn_df, evt_df], ignore_index=True).drop_duplicates()
 
     if 'begin_date' in all_events.columns and not all_events.empty:
-        all_events['begin_dt'] = pd.to_datetime(all_events['begin_date'], format='%d/%m/%Y', errors='coerce')
-        all_events = all_events.sort_values('begin_dt').drop(columns='begin_dt').reset_index(drop=True)
+        all_events = all_events.sort_values('_day0').reset_index(drop=True)
         all_events = resolve_strict_overlaps(all_events)
     else:
         all_events = pd.DataFrame(columns=[
@@ -556,6 +551,7 @@ def process_file(epw_path, gnn_daily=None, evt=None, thresholds=None):
 
 def save_final_outputs(output_dir, base_stats, base_events, all_stats, all_events, peak_stats, peak_events):
     os.makedirs(output_dir, exist_ok=True)
+    base_events, all_events, peak_events = (without_positions(e) for e in (base_events, all_events, peak_events))
 
     base_events.to_csv(os.path.join(output_dir, "heatwave_events_base.csv"), index=False)
     base_stats.to_csv(os.path.join(output_dir, "heatwave_stats_base.csv"), index=False)
@@ -584,7 +580,7 @@ def run_full_pipeline(epw_dir, base_dir, output_dir, use_gnn=True, gnn_config=No
     base_epw_path = os.path.join(base_dir, base_files[0])
 
     # Thresholds and months from all AMY years pooled
-    pooled = pooled_daily(list_epws(epw_dir))
+    pooled = pooled_daily(list_amys(epw_dir))
     if pooled.empty:
         raise ValueError(f"No usable AMY data in {epw_dir}")
     thresholds = heat_thresholds(pooled, season_plan_for_epw(base_epw_path).summer_months)
@@ -601,7 +597,7 @@ def run_full_pipeline(epw_dir, base_dir, output_dir, use_gnn=True, gnn_config=No
     gnn_daily = None
     if use_gnn:
         try:
-            gnn_daily = detect_gnn_anomalies(list_epws(epw_dir), gnn_config or GNNConfig())
+            gnn_daily = detect_gnn_anomalies(list_amys(epw_dir, verbose=False), gnn_config or GNNConfig())
         except Exception as e:
             print(f"⚠️ GNN failed ({e}). Continuing with thresholds and EVT only.")
 
@@ -613,9 +609,7 @@ def run_full_pipeline(epw_dir, base_dir, output_dir, use_gnn=True, gnn_config=No
     all_stats_df = []
     all_events_df = []
 
-    for epw_file in sorted(os.listdir(epw_dir)):
-        if not epw_file.endswith(".epw"):
-            continue
+    for epw_file in (p.name for p in list_amys(epw_dir, verbose=False)):
 
         epw_path = os.path.join(epw_dir, epw_file)
         print(f"Processing file: {epw_path}")
