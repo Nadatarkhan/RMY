@@ -305,3 +305,21 @@ def test_era5_prefetch_skips_cached_months_and_never_raises(tmp_path, monkeypatc
     with contextlib.redirect_stdout(out):
         ga._era5_prefetch([('202102', f, 5.605, -0.167, str(tmp_path)) for f in ('2t', '2d')])
     assert 'one at a time' in out.getvalue()
+
+
+def test_calm_hours_get_direction_zero_even_when_a_direction_was_reported():
+    idx = pd.date_range('2022-01-01', periods=6, freq='h')
+    s = pd.DataFrame({'WS': [3.0, 0.0, 0.0, 2.0, 0.0, 4.0], 'WD': [90.0, 140.0, np.nan, 180.0, 0.0, 200.0],
+                      'WIND_TYPE': ['N', 'N', 'C', 'N', 'C', 'N']}, index=idx)
+    with contextlib.redirect_stdout(io.StringIO()):
+        out, rep = ga.repair_wind_direction(s, 'CIRCULAR_LINEAR', 2)
+    assert (out.WD[out.WS == 0] == 0).all()                                   # all calm hours 0 deg
+    assert list(out.WD[out.WS > 0]) == [90.0, 180.0, 200.0]                   # real directions untouched
+    assert rep['wind_direction_calm_reported_set_to_zero_hours'] == 1
+
+
+def test_sparse_records_are_flagged_for_review():
+    assert ga.sparse_grade('GOOD', 0.33) == 'REVIEW_SPARSE'
+    assert ga.sparse_grade('REVIEW_WIND', 0.33) == 'REVIEW_WIND+SPARSE'
+    assert ga.sparse_grade('GOOD', 0.95) == 'GOOD'
+    assert ga.sparse_grade('REVIEW_WIND', 0.5) == 'REVIEW_WIND'               # at the threshold: not sparse

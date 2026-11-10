@@ -837,6 +837,11 @@ def repair_wind_direction(surface,mode='CIRCULAR_LINEAR',max_gap=2):
                     s.iat[j,s.columns.get_loc('WD_METHOD')]='CIRCULAR_SHORT_INTERPOLATION'
         variable_filled=pd.Series(False,index=s.index)
         s.loc[variable & s.WD.isna(),'WD_METHOD']='VARIABLE_UNDEFINED'
+    # EPW convention: a calm hour (0 m/s) has direction 0. Some reports give a speed of 0 with a
+    # direction; set those to 0 too (after the direction filling, which is therefore unchanged).
+    calm_dir=s.WS.eq(0) & s.WD.notna() & s.WD.ne(0)
+    s.loc[calm_dir,'WD']=0.0
+    s.loc[calm_dir,'WD_METHOD']='CALM_ZERO'
     s['WS_GAP_H']=original_ws_gaps
     s['WD_GAP_H']=original_wd_gaps
     ws_fill=s.WS_METHOD.astype(str).str.contains('INTERPOLATION|EXTRAPOLATION')
@@ -849,6 +854,7 @@ def repair_wind_direction(surface,mode='CIRCULAR_LINEAR',max_gap=2):
         'wind_direction_missing_before_hours':int(initial_wd_missing.sum()),
         'wind_speed_calm_type_recovered_hours':int(recovered_speed.sum()),
         'wind_direction_calm_zero_hours':int(calm.sum()),
+        'wind_direction_calm_reported_set_to_zero_hours':int(calm_dir.sum()),
         'wind_direction_variable_undefined_hours':int((variable & s.WD.isna()).sum()),
         'wind_direction_variable_imputed_hours':int(variable_filled.sum()),
         'wind_speed_interpolated_hours':int(s.WS_METHOD.astype(str).str.contains('INTERPOLATION').sum()),
@@ -1690,6 +1696,15 @@ def era5_point_month(fs, ym, field, lat, lon, cache_dir):
 
 
 ERA5_PARALLEL_DOWNLOADS = 6
+# A year with fewer observed temperature hours than this share is graded REVIEW_SPARSE.
+SPARSE_OBSERVED_SHARE = 0.5
+
+
+def sparse_grade(grade, observed_share, threshold=SPARSE_OBSERVED_SHARE):
+    """Add the sparse-record review flag to a quality grade when too few hours are observed."""
+    if observed_share >= threshold:
+        return grade
+    return 'REVIEW_SPARSE' if grade == 'GOOD' else grade + '+SPARSE'
 
 
 def _era5_fetch_one(job):
@@ -1936,6 +1951,10 @@ def create_station_year(session,st,year,cache_dir,out_dir,key,email,preferred='A
         report['qc_grade']='HIGH_RISK_WIND' if report['qc_grade']=='GOOD' else report['qc_grade']+'+WIND'
     elif wind_review and report['qc_grade']=='GOOD':
         report['qc_grade']='REVIEW_WIND'
+    # Sparse records (e.g. synoptic reports every 3 h): no long gap, but most temperatures are
+    # interpolated and peaks between reports are lost. Usable, but flagged for review.
+    report['DB_observed_share']=round(report['raw_noaa_hours']/n,3)
+    report['qc_grade']=sparse_grade(report['qc_grade'],report['DB_observed_share'])
     # No REVIEW_ATMOSPHERE grade for opaque sky cover taken from total cover
     # (TOTAL_COVER_PROXY): US stations report no opaque cover, so this documented method
     # applies to every hour of every year and the grade said nothing about the year.
