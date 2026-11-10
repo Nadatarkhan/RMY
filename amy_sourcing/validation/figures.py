@@ -94,7 +94,13 @@ def main():
     else:
         work = Path(sys.argv[1] if len(sys.argv) > 1 else 'amy_validation_work').resolve(); res, out = work / 'results', work / 'figures'
     out.mkdir(parents=True, exist_ok=True)
-    fig2(res, out); fig3(res, out); fig4(res, out); print('figures written to', out)
+    for fig, needs in ((fig2, ['radiation_uscrn.csv', 'radiation_charlottesville_2022_hourly.csv']),
+                       (fig3, ['holdout_interpolation.csv', 'holdout_sky_cover.csv']), (fig4, ['design_vs_ashrae.csv'])):
+        missing = [n for n in needs if not (res / n).exists()]
+        if missing:
+            print(f'{fig.__name__}: skipped, run the scripts that write', ', '.join(missing))
+        else:
+            fig(res, out); print(f'{fig.__name__}: written to', out)
 
 
 if __name__ == '__main__':

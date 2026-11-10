@@ -54,8 +54,9 @@ independent.
   `15_clear_sky_reports.py` loads the earlier version (commit `7b6d07e`) from the git history to
   show the effect of the clear-sky rule, so it needs a git checkout, not a downloaded archive.
 * The scripts were collected and tidied for release after the analyses were run. Scripts
-  `05`, `06`, `10`, `14` and `15` were re-run in this form and reproduce the bundled results
-  exactly; the others perform the same calculations but were not re-run after tidying.
+  `05`, `06`, `10`, `13`, `14`, `15` and `16` were re-run in this form and reproduce the bundled
+  results exactly, and `figures.py --bundled` redraws Figs. 2–4; the others perform the same
+  calculations but were not re-run after tidying.
 * `12_longwave_era5.py` reads whole monthly ERA5 flux fields and takes several hours; the other
   scripts take minutes once the data are cached.
 * Pressure errors are in hPa, temperatures in °C, wind speed in m/s, directions in degrees,
