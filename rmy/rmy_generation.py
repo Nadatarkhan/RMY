@@ -33,7 +33,7 @@ TRANSITION_HOURS = 8
 MAX_INSERT_DAYS = 21
 # Largest change in a neighboring month's mean temperature (degrees C) used to
 # take back what a month full of event days cannot (see compensate_monthly).
-SPILL_CAP = 1.0
+SPILL_CAP = 0.5
 SMOOTH_COLS = [
     'temp_air', 'temp_dew', 'relative_humidity',
     'atmospheric_pressure', 'wind_speed'
@@ -189,8 +189,9 @@ def compensate_monthly(df, base_epw, epw_files, months, protected_days, inserted
        example because its event days leave too few free days, the
        remaining temperature deviation (in degree-hours) is shared between
        the month before and the month after (December and January are
-       adjacent), each moved by at most `spill_cap` degrees C the other way,
-       with the same within-month search. Months further away are never used.
+       adjacent), with the same within-month search. A neighbor's mean is
+       never moved further than `spill_cap` degrees C from the TMY. Months
+       further away are never used.
 
     Event days and already-inserted days are never replaced, so the inserted
     extremes are unchanged. Months without deviation are left untouched.
@@ -262,11 +263,14 @@ def compensate_monthly(df, base_epw, epw_files, months, protected_days, inserted
         return (df.loc[in_month, 'temp_air'].mean() - t_target,
                 df.loc[in_month, 'relative_humidity'].mean() - targets.loc[m, 'relative_humidity'])
 
-    def compensate(m, t_target):
-        """Insert days into month m toward (t_target, the TMY RH). Returns days inserted."""
+    def compensate(m, t_target, limit=None):
+        """Insert days into month m toward (t_target, the TMY RH). Returns days inserted.
+        With `limit`, no insertion leaves the month's mean temperature further than
+        `limit` degrees C from the TMY (or further than it already was)."""
         in_month = df['month'] == m
         n_hours = int(in_month.sum())
         dt, drh = deviation(m, t_target)
+        offset = t_target - targets.loc[m, 'temp_air']        # target minus the TMY mean
         free = {}
         for d, day in df[in_month].groupby('day'):
             if f'{m:02d}-{d:02d}' not in protected_days and f'{m:02d}-{d:02d}' not in inserted:
@@ -284,6 +288,8 @@ def compensate_monthly(df, base_epw, epw_files, months, protected_days, inserted
                     _, cur_t, cur_rh = free[d]
                     new_dt = dt + (t_sum - cur_t) / n_hours
                     new_drh = drh + (rh_sum - cur_rh) / n_hours
+                    if limit is not None and abs(new_dt + offset) > max(limit, abs(dt + offset)) + 1e-9:
+                        continue
                     obj = objective(new_dt, new_drh)
                     if obj < best_obj - 1e-12:
                         best, best_obj = (key, d, day, new_dt, new_drh), obj
@@ -320,7 +326,7 @@ def compensate_monthly(df, base_epw, epw_files, months, protected_days, inserted
         offset = float(np.clip(shift[k], -spill_cap, spill_cap))
         if abs(offset) < 1e-9:
             continue
-        n = compensate(k, targets.loc[k, 'temp_air'] + offset)
+        n = compensate(k, targets.loc[k, 'temp_air'] + offset, limit=spill_cap)
         row = rows.setdefault(k, {'month': k, 'temp_dev_before': deviation(k, targets.loc[k, 'temp_air'])[0],
                                   'rh_dev_before': deviation(k, targets.loc[k, 'temp_air'])[1],
                                   'days_inserted': 0})

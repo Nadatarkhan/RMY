@@ -122,6 +122,7 @@ def test_month_without_room_spills_only_into_adjacent_months():
     jan_mar = report.set_index('month').loc[[1, 3]]
     assert (jan_mar['spill_target'] > 0).all() and (jan_mar['spill_target'] <= SPILL_CAP).all()
     assert (jan_mar['temp_dev_after'] > 0).all()                # warmer, taking back February's cold
+    assert (jan_mar['temp_dev_after'] <= SPILL_CAP + 1e-9).all()  # never beyond the cap
     untouched = ~shifted.month.isin([1, 2, 3])
     assert np.array_equal(df.loc[untouched, 'temp_air'].to_numpy(), shifted.loc[untouched, 'temp_air'].to_numpy())
 
