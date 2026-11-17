@@ -27,8 +27,14 @@ def test_band_from_epw_latitude(tmp_path, lat, band):
 
 
 def test_band_of_the_published_files():
+    # 40 cities from 35 S to 65 N: each file's season band follows its own latitude.
+    bands = set()
     for f in sorted((DATA / 'RMY').glob('*.epw')):
-        assert season_plan_for_epw(f).band == 'northern', f.name     # 20 US cities, 21-65 N
+        lat = float(f.read_text().split('\n', 1)[0].split(',')[6])
+        band = season_plan_for_epw(f).band
+        assert band == season_plan_for_latitude(lat).band, f.name
+        bands.add(band)
+    assert bands == {'northern', 'southern', 'equatorial'}
 
 
 def test_season_months_by_band():

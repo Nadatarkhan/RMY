@@ -2,8 +2,8 @@
 
 20 US cities (one per climate zone) and 20 international cities. Each file is the city's RMY morphed to **2050** under **SSP2-4.5** (middle of the road)
 with the **CanESM5** climate model: Track 2 of the FRMY method (RMY morph → future RMY), so the
-observed peak years' heat waves and cold spells are kept and warmed. The US RMYs are in `data/RMY`;
-the international RMYs were built the same way from NOAA stations but are not published here.
+observed peak years' heat waves and cold spells are kept and warmed. The RMYs of all 40 cities are in
+`data/RMY`.
 
 The morph is the CMIP6 pattern-scaling emulator of [wxbuild](https://github.com/kranke-git/wxbuild)
 (Krane & Giani, MIT): for each month, local change = pattern-scaling slope × the model's global-mean

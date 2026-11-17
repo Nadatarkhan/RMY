@@ -1,11 +1,12 @@
-# Representative Meteorological Years (RMYs): 20 US cities
+# Representative Meteorological Years (RMYs): 40 cities
 
-One RMY per US climate zone (ASHRAE 169, 1A to 8). Each is the city's ISO 15927-4 TMY with the heat
+20 US cities, one per US climate zone (ASHRAE 169, 1A to 8), and 20 international cities. Each is the city's ISO 15927-4 TMY with the heat
 waves and cold spells of its peak years inserted (Tarkhan et al. 2025), built end to end from a NOAA
 station number with this repository's code:
 
 1. **AMYs**: the 15 most recent complete years of NOAA Global Hourly observations, with NSRDB (GOES
-   v4) solar radiation; Anchorage and Fairbanks, outside NSRDB's coverage, use PVGIS-ERA5.
+   v4) solar radiation in the US; Anchorage and Fairbanks, outside NSRDB's coverage, use PVGIS-ERA5.
+   International cities use PVGIS-SARAH3 or PVGIS-ERA5 (NSRDB for Mexico City).
 2. **TMY**: ISO 15927-4 from those AMYs (`tmy/`).
 3. **RMY**: heat waves and cold spells detected with thresholds, GNN and EVT, the peak years' events
    inserted, and monthly means rebalanced within each month and, where a month is full of events,
@@ -14,6 +15,8 @@ station number with this repository's code:
 Months filled by long cold spells (e.g. Helena February, Boston February, Miami December) stay colder
 than the TMY: their remaining difference is the inserted extreme itself. Each RMY's `COMMENTS 2` line
 records the AMY years and the peak heat and cold years.
+
+## United States
 
 | City | Zone | NOAA station | AMY years | Solar | File |
 |---|---|---|---|---|---|
@@ -37,3 +40,32 @@ records the AMY years and the peak heat and cold years.
 | Anchorage AK | 7 | 702730-26451 Ted Stevens Anchorage Intl | 2008-2022 | PVGIS-ERA5 | `Anchorage_AK_RMY_2008-2022.epw` |
 | Duluth MN | 7 | 727450-14913 Duluth International Airport | 2010-2024 | NSRDB | `Duluth_MN_RMY_2010-2024.epw` |
 | Fairbanks AK | 8 | 702610-26411 Fairbanks International | 2007-2022 | PVGIS-ERA5 | `Fairbanks_AK_RMY_2007-2022.epw` |
+
+## International
+
+Lagos has 11 usable years and Dhaka 14; the others have 15. Mumbai and New Delhi are not included: the AMY
+code does not yet support India's UTC+5:30 time zone, so Karachi and Dhaka represent South Asia. Climate
+classes are the approximate Köppen-Geiger class of each city.
+
+| City | Country | Climate (Köppen) | NOAA station | AMY years | Solar | File |
+|---|---|---|---|---|---|---|
+| Singapore | Singapore | Af | 486980-99999 Singapore Changi Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Singapore_SG_RMY_2009-2023.epw` |
+| Lagos | Nigeria | Aw | 652010-99999 Murtala Muhammed | 2009-2023 (11 years) | PVGIS-SARAH3 | `Lagos_NG_RMY_2009-2023.epw` |
+| Bangkok | Thailand | Aw | 484590-99999 Chon Buri/Sattahip / Suvarnabhumi Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Bangkok_TH_RMY_2009-2023.epw` |
+| Dhaka | Bangladesh | Aw | 419220-99999 Hazrat Shahjalal Intl | 2008-2023 (14 years) | PVGIS-ERA5 | `Dhaka_BD_RMY_2008-2023.epw` |
+| Nairobi | Kenya | Cwb | 637400-99999 Jkia / Nairobi Jomo Kenyatta Intl | 2007-2023 (15 years) | PVGIS-SARAH3 | `Nairobi_KE_RMY_2007-2023.epw` |
+| Mexico City | Mexico | Cwb | 766793-99999 Licenciado Benito Juarez Intl / Mexico City Intl | 2010-2024 (15 years) | NSRDB | `Mexico_City_MX_RMY_2010-2024.epw` |
+| Karachi | Pakistan | BWh | 417800-99999 Jinnah Intl | 2008-2023 (15 years) | PVGIS-ERA5 | `Karachi_PK_RMY_2008-2023.epw` |
+| Riyadh | Saudi Arabia | BWh | 404370-99999 King Khaled Intl | 2009-2023 (15 years) | PVGIS-SARAH3 | `Riyadh_SA_RMY_2009-2023.epw` |
+| Dubai | United Arab Emirates | BWh | 411940-99999 Dubai Intl | 2009-2023 (15 years) | PVGIS-SARAH3 | `Dubai_AE_RMY_2009-2023.epw` |
+| Cairo | Egypt | BWh | 623660-99999 Cairo Intl | 2009-2023 (15 years) | PVGIS-SARAH3 | `Cairo_EG_RMY_2009-2023.epw` |
+| Madrid | Spain | Csa/BSk | 082210-99999 Adolfo Suarez Madrid Barajas | 2009-2023 (15 years) | PVGIS-SARAH3 | `Madrid_ES_RMY_2009-2023.epw` |
+| Cape Town | South Africa | Csb | 688160-99999 Cape Town Intl | 2009-2023 (15 years) | PVGIS-SARAH3 | `Cape_Town_ZA_RMY_2009-2023.epw` |
+| Sao Paulo | Brazil | Cfa | 830750-99999 Guarulhos Gov Andre Franco Montoro | 2008-2022 (15 years) | PVGIS-SARAH3 | `Sao_Paulo_BR_RMY_2008-2022.epw` |
+| Buenos Aires | Argentina | Cfa | 875760-99999 Ministro Pistarini | 2008-2022 (15 years) | PVGIS-SARAH3 | `Buenos_Aires_AR_RMY_2008-2022.epw` |
+| Sydney | Australia | Cfa | 947670-99999 Sydney Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Sydney_AU_RMY_2009-2023.epw` |
+| Tokyo | Japan | Cfa | 476710-99999 Tokyo Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Tokyo_JP_RMY_2009-2023.epw` |
+| London | United Kingdom | Cfb | 037720-99999 London Heathrow | 2009-2023 (15 years) | PVGIS-SARAH3 | `London_GB_RMY_2009-2023.epw` |
+| Beijing | China | Dwa | 545110-99999 Beijing - Capital International Airport | 2009-2023 (15 years) | PVGIS-ERA5 | `Beijing_CN_RMY_2009-2023.epw` |
+| Moscow | Russia | Dfb | 275155-99999 Sheremetyevo | 2009-2023 (15 years) | PVGIS-SARAH3 | `Moscow_RU_RMY_2009-2023.epw` |
+| Helsinki | Finland | Dfb | 029740-99999 Helsinki Vantaa | 2009-2023 (15 years) | PVGIS-SARAH3 | `Helsinki_FI_RMY_2009-2023.epw` |
