@@ -111,27 +111,31 @@ Invalid values in the input EPWs: no problems found.
 Heatwave events integrated. Days replaced: 40
 Coldspell events integrated. Days replaced: 53
 Monthly compensation (deviation from base TMY, °C / %RH):
-   - Month  1: -5.80 / -4.8 -> -3.35 / -4.1 (8 days)
-   - Month  2: -4.57 / -9.2 -> -2.85 / -10.9 (4 days)
-   - Month  3: -1.65 / -0.3 -> +0.00 / -0.1 (3 days)
+   - Month  1: -5.80 / -4.8 -> -2.45 / -2.7 (9 days; adjacent-month target +1.00 °C, 0 more days)
+   - Month  2: -4.57 / -9.2 -> -2.92 / -8.9 (4 days; adjacent-month target +1.00 °C, 0 more days)
+   - Month  3: -1.65 / -0.3 -> +0.83 / +0.3 (2 days; adjacent-month target +1.00 °C, 1 more days)
    - Month  4: +0.00 / +0.0 -> +0.00 / +0.0 (0 days)
    - Month  5: +0.00 / +0.0 -> +0.00 / +0.0 (0 days)
-   - Month  6: +1.66 / -12.2 -> +0.21 / -9.3 (10 days)
-   - Month  7: +2.79 / -8.0 -> +1.25 / -6.2 (10 days)
-   - Month  8: +0.91 / -1.4 -> +0.13 / -0.7 (2 days)
+   - Month  6: +1.66 / -12.2 -> -0.05 / -5.1 (11 days; adjacent-month target -0.33 °C, 0 more days)
+   - Month  7: +2.79 / -8.0 -> +0.65 / -4.3 (12 days)
+   - Month  8: +0.91 / -1.4 -> -0.25 / -0.7 (2 days; adjacent-month target -0.33 °C, 1 more days)
    - Month  9: +0.00 / +0.0 -> +0.00 / +0.0 (0 days)
    - Month 10: +0.00 / +0.0 -> +0.00 / +0.0 (0 days)
-   - Month 11: -1.14 / +0.1 -> -0.00 / -0.2 (3 days)
-   - Month 12: -0.00 / +0.0 -> -0.00 / +0.0 (0 days)
-Wind repair (inserted AMY hours): wind speed 1 h interpolated, 0 h from the TMY; wind direction 26 h interpolated, 0 h from the TMY
-Before smoothing: 19 jumps >8°C/h; largest 22.80°C/h
-After smoothing: 2 jumps >8°C/h; largest 10.40°C/h
-Inserted AMY hours preserved: 3192
-Surrounding hours included in smoothing: 344
+   - Month 11: -1.14 / +0.1 -> -0.00 / -0.1 (2 days)
+   - Month 12: -0.00 / +0.0 -> +0.98 / +0.0 (0 days; adjacent-month target +1.00 °C, 2 more days)
+   Annual mean deviation from base TMY after compensation: -0.25 °C
+Wind repair (inserted AMY hours): wind speed 1 h interpolated, 0 h from the TMY; wind direction 24 h interpolated, 0 h from the TMY
+Before smoothing: 25 jumps >8°C/h; largest 27.80°C/h
+After smoothing: 3 jumps >8°C/h; largest 10.40°C/h
+Calm hours given wind direction 0: 322
+Inserted AMY hours preserved: 3336
+Surrounding hours included in smoothing: 312
 Fields with more missing hours than the base TMY (written with the EPW missing code):
-   - zenith_luminance: 0 -> 3192 hours
-   - total_sky_cover: 0 -> 15 hours
-   - opaque_sky_cover: 0 -> 15 hours
+   - zenith_luminance: 0 -> 3336 hours
+   - total_sky_cover: 0 -> 23 hours
+   - opaque_sky_cover: 0 -> 23 hours
+Source of the RMY hours: TMY 5112 h, heat_wave 960 h, cold_spell 1272 h, compensation 1104 h, blend 312 h
+📄 Source year of every hour: data/cities/Chicago/RMY/Chicago_IL_725300_RMY_2009-2023.sources.csv
 ✅ Final RMY saved to: data/cities/Chicago/RMY/Chicago_IL_725300_RMY_2009-2023.epw
 📂 Heatwave peak AMY: data/cities/Chicago/AMY/Chicago_72530094846_2012_AMY.epw
 📂 Cold-spell peak AMY: data/cities/Chicago/AMY/Chicago_72530094846_2014_AMY.epw

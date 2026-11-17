@@ -73,11 +73,21 @@ def test_equatorial_run_brings_monthly_means_back(tmp_path):
     base = read_epw_file(next((tmp_path / 'base').glob('*.epw')))
     rmy = read_epw_file(rmy_path)
     dev = (rmy.groupby('month')['temp_air'].mean() - base.groupby('month')['temp_air'].mean()).abs()
-    # February is excluded: it is almost entirely cold-spell days in 2015
-    # (21 inserted days plus 23-28 Feb), leaving almost no days to compensate
-    # with. The other months are compensated to within 0.25 C; the boundary
-    # smoothing applied afterwards can move a month by a few tenths more.
-    assert dev.drop(2).max() < 0.5, dev.round(2).to_dict()
+    # February is almost entirely cold-spell days in 2015 (21 inserted days
+    # plus 23-28 Feb), leaving almost no days to compensate with, so what it
+    # cannot take back goes to January and March, each moved by at most
+    # SPILL_CAP. The other months are compensated to within 0.25 C; the
+    # boundary smoothing applied afterwards can move a month by a few tenths more.
+    from rmy.rmy_generation import SPILL_CAP
+    assert dev.drop([1, 2, 3]).max() < 0.5, dev.round(2).to_dict()
+    assert dev[[1, 3]].max() < SPILL_CAP + 0.5, dev.round(2).to_dict()
+    # Without the adjacent-month step, the annual mean is further from the TMY.
+    no_spill = read_epw_file(run_full_rmy_pipeline(tmp_path / 'EPWs', tmp_path / 'base',
+                                                   tmp_path / 'out_no_spill', spill_cap=0))
+    assert dev.drop(2).max() < SPILL_CAP + 0.5
+    gap = abs(rmy['temp_air'].mean() - base['temp_air'].mean())
+    gap_no_spill = abs(no_spill['temp_air'].mean() - base['temp_air'].mean())
+    assert gap < gap_no_spill - 0.1, (gap, gap_no_spill)
 
 
 def test_long_runs_are_kept_whole():

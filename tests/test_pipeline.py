@@ -104,6 +104,28 @@ def test_output_does_not_depend_on_file_order():
     assert abs(report.loc[0, 'temp_dev_after']) < abs(report.loc[0, 'temp_dev_before'])
 
 
+def test_month_without_room_spills_only_into_adjacent_months():
+    """A month whose days are nearly all events is rebalanced in the month
+    before and after (never further away), and its event days are untouched."""
+    from rmy.rmy_generation import SPILL_CAP
+    base = read_epw_file(list_epws(BASE_DIR)[0])
+    shifted = base.copy()
+    shifted.loc[shifted.month == 2, 'temp_air'] -= 6.0
+    protected = {f'02-{d:02d}' for d in range(1, 27)}          # 2 free days left
+    df, inserted, report = compensate_monthly(shifted.copy(), base, list_epws(EPW_DIR),
+                                              list(range(1, 13)), protected,
+                                              np.zeros(len(base), dtype=bool))
+    assert {int(t[:2]) for t in inserted} <= {1, 2, 3}
+    feb = shifted.month == 2
+    event = feb & (shifted.day <= 26)
+    assert np.array_equal(df.loc[event, 'temp_air'].to_numpy(), shifted.loc[event, 'temp_air'].to_numpy())
+    jan_mar = report.set_index('month').loc[[1, 3]]
+    assert (jan_mar['spill_target'] > 0).all() and (jan_mar['spill_target'] <= SPILL_CAP).all()
+    assert (jan_mar['temp_dev_after'] > 0).all()                # warmer, taking back February's cold
+    untouched = ~shifted.month.isin([1, 2, 3])
+    assert np.array_equal(df.loc[untouched, 'temp_air'].to_numpy(), shifted.loc[untouched, 'temp_air'].to_numpy())
+
+
 def test_compensation_days_join_inserted_days_smoothly():
     """A compensation day next to an inserted day must not create a big midnight step."""
     base = read_epw_file(list_epws(BASE_DIR)[0])

@@ -6,7 +6,8 @@ Ported from the canonical notebook, section "3.0 Generate RMYs"
 Steps:
 1. Insert the peak heat-wave and cold-spell event days from the peak AMY years.
 2. Insert compensating AMY days so each month's mean temperature and
-   humidity stay close to the base TMY (compensate_monthly).
+   humidity stay close to the base TMY, using the month before and after
+   when a month has too few free days (compensate_monthly).
 3. Blend the hours around every inserted block once, after all insertions.
    Inserted AMY hours are never modified.
 """
@@ -30,6 +31,9 @@ TRANSITION_HOURS = 8
 # their full length; a longer event is inserted as its most severe window
 # (see clip_events_to_window). None inserts events whole.
 MAX_INSERT_DAYS = 21
+# Largest change in a neighboring month's mean temperature (degrees C) used to
+# take back what a month full of event days cannot (see compensate_monthly).
+SPILL_CAP = 1.0
 SMOOTH_COLS = [
     'temp_air', 'temp_dew', 'relative_humidity',
     'atmospheric_pressure', 'wind_speed'
@@ -165,19 +169,31 @@ def calculate_monthly_avg_conditions(df, months):
 
 
 def compensate_monthly(df, base_epw, epw_files, months, protected_days, inserted_hours,
-                       temp_tol=0.25, rh_tol=2.0, max_days_per_month=10, max_days_total=60,
-                       max_midnight_step=None, source_map=None):
+                       temp_tol=0.25, rh_tol=2.0, max_days_per_month=None, max_days_total=None,
+                       max_midnight_step=None, source_map=None, window_days=7, spill_cap=SPILL_CAP):
     """Pull each month's mean temperature and RH back to the base TMY.
 
     Paper Section 2.4: "the algorithm adjusts monthly and seasonal dry bulb
     temperature and relative humidity averages back to those of the original
     TMY ... Replacement days are added iteratively until the deviation ...
-    is minimized". For each month whose means moved after event insertion, AMY days from the same
-    calendar month are inserted one at a time, each time choosing the day
-    that most reduces the remaining deviation, until the month is within
-    `temp_tol` (degrees C) and `rh_tol` (percentage points), no candidate
-    helps, or a day budget is reached. Event days and already-inserted days
-    are never replaced. Months without deviation are left untouched.
+    is minimized".
+
+    1. Within the month. AMY days are inserted one at a time, each time the
+       day that most reduces the remaining deviation, until the month is
+       within `temp_tol` (degrees C) and `rh_tol` (percentage points), no
+       candidate helps, or a day budget is reached (None: no budget). A
+       candidate is any AMY day of the same calendar month within
+       `window_days` of the date it replaces (so its sun is close), and each
+       AMY day is used at most once.
+    2. Adjacent months (seasonal). When a month cannot be brought back, for
+       example because its event days leave too few free days, the
+       remaining temperature deviation (in degree-hours) is shared between
+       the month before and the month after (December and January are
+       adjacent), each moved by at most `spill_cap` degrees C the other way,
+       with the same within-month search. Months further away are never used.
+
+    Event days and already-inserted days are never replaced, so the inserted
+    extremes are unchanged. Months without deviation are left untouched.
 
     A compensation day placed directly next to another inserted day (an
     event day or an earlier compensation day) meets it at midnight with no
@@ -187,9 +203,12 @@ def compensate_monthly(df, base_epw, epw_files, months, protected_days, inserted
 
     Returns (df, inserted day tags, per-month report DataFrame).
     """
-    targets = calculate_monthly_avg_conditions(base_epw, months)
+    all_months = sorted(set(months) | {m % 12 + 1 for m in months} | {(m - 2) % 12 + 1 for m in months})
+    targets = calculate_monthly_avg_conditions(base_epw, all_months)
     sources = [read_epw_file(p) for p in sorted(Path(p) for p in epw_files)]
-    inserted, report = set(), []
+    inserted, used = set(), set()
+    budget = {'total': max_days_total if max_days_total is not None else np.inf}
+    per_month_cap = max_days_per_month if max_days_per_month is not None else np.inf
 
     # Order of the calendar days in the file, to find each day's neighbors
     # (also across month ends, and across 28 Feb / 1 Mar in a 365-day TMY).
@@ -225,56 +244,99 @@ def compensate_monthly(df, base_epw, epw_files, months, protected_days, inserted
     def objective(dt, drh):
         return (dt / temp_tol) ** 2 + (drh / rh_tol) ** 2
 
-    for m in months:
+    # Candidate AMY days by calendar month: (source key, day of month, rows, sums).
+    # Days already in the file as event days are left out, so no day appears twice.
+    def fingerprint(day):
+        return tuple(np.round(day['temp_air'].to_numpy(dtype=float), 2))
+    in_file = {fingerprint(day) for (m, d), day in df.groupby(['month', 'day'])
+               if f'{int(m):02d}-{int(d):02d}' in protected_days}
+    candidates = {}
+    for si, src in enumerate(sources):
+        for (m, d), day in src.groupby(['month', 'day']):
+            t_sum, rh_sum = day['temp_air'].sum(), day['relative_humidity'].sum()
+            if np.isfinite(t_sum) and np.isfinite(rh_sum) and fingerprint(day) not in in_file:
+                candidates.setdefault(int(m), []).append(((si, int(m), int(d)), int(d), day, t_sum, rh_sum))
+
+    def deviation(m, t_target):
+        in_month = df['month'] == m
+        return (df.loc[in_month, 'temp_air'].mean() - t_target,
+                df.loc[in_month, 'relative_humidity'].mean() - targets.loc[m, 'relative_humidity'])
+
+    def compensate(m, t_target):
+        """Insert days into month m toward (t_target, the TMY RH). Returns days inserted."""
         in_month = df['month'] == m
         n_hours = int(in_month.sum())
-        dt = df.loc[in_month, 'temp_air'].mean() - targets.loc[m, 'temp_air']
-        drh = df.loc[in_month, 'relative_humidity'].mean() - targets.loc[m, 'relative_humidity']
-        row = {'month': m, 'temp_dev_before': dt, 'rh_dev_before': drh, 'days_inserted': 0}
-
-        # Current hourly sums of each replaceable target day in this month.
-        target_sums = {}
+        dt, drh = deviation(m, t_target)
+        free = {}
         for d, day in df[in_month].groupby('day'):
-            if f'{m:02d}-{d:02d}' not in protected_days:
-                target_sums[d] = (len(day), day['temp_air'].sum(), day['relative_humidity'].sum())
-
-        candidates = []
-        for src in sources:
-            for d, day in src[src['month'] == m].groupby('day'):
-                t_sum, rh_sum = day['temp_air'].sum(), day['relative_humidity'].sum()
-                if d in target_sums and len(day) == target_sums[d][0] \
-                        and np.isfinite(t_sum) and np.isfinite(rh_sum):
-                    candidates.append((d, day, t_sum, rh_sum))
-
-        while (row['days_inserted'] < max_days_per_month and len(inserted) < max_days_total
+            if f'{m:02d}-{d:02d}' not in protected_days and f'{m:02d}-{d:02d}' not in inserted:
+                free[int(d)] = (len(day), day['temp_air'].sum(), day['relative_humidity'].sum())
+        n = 0
+        while (n < per_month_cap and len(inserted) < budget['total']
                and not (abs(dt) <= temp_tol and abs(drh) <= rh_tol)):
             best, best_obj = None, objective(dt, drh)
-            for d, day, t_sum, rh_sum in candidates:
-                if d not in target_sums or not joins_smoothly(m, d, day):
+            for key, src_d, day, t_sum, rh_sum in candidates.get(m, []):
+                if key in used:
                     continue
-                _, cur_t, cur_rh = target_sums[d]
-                new_dt = dt + (t_sum - cur_t) / n_hours
-                new_drh = drh + (rh_sum - cur_rh) / n_hours
-                obj = objective(new_dt, new_drh)
-                if obj < best_obj - 1e-12:
-                    best, best_obj = (d, day, new_dt, new_drh), obj
+                for d in range(src_d - window_days, src_d + window_days + 1):
+                    if d not in free or free[d][0] != len(day) or not joins_smoothly(m, d, day):
+                        continue
+                    _, cur_t, cur_rh = free[d]
+                    new_dt = dt + (t_sum - cur_t) / n_hours
+                    new_drh = drh + (rh_sum - cur_rh) / n_hours
+                    obj = objective(new_dt, new_drh)
+                    if obj < best_obj - 1e-12:
+                        best, best_obj = (key, d, day, new_dt, new_drh), obj
             if best is None:
                 break
-            d, day, dt, drh = best
+            key, d, day, dt, drh = best
             replace_whole_day(df, day, m, d, inserted_hours, source_map, 'compensation')
             inserted.add(f'{m:02d}-{d:02d}')
+            used.add(key)
             occupied.add(position[(m, d)])
-            del target_sums[d]          # each date is replaced at most once
-            row['days_inserted'] += 1
+            del free[d]                 # each date is replaced at most once
+            n += 1
+        return n
 
-        row.update(temp_dev_after=dt, rh_dev_after=drh)
-        report.append(row)
+    rows = {}
+    for m in months:
+        dt0, drh0 = deviation(m, targets.loc[m, 'temp_air'])
+        n = compensate(m, targets.loc[m, 'temp_air'])
+        rows[m] = {'month': m, 'temp_dev_before': dt0, 'rh_dev_before': drh0, 'days_inserted': n,
+                   'spill_target': 0.0, 'spill_days': 0}
 
-    report = pd.DataFrame(report)
+    # Adjacent-month (seasonal) spill of what a month could not take back.
+    hours = df.groupby('month').size()
+    shift = {}
+    for m in months:
+        left = deviation(m, targets.loc[m, 'temp_air'])[0]
+        if abs(left) <= temp_tol:
+            continue
+        neighbors = [(m - 2) % 12 + 1, m % 12 + 1]
+        share = -left * hours[m] / sum(hours[k] for k in neighbors)   # degrees C each neighbor takes
+        for k in neighbors:
+            shift[k] = shift.get(k, 0.0) + share
+    for k in sorted(shift):
+        offset = float(np.clip(shift[k], -spill_cap, spill_cap))
+        if abs(offset) < 1e-9:
+            continue
+        n = compensate(k, targets.loc[k, 'temp_air'] + offset)
+        row = rows.setdefault(k, {'month': k, 'temp_dev_before': deviation(k, targets.loc[k, 'temp_air'])[0],
+                                  'rh_dev_before': deviation(k, targets.loc[k, 'temp_air'])[1],
+                                  'days_inserted': 0})
+        row.update(spill_target=offset, spill_days=n)
+
+    for m, row in rows.items():
+        row['temp_dev_after'], row['rh_dev_after'] = deviation(m, targets.loc[m, 'temp_air'])
+    report = pd.DataFrame([rows[m] for m in sorted(rows)])
     print('Monthly compensation (deviation from base TMY, °C / %RH):')
     for r in report.itertuples():
+        spill = (f'; adjacent-month target {r.spill_target:+.2f} °C, {r.spill_days} more days'
+                 if r.spill_target else '')
         print(f'   - Month {r.month:2d}: {r.temp_dev_before:+.2f} / {r.rh_dev_before:+.1f} -> '
-              f'{r.temp_dev_after:+.2f} / {r.rh_dev_after:+.1f} ({r.days_inserted} days)')
+              f'{r.temp_dev_after:+.2f} / {r.rh_dev_after:+.1f} ({r.days_inserted} days{spill})')
+    total = sum(r.temp_dev_after * hours[r.month] for r in report.itertuples()) / hours.sum()
+    print(f'   Annual mean deviation from base TMY after compensation: {total:+.2f} °C')
     return df, inserted, report
 
 
@@ -440,7 +502,7 @@ def _report_missing_hours(base_epw, final):
 
 def construct_final_rmy(base_epw_path, epw_dir, hot_dir, cold_dir, output_path,
                         transition_hours=TRANSITION_HOURS, invalid_values='missing',
-                        max_insert_days=MAX_INSERT_DAYS):
+                        max_insert_days=MAX_INSERT_DAYS, spill_cap=SPILL_CAP):
     """Build the RMY EPW from detection outputs and write it to `output_path`.
 
     Parameters
@@ -453,6 +515,9 @@ def construct_final_rmy(base_epw_path, epw_dir, hot_dir, cold_dir, output_path,
     transition_hours : width of the blend around each inserted block.
     max_insert_days : longest event inserted, in days (default 21). A longer
         event is inserted as its most severe window; None inserts it whole.
+    spill_cap : largest temperature change (degrees C) asked of the month
+        before and the month after, when a month cannot be rebalanced within
+        itself (see compensate_monthly). 0 turns the adjacent-month step off.
     invalid_values : what to do when an input EPW holds invalid values
         (netCDF fill values, out-of-range numbers; see rmy.validation).
         'missing' (default) reports them and treats them as missing data;
@@ -521,7 +586,8 @@ def construct_final_rmy(base_epw_path, epw_dir, hot_dir, cold_dir, output_path,
     # Protect both types of extremes against monthly compensation.
     all_extreme_days = rh | rc
     final, _, _ = compensate_monthly(final, base_epw, epw_list, list(range(1, 13)),
-                                     all_extreme_days, inserted_hours, source_map=sources)
+                                     all_extreme_days, inserted_hours, source_map=sources,
+                                     spill_cap=spill_cap)
 
     # Fill wind values missing in the inserted AMY hours (before smoothing,
     # so the boundary blend has wind anchors).

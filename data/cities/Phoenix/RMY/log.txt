@@ -117,25 +117,31 @@ Heatwave 30 Jun 2023-30 Jul (31 days) inserted as its most severe 21 days: 09 Ju
 Heatwave events integrated. Days replaced: 43
 Coldspell events integrated. Days replaced: 47
 Monthly compensation (deviation from base TMY, °C / %RH):
-   - Month  1: -1.62 / -17.8 -> -0.66 / -7.0 (10 days)
-   - Month  2: -1.83 / -2.5 -> -0.20 / -0.9 (4 days)
+   - Month  1: -1.62 / -17.8 -> -0.50 / -5.1 (12 days)
+   - Month  2: -1.83 / -2.5 -> +0.25 / -0.0 (4 days; adjacent-month target +0.26 °C, 1 more days)
    - Month  3: +0.00 / +0.0 -> +0.00 / +0.0 (0 days)
    - Month  4: +0.00 / +0.0 -> +0.00 / +0.0 (0 days)
    - Month  5: -0.00 / +0.0 -> -0.00 / +0.0 (0 days)
-   - Month  6: +0.01 / -0.6 -> +0.01 / -0.6 (0 days)
-   - Month  7: +2.93 / -7.2 -> +1.95 / -3.4 (8 days)
-   - Month  8: +1.81 / -6.6 -> +0.16 / -1.5 (8 days)
+   - Month  6: +0.01 / -0.6 -> -0.68 / +0.1 (0 days; adjacent-month target -0.67 °C, 2 more days)
+   - Month  7: +2.93 / -7.2 -> +1.31 / +1.0 (10 days)
+   - Month  8: +1.81 / -6.6 -> -0.47 / +0.7 (5 days; adjacent-month target -0.67 °C, 3 more days)
    - Month  9: +0.00 / +0.0 -> +0.00 / +0.0 (0 days)
    - Month 10: +0.00 / +0.0 -> +0.00 / +0.0 (0 days)
    - Month 11: +0.00 / +0.0 -> +0.00 / +0.0 (0 days)
-   - Month 12: -0.30 / -6.1 -> -0.19 / -1.7 (4 days)
-Wind repair (inserted AMY hours): wind speed 0 h interpolated, 0 h from the TMY; wind direction 125 h interpolated, 4 h from the TMY
-Before smoothing: 24 jumps >8°C/h; largest 10.90°C/h
-After smoothing: 22 jumps >8°C/h; largest 10.80°C/h
-Inserted AMY hours preserved: 2976
-Surrounding hours included in smoothing: 288
+   - Month 12: -0.30 / -6.1 -> +0.23 / -0.2 (4 days; adjacent-month target +0.26 °C, 1 more days)
+   Annual mean deviation from base TMY after compensation: +0.01 °C
+Wind repair (inserted AMY hours): wind speed 1 h interpolated, 0 h from the TMY; wind direction 136 h interpolated, 4 h from the TMY
+Before smoothing: 29 jumps >8°C/h; largest 16.10°C/h
+After smoothing: 24 jumps >8°C/h; largest 16.10°C/h
+Calm hours given wind direction 0: 825
+Inserted AMY hours preserved: 3168
+Surrounding hours included in smoothing: 224
 Fields with more missing hours than the base TMY (written with the EPW missing code):
-   - zenith_luminance: 0 -> 2976 hours
+   - zenith_luminance: 0 -> 3168 hours
+   - total_sky_cover: 0 -> 1 hours
+   - opaque_sky_cover: 0 -> 1 hours
+Source of the RMY hours: TMY 5368 h, heat_wave 1032 h, cold_spell 1128 h, compensation 1008 h, blend 224 h
+📄 Source year of every hour: data/cities/Phoenix/RMY/Phoenix_AZ_722780_RMY_2009-2023.sources.csv
 ✅ Final RMY saved to: data/cities/Phoenix/RMY/Phoenix_AZ_722780_RMY_2009-2023.epw
 📂 Heatwave peak AMY: data/cities/Phoenix/AMY/Phoenix_72278023183_2023_AMY.epw
 📂 Cold-spell peak AMY: data/cities/Phoenix/AMY/Phoenix_72278023183_2013_AMY.epw

@@ -116,27 +116,31 @@ WARNING: missing events CSV: data/cities/Seattle/RMY/coldspells/coldspells_event
 Heatwave events integrated. Days replaced: 28
 Coldspell events integrated. Days replaced: 49
 Monthly compensation (deviation from base TMY, °C / %RH):
-   - Month  1: -1.96 / +1.5 -> -0.46 / +2.2 (10 days)
-   - Month  2: -0.76 / +0.9 -> -0.08 / +0.9 (2 days)
-   - Month  3: -1.33 / -4.6 -> -0.09 / -1.5 (8 days)
+   - Month  1: -1.96 / +1.5 -> +0.20 / +0.5 (8 days; adjacent-month target +0.61 °C, 7 more days)
+   - Month  2: -0.76 / +0.9 -> -0.23 / +0.8 (1 days)
+   - Month  3: -1.33 / -4.6 -> +0.03 / -1.5 (7 days)
    - Month  4: +0.00 / +0.0 -> +0.00 / +0.0 (0 days)
    - Month  5: +0.00 / +0.0 -> +0.00 / +0.0 (0 days)
-   - Month  6: +2.07 / -2.4 -> +0.18 / +0.9 (6 days)
-   - Month  7: +0.85 / -1.3 -> +0.16 / -0.1 (2 days)
-   - Month  8: +1.02 / -2.5 -> +0.18 / +0.0 (3 days)
+   - Month  6: +2.07 / -2.4 -> +0.08 / +0.5 (6 days)
+   - Month  7: +0.85 / -1.3 -> +0.13 / +0.5 (2 days)
+   - Month  8: +1.02 / -2.5 -> +0.04 / +0.3 (3 days)
    - Month  9: +0.00 / +0.0 -> +0.00 / +0.0 (0 days)
    - Month 10: +0.00 / +0.0 -> +0.00 / +0.0 (0 days)
-   - Month 11: -0.00 / +0.0 -> -0.00 / +0.0 (0 days)
-   - Month 12: -2.66 / -7.8 -> -1.80 / -7.6 (10 days)
-Wind repair (inserted AMY hours): wind speed 1 h interpolated, 6 h from the TMY; wind direction 38 h interpolated, 6 h from the TMY
-Before smoothing: 9 jumps >8°C/h; largest 15.60°C/h
+   - Month 11: -0.00 / +0.0 -> +0.54 / +0.5 (0 days; adjacent-month target +0.61 °C, 1 more days)
+   - Month 12: -2.66 / -7.8 -> -1.21 / -5.4 (14 days)
+   Annual mean deviation from base TMY after compensation: -0.03 °C
+Wind repair (inserted AMY hours): wind speed 1 h interpolated, 0 h from the TMY; wind direction 41 h interpolated, 0 h from the TMY
+Before smoothing: 10 jumps >8°C/h; largest 18.90°C/h
 After smoothing: 1 jumps >8°C/h; largest 8.90°C/h
-Inserted AMY hours preserved: 2832
-Surrounding hours included in smoothing: 440
+Calm hours given wind direction 0: 586
+Inserted AMY hours preserved: 3024
+Surrounding hours included in smoothing: 352
 Fields with more missing hours than the base TMY (written with the EPW missing code):
-   - zenith_luminance: 0 -> 2832 hours
-   - total_sky_cover: 0 -> 126 hours
-   - opaque_sky_cover: 0 -> 126 hours
+   - zenith_luminance: 0 -> 3024 hours
+   - total_sky_cover: 0 -> 93 hours
+   - opaque_sky_cover: 0 -> 93 hours
+Source of the RMY hours: TMY 5384 h, heat_wave 672 h, cold_spell 1176 h, compensation 1176 h, blend 352 h
+📄 Source year of every hour: data/cities/Seattle/RMY/Seattle_WA_727930_RMY_2009-2023.sources.csv
 ✅ Final RMY saved to: data/cities/Seattle/RMY/Seattle_WA_727930_RMY_2009-2023.epw
 📂 Heatwave peak AMY: data/cities/Seattle/AMY/Seattle_72793024233_2021_AMY.epw
 📂 Cold-spell peak AMY: data/cities/Seattle/AMY/Seattle_72793024233_2009_AMY.epw
