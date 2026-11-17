@@ -39,11 +39,21 @@ def test_mask_then_fill_writes_each_fields_missing_code():
     assert out['wind_speed'].tolist() == [2.0, 999.0, 1.0]
 
 
-def test_audit_traces_phoenix_fill_values_to_source_years():
-    rep = audit_epws([DATA / 'RMY' / 'Phoenix_RMY.epw'])
+def test_audit_traces_fill_values_to_source_years(tmp_path):
+    # As in an earlier published Phoenix RMY: netCDF fill values in GHI for whole months,
+    # traced back to the years those months came from.
+    src = list_epws(BOSTON['base'])[0]
+    df = read_epw_file(src, mask=False)
+    bad = df['month'].isin([1, 2, 7])
+    df.loc[bad, 'ghi'] = 9.96921e36
+    path = tmp_path / 'with_fill.epw'
+    with open(path, 'w', newline='') as out:
+        out.writelines(extract_original_header(src))
+        df.to_csv(out, index=False, header=False, float_format='%g')
+    rep = audit_epws([path])
     ghi = rep[(rep.field == 'ghi') & (rep.problem == 'invalid')].iloc[0]
-    assert ghi.hours == 4320
-    assert ghi.source_years == '2009, 2011, 2014, 2020, 2021, 2023'
+    assert ghi.hours == int(bad.sum())
+    assert ghi.source_years == ', '.join(str(y) for y in sorted(df.loc[bad, 'year'].unique()))
 
 
 def test_write_epw_round_trip_keeps_missing_codes(tmp_path):

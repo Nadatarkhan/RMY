@@ -13,16 +13,22 @@ DATA = REPO / 'data'
 BOSTON = {'EPWs': DATA / 'cities' / 'Boston' / 'AMY', 'base': DATA / 'cities' / 'Boston' / 'TMY'}
 
 
-@pytest.mark.parametrize('epw, band', [
-    ('cities/Boston/TMY/Boston_MA_725090_TMYx_2009-2023.epw', 'northern'),
-    ('RMY/CapeTown_RMY.epw', 'southern'),
-    ('RMY/Melbourne_RMY.epw', 'southern'),
-    ('RMY/KualaLumpur_RMY.epw', 'equatorial'),    # 3.1 N
-    ('RMY/Manaus_RMY.epw', 'equatorial'),         # 3.0 S, was "Southern" in the notebook list
-    ('RMY/DaresSalaam_RMY.epw', 'equatorial'),    # 6.9 S, was "Southern" in the notebook list
+@pytest.mark.parametrize('lat, band', [
+    ('42.361', 'northern'),       # Boston
+    ('-33.97', 'southern'),       # Cape Town
+    ('-37.67', 'southern'),       # Melbourne
+    ('3.12', 'equatorial'),       # Kuala Lumpur
+    ('-3.04', 'equatorial'),      # Manaus (was "Southern" in the notebook list)
+    ('-6.87', 'equatorial'),      # Dar es Salaam (was "Southern" in the notebook list)
 ])
-def test_band_from_epw_latitude(epw, band):
-    assert season_plan_for_epw(DATA / epw).band == band
+def test_band_from_epw_latitude(tmp_path, lat, band):
+    _copy_with_latitude(tmp_path, lat)
+    assert season_plan_for_epw(next((tmp_path / 'base').glob('*.epw'))).band == band
+
+
+def test_band_of_the_published_files():
+    for f in sorted((DATA / 'RMY').glob('*.epw')):
+        assert season_plan_for_epw(f).band == 'northern', f.name     # 20 US cities, 21-65 N
 
 
 def test_season_months_by_band():

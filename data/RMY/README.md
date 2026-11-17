@@ -1,0 +1,39 @@
+# Representative Meteorological Years (RMYs): 20 US cities
+
+One RMY per US climate zone (ASHRAE 169, 1A to 8). Each is the city's ISO 15927-4 TMY with the heat
+waves and cold spells of its peak years inserted (Tarkhan et al. 2025), built end to end from a NOAA
+station number with this repository's code:
+
+1. **AMYs**: the 15 most recent complete years of NOAA Global Hourly observations, with NSRDB (GOES
+   v4) solar radiation; Anchorage and Fairbanks, outside NSRDB's coverage, use PVGIS-ERA5.
+2. **TMY**: ISO 15927-4 from those AMYs (`tmy/`).
+3. **RMY**: heat waves and cold spells detected with thresholds, GNN and EVT, the peak years' events
+   inserted, and monthly means rebalanced within each month and, where a month is full of events,
+   in the month before and after (at most 0.5 °C each; `rmy/`).
+
+Months filled by long cold spells (e.g. Helena February, Boston February, Miami December) stay colder
+than the TMY: their remaining difference is the inserted extreme itself. Each RMY's `COMMENTS 2` line
+records the AMY years and the peak heat and cold years.
+
+| City | Zone | NOAA station | AMY years | Solar | File |
+|---|---|---|---|---|---|
+| Miami FL | 1A | 722020-12839 Miami International Airport | 2010-2024 | NSRDB | `Miami_FL_RMY_2010-2024.epw` |
+| Houston TX | 2A | 722430-12960 G Bush Intercontinental Ap/Houston Ap | 2010-2024 | NSRDB | `Houston_TX_RMY_2010-2024.epw` |
+| Phoenix AZ | 2B | 722780-23183 Phoenix Sky Harbor Intl Airport | 2010-2024 | NSRDB | `Phoenix_AZ_RMY_2010-2024.epw` |
+| Atlanta GA | 3A | 722190-13874 Hartsfield-Jackson Atlanta Intl Ap | 2010-2024 | NSRDB | `Atlanta_GA_RMY_2010-2024.epw` |
+| Las Vegas NV | 3B | 723860-23169 Mccarran International Airport | 2010-2024 | NSRDB | `Las_Vegas_NV_RMY_2010-2024.epw` |
+| Los Angeles CA | 3B | 722950-23174 Los Angeles International Airport | 2010-2024 | NSRDB | `Los_Angeles_CA_RMY_2010-2024.epw` |
+| San Francisco CA | 3C | 724940-23234 San Francisco International Airport | 2010-2024 | NSRDB | `San_Francisco_CA_RMY_2010-2024.epw` |
+| New York NY | 4A | 744860-94789 John F Kennedy International Airport | 2010-2024 | NSRDB | `New_York_NY_RMY_2010-2024.epw` |
+| Washington Dulles VA | 4A | 724030-93738 Washington Dulles International Ap | 2010-2024 | NSRDB | `Washington_Dulles_VA_RMY_2010-2024.epw` |
+| Albuquerque NM | 4B | 723650-23050 Albuquerque Intl Sunport Airport | 2010-2024 | NSRDB | `Albuquerque_NM_RMY_2010-2024.epw` |
+| Portland OR | 4C | 726980-24229 Portland International Airport | 2010-2024 | NSRDB | `Portland_OR_RMY_2010-2024.epw` |
+| Seattle WA | 4C | 727930-24233 Seattle-Tacoma International Airport | 2010-2024 | NSRDB | `Seattle_WA_RMY_2010-2024.epw` |
+| Boston MA | 5A | 725090-14739 Gen E L Logan International Airport | 2010-2024 | NSRDB | `Boston_MA_RMY_2010-2024.epw` |
+| Chicago IL | 5A | 725300-94846 Chicago O'Hare International Airport | 2010-2024 | NSRDB | `Chicago_IL_RMY_2010-2024.epw` |
+| Denver CO | 5B | 725650-03017 Denver International Airport | 2009-2024 | NSRDB | `Denver_CO_RMY_2009-2024.epw` |
+| Minneapolis MN | 6A | 726580-14922 Minneapolis-St Paul International Ap | 2010-2024 | NSRDB | `Minneapolis_MN_RMY_2010-2024.epw` |
+| Helena MT | 6B | 727720-24144 Helena Regional Airport | 2009-2024 | NSRDB | `Helena_MT_RMY_2009-2024.epw` |
+| Anchorage AK | 7 | 702730-26451 Ted Stevens Anchorage Intl | 2008-2022 | PVGIS-ERA5 | `Anchorage_AK_RMY_2008-2022.epw` |
+| Duluth MN | 7 | 727450-14913 Duluth International Airport | 2010-2024 | NSRDB | `Duluth_MN_RMY_2010-2024.epw` |
+| Fairbanks AK | 8 | 702610-26411 Fairbanks International | 2007-2022 | PVGIS-ERA5 | `Fairbanks_AK_RMY_2007-2022.epw` |

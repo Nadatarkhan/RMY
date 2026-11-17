@@ -334,3 +334,12 @@ def test_pvgis_timebase_says_era5_values_are_not_shifted():
 def test_observed_share_note_marks_sparse_records():
     assert ga.observed_share_comment(0.95) == '; observed dry-bulb share 0.950'
     assert ga.observed_share_comment(0.33).endswith('(sparse record)')
+
+
+def test_dew_point_above_dry_bulb_is_capped():
+    # Fairbanks-like ice-fog hours: dew point reported above the air temperature.
+    surface = pd.DataFrame({'DB': [-40.0, -36.1, 5.0, np.nan], 'DP': [-30.4, -35.8, 2.0, 1.0]})
+    report = ga.cap_dew_point(surface)
+    assert report == {'dew_point_capped_hours': 2, 'dew_point_capped_max_excess_C': 9.6}
+    assert surface['DP'].tolist()[:3] == [-40.0, -36.1, 2.0]
+    assert np.isnan(surface['DB'].iloc[3]) and surface['DP'].iloc[3] == 1.0   # missing values left alone

@@ -1157,6 +1157,21 @@ def source_flags_with_sky_fill(base_flags, flags):
         out.append(''.join(s))
     return out
 
+def cap_dew_point(surface):
+    """Cap dew point at the dry-bulb temperature, in place (RH then comes out as 100 %).
+
+    A dew point above the air temperature is physically impossible. NOAA records at
+    very cold stations have it (Fairbanks reports dew points up to 11 C above the air
+    temperature at -35 to -41 C, in ice fog). Returns the report fields: hours capped
+    and the largest excess removed (C).
+    """
+    db, dp = surface['DB'], surface['DP']
+    over = (dp > db) & db.notna() & dp.notna()
+    excess = float((dp - db)[over].max()) if over.any() else 0.0
+    surface.loc[over, 'DP'] = db[over]
+    return {'dew_point_capped_hours': int(over.sum()), 'dew_point_capped_max_excess_C': round(excess, 2)}
+
+
 def build_epw(st,year,surface,rad,source_description,cloud_missing_policy='DEFAULT_5',era5_ir=None,era5_mode='FALLBACK'):
     expected=expected_local_index(year)
     if not surface.index.equals(expected) or not rad.index.equals(expected):
@@ -1988,6 +2003,7 @@ def create_station_year(session,st,year,cache_dir,out_dir,key,email,preferred='A
     # US stations have a few every year. They are still counted (precip_multi_hour_reports).
     if prov['radiation_is_reanalysis']:
         report['qc_grade']='REVIEW_REANALYSIS_SOLAR' if report['qc_grade']=='GOOD' else report['qc_grade']+'+ERA5_SOLAR'
+    report.update(cap_dew_point(raw))
     try:
         headers,epw,irprov=build_epw(st,year,raw,rad,prov['radiation_source'],cloud_missing_policy,
                                       era5_ir=era5_ir,era5_mode=mode)
