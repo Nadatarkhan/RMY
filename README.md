@@ -61,7 +61,7 @@ data/
 │       ├── TMY/        ← exactly one base TMY EPW
 │       └── RMY/        ← RMY outputs for this city: RMY EPW, event CSVs, timeline plot, log
 ├── RMY/                ← published RMYs: 20 US cities, one per climate zone (see its README)
-└── FRMY/               ← published FRMYs: the same 20 cities in 2050, SSP2-4.5, CanESM5 (see its README)
+└── FRMY/               ← published FRMYs: the 20 US cities and 20 international cities in 2050, SSP2-4.5, CanESM5 (see its README)
 amy_sourcing/           ← AMY generation from a NOAA station number (NOAA + NSRDB)
 examples/               ← Google Colab notebooks
 images/                 ← figures used in this README

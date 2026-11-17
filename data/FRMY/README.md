@@ -1,8 +1,9 @@
-# Future Representative Meteorological Years (FRMYs): 20 US cities, 2050
+# Future Representative Meteorological Years (FRMYs): 40 cities, 2050
 
-Each file is the city's RMY in `data/RMY` morphed to **2050** under **SSP2-4.5** (middle of the road)
+20 US cities (one per climate zone) and 20 international cities. Each file is the city's RMY morphed to **2050** under **SSP2-4.5** (middle of the road)
 with the **CanESM5** climate model: Track 2 of the FRMY method (RMY morph → future RMY), so the
-observed peak years' heat waves and cold spells are kept and warmed.
+observed peak years' heat waves and cold spells are kept and warmed. The US RMYs are in `data/RMY`;
+the international RMYs were built the same way from NOAA stations but are not published here.
 
 The morph is the CMIP6 pattern-scaling emulator of [wxbuild](https://github.com/kranke-git/wxbuild)
 (Krane & Giani, MIT): for each month, local change = pattern-scaling slope × the model's global-mean
@@ -14,6 +15,8 @@ statistics); ground temperatures and typical/extreme weeks are recalculated.
 
 CanESM5 is a high-sensitivity model: its 2050 global warming is about twice that of other CMIP6
 models (e.g. MPI-ESM1-2-LR), so these files are toward the warm end of SSP2-4.5 projections.
+
+## United States
 
 | City | Zone | File | Global warming (K) |
 |---|---|---|---|
@@ -37,3 +40,34 @@ models (e.g. MPI-ESM1-2-LR), so these files are toward the warm end of SSP2-4.5 
 | Anchorage AK | 7 | `Anchorage_AK_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.43 |
 | Duluth MN | 7 | `Duluth_MN_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.33 |
 | Fairbanks AK | 8 | `Fairbanks_AK_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.47 |
+
+## International
+
+Built from the 15 most recent complete years at each NOAA station where available (Lagos has 11 usable
+years, Dhaka 14). Solar radiation is PVGIS-SARAH3 where its satellite covers the city, PVGIS-ERA5
+elsewhere, and NSRDB for Mexico City. Mumbai and New Delhi are not included: the AMY code does not yet
+support India's UTC+5:30 time zone, so Karachi and Dhaka represent South Asia. Climate classes are the
+approximate Köppen-Geiger class of each city.
+
+| City | Country | Climate (Köppen) | NOAA station | AMY years | Solar | File | Global warming (K) |
+|---|---|---|---|---|---|---|---|
+| Singapore | Singapore | Af | 486980-99999 Singapore Changi Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Singapore_SG_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Lagos | Nigeria | Aw | 652010-99999 Murtala Muhammed | 2009-2023 (11 years) | PVGIS-SARAH3 | `Lagos_NG_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Bangkok | Thailand | Aw | 484590-99999 Chon Buri/Sattahip / Suvarnabhumi Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Bangkok_TH_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Dhaka | Bangladesh | Aw | 419220-99999 Hazrat Shahjalal Intl | 2008-2023 (14 years) | PVGIS-ERA5 | `Dhaka_BD_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.42 |
+| Nairobi | Kenya | Cwb | 637400-99999 Jkia / Nairobi Jomo Kenyatta Intl | 2007-2023 (15 years) | PVGIS-SARAH3 | `Nairobi_KE_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.42 |
+| Mexico City | Mexico | Cwb | 766793-99999 Licenciado Benito Juarez Intl / Mexico City Intl | 2010-2024 (15 years) | NSRDB | `Mexico_City_MX_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.33 |
+| Karachi | Pakistan | BWh | 417800-99999 Jinnah Intl | 2008-2023 (15 years) | PVGIS-ERA5 | `Karachi_PK_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.42 |
+| Riyadh | Saudi Arabia | BWh | 404370-99999 King Khaled Intl | 2009-2023 (15 years) | PVGIS-SARAH3 | `Riyadh_SA_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Dubai | United Arab Emirates | BWh | 411940-99999 Dubai Intl | 2009-2023 (15 years) | PVGIS-SARAH3 | `Dubai_AE_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Cairo | Egypt | BWh | 623660-99999 Cairo Intl | 2009-2023 (15 years) | PVGIS-SARAH3 | `Cairo_EG_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Madrid | Spain | Csa/BSk | 082210-99999 Adolfo Suarez Madrid Barajas | 2009-2023 (15 years) | PVGIS-SARAH3 | `Madrid_ES_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Cape Town | South Africa | Csb | 688160-99999 Cape Town Intl | 2009-2023 (15 years) | PVGIS-SARAH3 | `Cape_Town_ZA_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Sao Paulo | Brazil | Cfa | 830750-99999 Guarulhos Gov Andre Franco Montoro | 2008-2022 (15 years) | PVGIS-SARAH3 | `Sao_Paulo_BR_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.43 |
+| Buenos Aires | Argentina | Cfa | 875760-99999 Ministro Pistarini | 2008-2022 (15 years) | PVGIS-SARAH3 | `Buenos_Aires_AR_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.43 |
+| Sydney | Australia | Cfa | 947670-99999 Sydney Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Sydney_AU_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Tokyo | Japan | Cfa | 476710-99999 Tokyo Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Tokyo_JP_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| London | United Kingdom | Cfb | 037720-99999 London Heathrow | 2009-2023 (15 years) | PVGIS-SARAH3 | `London_GB_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Beijing | China | Dwa | 545110-99999 Beijing - Capital International Airport | 2009-2023 (15 years) | PVGIS-ERA5 | `Beijing_CN_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Moscow | Russia | Dfb | 275155-99999 Sheremetyevo | 2009-2023 (15 years) | PVGIS-SARAH3 | `Moscow_RU_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Helsinki | Finland | Dfb | 029740-99999 Helsinki Vantaa | 2009-2023 (15 years) | PVGIS-SARAH3 | `Helsinki_FI_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |

@@ -80,9 +80,12 @@ def clip_events_to_window(events, source_epw, kind, max_days):
     changes = []
     for i, ev in events.iterrows():
         dates = pd.date_range(ev['begin_date'], ev['end_date'], freq='D')
+        # Only days the source file has: a future AMY labelled with a leap year has no
+        # 29 February, and one missing day would leave every window without a mean.
+        dates = pd.DatetimeIndex([d for d in dates if (d.month, d.day) in daily.index])
         if len(dates) <= max_days:
             continue
-        values = pd.Series([daily.get((d.month, d.day), np.nan) for d in dates])
+        values = pd.Series([daily[(d.month, d.day)] for d in dates])
         window = values.rolling(max_days).mean()
         end = int(window.idxmax() if kind == 'heat' else window.idxmin())
         start = end - max_days + 1

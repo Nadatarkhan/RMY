@@ -225,3 +225,16 @@ def test_event_csvs_have_no_internal_columns(run):
     for f in (out / 'hotspells').glob('*events*.csv'):
         cols = pd.read_csv(f).columns
         assert '_day0' not in cols and 'source_years' in cols
+
+
+def test_long_event_over_a_missing_leap_day_is_clipped():
+    """A future AMY labelled with a leap year has no 29 February (it is dropped when
+    morphing); a long cold spell over that date must still be clipped to its window."""
+    from rmy.rmy_generation import clip_events_to_window
+    src = read_epw_file(list_epws(BASE_DIR)[0])                 # 365 days, no 29 February
+    events = pd.DataFrame({'begin_date': [pd.Timestamp('2052-02-14')], 'end_date': [pd.Timestamp('2052-03-12')],
+                           'duration': [28]})
+    out, changes = clip_events_to_window(events, src, 'cold', 21)
+    assert len(changes) == 1 and out['duration'].iloc[0] == 21
+    begin, end = out['begin_date'].iloc[0], out['end_date'].iloc[0]
+    assert pd.Timestamp('2052-02-14') <= begin < end <= pd.Timestamp('2052-03-12')
