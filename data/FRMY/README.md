@@ -1,8 +1,8 @@
-# Future Representative Meteorological Years (FRMYs): 110 cities, 2050
+# Future Representative Meteorological Years (FRMYs): 116 cities, 2050
 
-20 US cities (one per climate zone), 20 international cities, 50 world capitals and 20 US state capitals. Each file is the city's RMY morphed to **2050** under **SSP2-4.5** (middle of the road)
+20 US cities (one per climate zone), 20 international cities, 56 world capitals and 20 US state capitals. Each file is the city's RMY morphed to **2050** under **SSP2-4.5** (middle of the road)
 with the **CanESM5** climate model: Track 2 of the FRMY method (RMY morph → future RMY), so the
-observed peak years' heat waves and cold spells are kept and warmed. The RMYs of all 110 cities are in
+observed peak years' heat waves and cold spells are kept and warmed. The RMYs of all 116 cities are in
 `data/RMY`.
 
 The morph is the CMIP6 pattern-scaling emulator of [wxbuild](https://github.com/kranke-git/wxbuild)
@@ -45,8 +45,7 @@ models (e.g. MPI-ESM1-2-LR), so these files are toward the warm end of SSP2-4.5 
 
 Built from the 15 most recent complete years at each NOAA station where available (Lagos has 11 usable
 years, Dhaka 14). Solar radiation is PVGIS-SARAH3 where its satellite covers the city, PVGIS-ERA5
-elsewhere, and NSRDB for Mexico City. Mumbai and New Delhi are not included: the AMY code does not yet
-support India's UTC+5:30 time zone, so Karachi and Dhaka represent South Asia. Climate classes are the
+elsewhere, and NSRDB for Mexico City. New Delhi, added later with half-hour time-zone support, is listed under World capitals. Climate classes are the
 approximate Köppen-Geiger class of each city.
 
 | City | Country | Climate (Köppen) | NOAA station | AMY years | Solar | File | Global warming (K) |
@@ -72,17 +71,19 @@ approximate Köppen-Geiger class of each city.
 | Moscow | Russia | Dfb | 275155-99999 Sheremetyevo | 2009-2023 (15 years) | PVGIS-SARAH3 | `Moscow_RU_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
 | Helsinki | Finland | Dfb | 029740-99999 Helsinki Vantaa | 2009-2023 (15 years) | PVGIS-SARAH3 | `Helsinki_FI_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
 
-## World capitals (50)
+## World capitals (56)
 
 Built in November 2026 with the fixed AMY code (sky cover filled in every hour, corrupt temperature reports removed;
 see [`../QA.md`](../QA.md)). For each capital, the nearby NOAA stations were scored on the size of their yearly
 records for 2009-2024. The main airport or city station with the most complete record was used; distances and
 elevation differences from the city centre are in the QA summary. Solar radiation is PVGIS-SARAH3 or PVGIS-ERA5,
 and NSRDB in the Americas, except Santiago (PVGIS-ERA5) and Montevideo and Asunción (PVGIS-SARAH3), which are
-outside NSRDB. Kinshasa and Kampala have 10 usable years, Accra and Maputo 11; the others have 15. Capitals in
-half-hour time zones (New Delhi, Tehran, Kabul, Kathmandu, Colombo, Yangon) are not included, and neither are
-capitals whose stations had fewer than 10 complete years (Abuja, Addis Ababa, Luanda, Windhoek) or reported only
-every 3 hours (Tbilisi, Islamabad after 2019).
+outside NSRDB. Kinshasa, Kampala and Kathmandu have 10 usable years, Accra and Maputo 11; the others have 15. Kabul's station
+stopped reporting in November 2021, so its years are 2006-2020. Myanmar is represented by Yangon, its largest city and
+former capital: the station at Naypyidaw (Pyinmana) has only 3 usable years. The six capitals in half-hour and
+45-minute time zones (New Delhi, Colombo, Tehran, Kabul, Kathmandu, Yangon) carry their fractional offset in the EPW
+header (e.g. 5.5, 5.75). Not included: capitals whose stations had fewer than 10 complete years
+(Abuja, Addis Ababa, Luanda, Windhoek) or reported only every 3 hours (Tbilisi, Islamabad after 2019).
 
 ### Europe (12)
 
@@ -101,7 +102,7 @@ every 3 hours (Tbilisi, Islamabad after 2019).
 | Reykjavik | Iceland | Cfc | 040300-99999 Reykjavik | 2009-2023 (15 years) | PVGIS-SARAH3 | `Reykjavik_IS_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
 | Bucharest | Romania | Dfa | 154200-99999 Baneasa Aurel Vlaicu | 2009-2023 (15 years) | PVGIS-SARAH3 | `Bucharest_RO_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
 
-### Middle East and Central Asia (8)
+### Middle East and Central Asia (10)
 
 | City | Country | Climate (Köppen) | NOAA station | AMY years | Solar | File | Global warming (K) |
 |---|---|---|---|---|---|---|---|
@@ -113,6 +114,8 @@ every 3 hours (Tbilisi, Islamabad after 2019).
 | Tashkent | Uzbekistan | Csa | 384570-99999 Yuzhny / Tashkent Islam Karimov Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Tashkent_UZ_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
 | Astana | Kazakhstan | Dfb | 351880-99999 Astana Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Astana_KZ_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
 | Baku | Azerbaijan | BSk | 378640-99999 Heydar Aliyev | 2009-2023 (15 years) | PVGIS-SARAH3 | `Baku_AZ_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Tehran | Iran | BSk | 407540-99999 Mehrabad Intl | 2009-2023 (15 years) | PVGIS-SARAH3 | `Tehran_IR_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Kabul | Afghanistan | BSk | 409480-99999 Kabul Intl | 2006-2020 (15 years) | PVGIS-ERA5 | `Kabul_AF_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.52 |
 
 ### Africa (9)
 
@@ -128,7 +131,7 @@ every 3 hours (Tbilisi, Islamabad after 2019).
 | Antananarivo | Madagascar | Cwb | 670830-99999 Ivato | 2009-2023 (15 years) | PVGIS-SARAH3 | `Antananarivo_MG_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
 | Maputo | Mozambique | Aw | 673410-99999 Maputo | 2007-2023 (11 years) | PVGIS-SARAH3 | `Maputo_MZ_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.42 |
 
-### Asia-Pacific (10)
+### Asia-Pacific (14)
 
 | City | Country | Climate (Köppen) | NOAA station | AMY years | Solar | File | Global warming (K) |
 |---|---|---|---|---|---|---|---|
@@ -142,6 +145,10 @@ every 3 hours (Tbilisi, Islamabad after 2019).
 | Canberra | Australia | Cfb | 949260-99999 Canberra | 2009-2023 (15 years) | PVGIS-ERA5 | `Canberra_AU_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
 | Wellington | New Zealand | Cfb | 934360-00488 Wellington Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Wellington_NZ_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
 | Phnom Penh | Cambodia | Aw | 489910-99999 Phnom Penh Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Phnom_Penh_KH_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| New Delhi | India | BSh | 421810-99999 Indira Gandhi Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `New_Delhi_IN_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Kathmandu | Nepal | Cwa | 444540-99999 Tribhuvan Intl | 2011-2023 (10 years) | PVGIS-ERA5 | `Kathmandu_NP_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.33 |
+| Colombo | Sri Lanka | Af | 434500-99999 Bandaranaike Intl Colombo | 2009-2023 (15 years) | PVGIS-ERA5 | `Colombo_LK_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Yangon | Myanmar | Am | 480970-99999 Yangon Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Yangon_MM_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
 
 ### Americas (11)
 

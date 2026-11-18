@@ -1,14 +1,14 @@
 # Quality assurance of the published RMYs and FRMYs
 
 This report covers two groups of cities:
-- **New**: 50 world capitals and 20 US state capitals.
+- **New**: 56 world capitals and 20 US state capitals.
 - **Published**: the 40 cities published earlier, checked again with the same QA for comparison.
 
 Each city gets about 85 checks across its AMYs, TMY, RMY and FRMY. Each check is graded PASS, WARN or FAIL, and the result records the measured value. The per-city results are in [`QA_summary_capitals.csv`](QA_summary_capitals.csv), and every individual check is in [`QA_all_checks_capitals.csv`](QA_all_checks_capitals.csv).
 
 | | Cities | PASS | WARN | FAIL |
 |---|---|---|---|---|
-| New: 50 world capitals and 20 US state capitals | 70 | 5,610 | 512 | 12 |
+| New: 56 world capitals and 20 US state capitals | 76 | 6,081 | 562 | 14 |
 | Published: the original 40 cities, checked again | 40 | 3,198 | 320 | 5 |
 
 ## What is checked
@@ -62,4 +62,15 @@ The PVGIS comparisons are for review only. A PVGIS TMY takes one year per month 
   - Abuja, Addis Ababa, Luanda and Windhoek have fewer than 10 complete years.
   - Tbilisi's station reports every 3 hours in all years.
   - Islamabad's station became sparse after 2019.
-  - Capitals in half-hour time zones (New Delhi, Tehran, Kabul, Kathmandu, Colombo, Yangon) are not yet supported by the AMY code.
+  - Naypyidaw (Myanmar) has only 3 usable years; Yangon represents Myanmar.
+
+## Half-hour and 45-minute time zones
+
+The AMY code now supports half-hour and 45-minute time zones. New Delhi and Colombo (+5:30), Tehran (+3:30),
+Kabul (+4:30), Kathmandu (+5:45) and Yangon (+6:30) were built with it. Two timing checks pass in all six,
+showing the hours are in local standard time:
+- **Peak sunshine against solar noon:** within 0.07 h.
+- **Diurnal temperature cycle against ERA5:** within 0 to 2 h, the same range as whole-hour cities (Paris +1 h).
+
+Kabul's record ends in November 2021 (years 2006-2020). Kathmandu has 10 usable years, because 2013 and 2014 are
+missing. Kathmandu's and Yangon's worst years have 52% and 64% of their hours observed.
