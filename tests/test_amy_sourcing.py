@@ -208,6 +208,58 @@ def test_sky_fill_thresholds():
     assert flags_for_gap(37) == {'E'}
 
 
+def test_sky_fill_without_cloud_type_uses_the_years_own_cover():
+    # PVGIS years have no NSRDB cloud type: long gaps used to stay missing (EPW 99).
+    hours = pd.date_range('2021-01-01', periods=24 * 60, freq='h')
+    rng = np.random.default_rng(0)
+    cover = rng.integers(0, 11, len(hours)).astype(float)
+    cover[500:600] = np.nan                                         # 100-hour gap
+    recorded = np.isfinite(cover)
+    old_t, _, _, old_rep = ga.infill_sky_cover(cover, cover.copy(), np.full(len(hours), np.nan))
+    assert old_rep['total_sky_still_missing_hours'] == 100          # without a fallback: unchanged behaviour
+    t, o, flags, rep = ga.infill_sky_cover(cover, cover.copy(), np.full(len(hours), np.nan),
+                                           month=hours.month.to_numpy(), hour=hours.hour.to_numpy())
+    assert rep['total_sky_still_missing_hours'] == 0 and np.isfinite(t).all()
+    np.testing.assert_array_equal(t[recorded], cover[recorded])    # recorded values unchanged
+    assert set(flags['total'][500:600]) == {'E'} and rep['total_sky_estimate_from_month_hour_hours'] == 100
+    assert (o <= t).all() and t.min() >= 0 and t.max() <= 10
+
+
+def test_sky_fill_fallback_follows_clearness_index_by_day():
+    n = 24 * 90
+    kt = np.tile(np.r_[np.full(6, np.nan), np.linspace(.1, .8, 12), np.full(6, np.nan)], 90)
+    cover = np.where(np.isfinite(kt), np.rint(10 * (1 - kt)), 5.0)   # cloudier when the sky is darker
+    cover[1000:1100] = np.nan
+    hours = pd.date_range('2021-01-01', periods=n, freq='h')
+    t, _, _, rep = ga.infill_sky_cover(cover, cover.copy(), np.full(n, np.nan), kt=kt,
+                                       month=hours.month.to_numpy(), hour=hours.hour.to_numpy())
+    day = np.isfinite(kt[1000:1100])
+    assert rep['total_sky_estimate_from_clearness_hours'] > 0
+    np.testing.assert_allclose(t[1000:1100][day], np.rint(10 * (1 - kt[1000:1100][day])), atol=1)
+
+
+def test_isolated_temperature_spikes_are_removed_but_fronts_and_storms_kept():
+    db = np.r_[np.full(10, 15.0), 2.0, np.full(10, 15.0),             # corrupt report: T and Td both 2 C
+               np.full(5, 15.0), 30.0, np.full(5, 15.5),                # one-hour warm spike
+               np.full(5, 35.0), 24.0, 26.0, np.full(5, 35.0),          # storm outflow: Td holds -> kept
+               np.full(5, 15.0), np.full(10, 4.0)]                      # cold front: a step that stays
+    dp = np.full(len(db), 8.0); dp[10] = 2.0; dp[32:44] = 22.0; dp[-10:] = 1.0   # humid air mass (Td holds in the storm); dry air behind the front
+    out, rep = ga.remove_temperature_spikes(pd.DataFrame({'DB': db, 'DP': dp}))
+    assert np.isnan(out.DB[10]) and np.isnan(out.DP[10])             # T = Td pair blanked together
+    assert np.isnan(out.DB[26])
+    assert out.DB.iloc[37:39].notna().all()                          # storm kept
+    assert out.DB.iloc[-10:].notna().all() and out.DB.iloc[-11] == 15.0
+    assert rep['DB_spikes_removed_hours'] == 2
+
+
+def test_temperature_below_dew_point_is_treated_as_a_corrupt_report():
+    # Orly 2020: a garbled METAR temperature (2 C) in an hour whose SYNOP dew point is 9.3 C.
+    surface = pd.DataFrame({'DB': [15.0, 14.5, 2.0, 12.0, 12.4], 'DP': [4.0, 5.0, 9.3, 10.0, 11.0]})
+    out, rep = ga.remove_temperature_spikes(surface)
+    assert np.isnan(out.DB[2]) and out.DP[2] == 9.3
+    assert rep['DB_below_DP_removed_hours'] == 1 and rep['DP_above_DB_removed_hours'] == 0
+
+
 def test_longwave_default_is_energyplus_clark_allen_with_dilley_obrien_option():
     db, dp = pd.Series([20.0]), pd.Series([10.0])
     clear, rep = ga.energyplus_infrared(db, dp, pd.Series([0.0]))

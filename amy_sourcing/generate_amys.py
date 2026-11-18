@@ -1076,19 +1076,67 @@ def _cloud_type_map(cover, ctype, min_hours=20):
     return {int(k): float(v) for k, v in table.items()}
 
 
-def _fill_cover(cover, ctype, max_linear=12, max_shaped=36):
-    """Fill one cover series. Returns (filled values, flag letters, estimate check)."""
+def _fallback_cover_estimate(cover, kt=None, month=None, hour=None, min_hours=20):
+    """Cover estimate (tenths) for hours without an NSRDB cloud type, from this station-year's own records.
+
+    Daytime: median recorded cover for the hour's clearness index (GHI over extraterrestrial horizontal,
+    bins of 0.05), where a bin has at least `min_hours` recorded hours. Otherwise (night, sparse bins):
+    median recorded cover for the same month and hour of day, then for the hour of day, then for the year.
+    Returns (estimate, source) with source 'clearness', 'month_hour' or '' per hour.
+    """
+    v = np.asarray(cover, dtype=float)
+    n = len(v)
+    est = np.full(n, np.nan)
+    src = np.full(n, '', dtype=object)
+    rec = np.isfinite(v)
+    if not rec.any():
+        return est, src
+    if kt is not None:
+        k = np.asarray(kt, dtype=float)
+        b = np.where(np.isfinite(k), np.floor(np.clip(k, 0, 1.2) / 0.05), np.nan)
+        both = rec & np.isfinite(b)
+        if both.any():
+            table = pd.Series(v[both]).groupby(b[both].astype(int)).agg(['median', 'size'])
+            table = table[table['size'] >= min_hours]['median']
+            e = np.array([table.get(int(x), np.nan) if np.isfinite(x) else np.nan for x in b])
+            est = e; src[np.isfinite(e)] = 'clearness'
+    if month is not None and hour is not None:
+        m, h = np.asarray(month), np.asarray(hour)
+        d = pd.DataFrame({'m': m[rec], 'h': h[rec], 'v': v[rec]})
+        mh = d.groupby(['m', 'h']).v.agg(['median', 'size']); mh = mh[mh['size'] >= 5]['median'].to_dict()
+        hh = d.groupby('h').v.agg(['median', 'size']); hh = hh[hh['size'] >= 10]['median'].to_dict()
+        overall = float(np.median(v[rec]))
+        alt = np.array([mh.get((a, c), hh.get(c, overall)) for a, c in zip(m, h)], dtype=float)
+        use = ~np.isfinite(est)
+        est = np.where(use, alt, est); src[use] = 'month_hour'
+    return est, src
+
+
+def _fill_cover(cover, ctype, max_linear=12, max_shaped=36, kt=None, month=None, hour=None):
+    """Fill one cover series. Returns (filled values, flag letters, estimate check).
+
+    The estimate for gaps longer than `max_linear` hours is the NSRDB cloud-type estimate where a
+    cloud type exists; elsewhere (PVGIS radiation, or unknown cloud type) the station-year's own
+    cover for the same clearness index or month and hour (_fallback_cover_estimate), if kt or
+    month and hour are given. Without either the gap stays missing, as before.
+    """
     v = np.asarray(cover, dtype=float).copy()
     ct = np.asarray(ctype, dtype=float)
     n = len(v)
     flags = np.full(n, '', dtype=object)
     mapping = _cloud_type_map(v, ct)
     est = np.array([mapping.get(int(c), np.nan) if np.isfinite(c) else np.nan for c in ct])
+    fb, fb_src = _fallback_cover_estimate(v, kt, month, hour)
+    est_src = np.where(np.isfinite(est), 'cloud_type', fb_src).astype(object)
+    est = np.where(np.isfinite(est), est, fb)
 
     # How well the cloud-type estimate matches observed cover at this station (reported).
     both = np.isfinite(v) & np.isfinite(est)
     check = {'estimate_mae_tenths': round(float(np.mean(np.abs(v[both] - est[both]))), 2) if both.any() else None,
              'estimate_compared_hours': int(both.sum()), 'cloud_types_mapped': len(mapping)}
+    gaps = ~np.isfinite(v)
+    for label in ('cloud_type', 'clearness', 'month_hour'):
+        check[f'estimate_from_{label}_hours'] = int((gaps & (est_src == label)).sum())
 
     missing = ~np.isfinite(v)
     edges = np.flatnonzero(np.diff(np.r_[False, missing, False].astype(int)))
@@ -1122,16 +1170,18 @@ def _fill_cover(cover, ctype, max_linear=12, max_shaped=36):
     return v, flags, check
 
 
-def infill_sky_cover(total, opaque, cloud_type, max_linear=12, max_shaped=36):
+def infill_sky_cover(total, opaque, cloud_type, max_linear=12, max_shaped=36, kt=None, month=None, hour=None):
     """Fill missing total and opaque sky cover (tenths); opaque is kept <= total.
 
     total, opaque: hourly cover in tenths with NaN for missing (surface.TC, surface.OC).
     cloud_type: NSRDB cloud_type for the same hours (NaN if unavailable, e.g. PVGIS).
+    kt, month, hour (optional): clearness index and calendar of the same hours, for the
+        fallback estimate where no cloud type exists (see _fallback_cover_estimate).
     Recorded values are never changed. Returns (total, opaque, flags, report), where
     flags is a dict of per-hour source letters ('' where unchanged) for each field.
     """
-    t, ft, ct_t = _fill_cover(total, cloud_type, max_linear, max_shaped)
-    o, fo, ct_o = _fill_cover(opaque, cloud_type, max_linear, max_shaped)
+    t, ft, ct_t = _fill_cover(total, cloud_type, max_linear, max_shaped, kt, month, hour)
+    o, fo, ct_o = _fill_cover(opaque, cloud_type, max_linear, max_shaped, kt, month, hour)
     over = np.isfinite(t) & np.isfinite(o) & (o > t) & (fo != '')
     o[over] = t[over]                                  # only filled opaque values are lowered
     report = {f'{name}_sky_{label}_hours': int((f == letter).sum())
@@ -1139,8 +1189,9 @@ def infill_sky_cover(total, opaque, cloud_type, max_linear=12, max_shaped=36):
               for letter, label in (('B', 'interpolated'), ('C', 'shaped_fill'), ('E', 'estimated'))}
     report.update({'total_sky_still_missing_hours': int((~np.isfinite(t)).sum()),
                    'opaque_sky_still_missing_hours': int((~np.isfinite(o)).sum()),
-                   'sky_cover_fill_method': 'linear <=12 h (B); NSRDB cloud-type estimate blended to '
-                                            'recorded ends for 13-36 h (C); cloud-type estimate >=37 h (E)'})
+                   'sky_cover_fill_method': 'linear <=12 h (B); estimate blended to recorded ends for 13-36 h (C); '
+                                            'estimate >=37 h (E). Estimate: NSRDB cloud type, else this year\'s cover '
+                                            'for the same clearness index (day) or month and hour'})
     for name, chk in (('total', ct_t), ('opaque', ct_o)):        # flat keys for the QA manifest CSV
         for key, val in chk.items():
             report[f'{name}_sky_{key}'] = val
@@ -1157,6 +1208,78 @@ def source_flags_with_sky_fill(base_flags, flags):
         out.append(''.join(s))
     return out
 
+def _spike_hours(db, dp, jump=8.0, agree=5.0, max_len=6, dp_hold=3.0):
+    """Dry-bulb hours that look like corrupt reports rather than weather.
+
+    Down: runs of 1 to `max_len` hours more than `jump` below both the hour before and the hour
+    after (which agree within `agree`), in which the dew point also leaves its level (by more than
+    `dp_hold` from the hour before, or is missing). Rain-cooled storm air keeps its dew point and is kept.
+    Up: single hours more than `jump` above both neighbours, which agree within `agree`.
+    Fronts are steps that persist and are never touched; dew points are not filtered (dry downslope
+    and mixing events drop them by 10-20 C for hours)."""
+    x = np.asarray(db, dtype=float); d = np.asarray(dp, dtype=float)
+    n = len(x)
+    bad = np.zeros(n, dtype=bool)
+    for length in range(1, max_len + 1):
+        for i in range(1, n - length):
+            before, after = x[i - 1], x[i + length]
+            if bad[i - 1] or not (np.isfinite(before) and np.isfinite(after)) or abs(before - after) > agree:
+                continue
+            seg = x[i:i + length]
+            ok = np.isfinite(seg)
+            if not ok.any():
+                continue
+            if np.all(min(before, after) - seg[ok] > jump):
+                dseg = d[i:i + length]
+                held = np.isfinite(d[i - 1]) & np.isfinite(dseg) & (np.abs(dseg - d[i - 1]) <= dp_hold)
+                if not held[ok].any():
+                    bad[i:i + length] |= ok
+            elif length == 1 and np.all(seg[ok] - max(before, after) > jump):
+                bad[i] = True
+    return bad
+
+
+def remove_temperature_spikes(surface, jump=8.0, agree=5.0, max_len=6):
+    """Blank corrupt dry-bulb (and dew-point) reports so they are filled like gaps. Two tests:
+
+    1. Consistency: a dry bulb more than 1 C below the dew point of the same hour is impossible.
+       Usually one of the two comes from a garbled report (e.g. a METAR temperature with no dew point,
+       in an hour whose SYNOP has the dew point but no temperature). The one that jumped further from
+       its last valid value before the clash is blanked.
+    2. Dry-bulb spikes that are not weather (see _spike_hours).
+    Returns (surface, report fields).
+    """
+    out = surface.copy()
+    rep = {}
+    db = pd.to_numeric(out['DB'], errors='coerce'); dp = pd.to_numeric(out['DP'], errors='coerce')
+    clash = ((db < dp - 1.0) & db.notna() & dp.notna()).to_numpy()
+    # Blame the value that jumped: compare each with its last valid value before the clashing hours.
+    dbv, dpv = db.to_numpy(dtype=float), dp.to_numpy(dtype=float)
+    drop_db = np.zeros(len(db), dtype=bool); drop_dp = np.zeros(len(db), dtype=bool)
+    last_db = last_dp = np.nan
+    for i in range(len(db)):
+        if clash[i]:
+            jdb = abs(dbv[i] - last_db) if np.isfinite(last_db) else 0.0
+            jdp = abs(dpv[i] - last_dp) if np.isfinite(last_dp) else 0.0
+            if jdb >= jdp:
+                drop_db[i] = True
+            else:
+                drop_dp[i] = True
+        else:
+            if np.isfinite(dbv[i]): last_db = dbv[i]
+            if np.isfinite(dpv[i]): last_dp = dpv[i]
+    out.loc[drop_db, 'DB'] = np.nan; out.loc[drop_dp, 'DP'] = np.nan
+    rep['DB_below_DP_removed_hours'] = int(drop_db.sum()); rep['DP_above_DB_removed_hours'] = int(drop_dp.sum())
+    bad = _spike_hours(pd.to_numeric(out['DB'], errors='coerce').to_numpy(dtype=float),
+                       pd.to_numeric(out['DP'], errors='coerce').to_numpy(dtype=float), jump, agree, max_len)
+    out.loc[bad, 'DB'] = np.nan
+    # a dew point reported equal to the removed dry bulb comes from the same corrupt report
+    same = bad & (pd.to_numeric(surface['DP'], errors='coerce') - pd.to_numeric(surface['DB'], errors='coerce')).abs().lt(0.05).to_numpy()
+    out.loc[same, 'DP'] = np.nan
+    rep['DB_spikes_removed_hours'] = int(bad.sum()); rep['DP_with_spike_removed_hours'] = int(same.sum())
+    return out, rep
+
+
 def cap_dew_point(surface):
     """Cap dew point at the dry-bulb temperature, in place (RH then comes out as 100 %).
 
@@ -1170,6 +1293,15 @@ def cap_dew_point(surface):
     excess = float((dp - db)[over].max()) if over.any() else 0.0
     surface.loc[over, 'DP'] = db[over]
     return {'dew_point_capped_hours': int(over.sum()), 'dew_point_capped_max_excess_C': round(excess, 2)}
+
+
+def clearness_index(rad, index):
+    """GHI over extraterrestrial horizontal irradiance, where the sun is more than about 6 degrees up."""
+    z = pd.to_numeric(rad.get('ZENITH_DEG', pd.Series(np.nan, index=index)), errors='coerce').to_numpy(dtype=float)
+    cz = np.cos(np.radians(z))
+    e0 = 1367.0 * (1 + 0.033 * np.cos(2 * np.pi * index.dayofyear.to_numpy() / 365.0))
+    ghi = pd.to_numeric(rad.GHI, errors='coerce').to_numpy(dtype=float)
+    return np.where(np.isfinite(cz) & (cz > 0.1), ghi / (e0 * np.where(cz > 0.1, cz, 1.0)), np.nan)
 
 
 def build_epw(st,year,surface,rad,source_description,cloud_missing_policy='DEFAULT_5',era5_ir=None,era5_mode='FALLBACK'):
@@ -1186,7 +1318,8 @@ def build_epw(st,year,surface,rad,source_description,cloud_missing_policy='DEFAU
     sky_t,sky_o,sky_flags,sky_report=infill_sky_cover(
         pd.to_numeric(surface.TC,errors='coerce').to_numpy(dtype=float),
         pd.to_numeric(surface.OC,errors='coerce').to_numpy(dtype=float),
-        pd.to_numeric(rad.get('CLOUD_TYPE',pd.Series(np.nan,index=expected)),errors='coerce').to_numpy(dtype=float))
+        pd.to_numeric(rad.get('CLOUD_TYPE',pd.Series(np.nan,index=expected)),errors='coerce').to_numpy(dtype=float),
+        kt=clearness_index(rad,expected),month=expected.month.to_numpy(),hour=expected.hour.to_numpy())
     infrared, ir_report=energyplus_infrared(surface.DB,surface.DP,pd.Series(sky_o,index=expected),cloud_missing_policy)
     ir_report.update(sky_report)
     # Fast primary is the existing V5 physical model. ERA5 point time-series
@@ -1911,6 +2044,8 @@ def create_station_year(session,st,year,cache_dir,out_dir,key,email,preferred='A
     report={'city':city,'station_id':st['station_id'],'year':int(year),'n_hours':n,
             'tz_offset':st['tz_offset'],'timezone_resolution':st['timezone_resolution'],
             'raw_noaa_hours':int(raw.DB.notna().sum())}
+    raw,spike_report=remove_temperature_spikes(raw)
+    report.update(spike_report)
     originals={v:raw[v].isna() for v in ['DB','DP','PR']}
     for v in originals:
         report[f'{v}_missing_hours']=int(originals[v].sum())
