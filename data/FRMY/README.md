@@ -1,8 +1,8 @@
-# Future Representative Meteorological Years (FRMYs): 40 cities, 2050
+# Future Representative Meteorological Years (FRMYs): 110 cities, 2050
 
-20 US cities (one per climate zone) and 20 international cities. Each file is the city's RMY morphed to **2050** under **SSP2-4.5** (middle of the road)
+20 US cities (one per climate zone), 20 international cities, 50 world capitals and 20 US state capitals. Each file is the city's RMY morphed to **2050** under **SSP2-4.5** (middle of the road)
 with the **CanESM5** climate model: Track 2 of the FRMY method (RMY morph → future RMY), so the
-observed peak years' heat waves and cold spells are kept and warmed. The RMYs of all 40 cities are in
+observed peak years' heat waves and cold spells are kept and warmed. The RMYs of all 110 cities are in
 `data/RMY`.
 
 The morph is the CMIP6 pattern-scaling emulator of [wxbuild](https://github.com/kranke-git/wxbuild)
@@ -71,6 +71,126 @@ approximate Köppen-Geiger class of each city.
 | Beijing | China | Dwa | 545110-99999 Beijing - Capital International Airport | 2009-2023 (15 years) | PVGIS-ERA5 | `Beijing_CN_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
 | Moscow | Russia | Dfb | 275155-99999 Sheremetyevo | 2009-2023 (15 years) | PVGIS-SARAH3 | `Moscow_RU_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
 | Helsinki | Finland | Dfb | 029740-99999 Helsinki Vantaa | 2009-2023 (15 years) | PVGIS-SARAH3 | `Helsinki_FI_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+
+## World capitals (50)
+
+Built in November 2026 with the fixed AMY code (sky cover filled in every hour, corrupt temperature reports removed;
+see [`../QA.md`](../QA.md)). For each capital, the nearby NOAA stations were scored on the size of their yearly
+records for 2009-2024. The main airport or city station with the most complete record was used; distances and
+elevation differences from the city centre are in the QA summary. Solar radiation is PVGIS-SARAH3 or PVGIS-ERA5,
+and NSRDB in the Americas, except Santiago (PVGIS-ERA5) and Montevideo and Asunción (PVGIS-SARAH3), which are
+outside NSRDB. Kinshasa and Kampala have 10 usable years, Accra and Maputo 11; the others have 15. Capitals in
+half-hour time zones (New Delhi, Tehran, Kabul, Kathmandu, Colombo, Yangon) are not included, and neither are
+capitals whose stations had fewer than 10 complete years (Abuja, Addis Ababa, Luanda, Windhoek) or reported only
+every 3 hours (Tbilisi, Islamabad after 2019).
+
+### Europe (12)
+
+| City | Country | Climate (Köppen) | NOAA station | AMY years | Solar | File | Global warming (K) |
+|---|---|---|---|---|---|---|---|
+| Paris | France | Cfb | 071490-99999 Orly | 2008-2023 (15 years) | PVGIS-SARAH3 | `Paris_FR_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.42 |
+| Berlin | Germany | Cfb | 103850-99999 Schonefeld / Brandenburg | 2009-2023 (15 years) | PVGIS-SARAH3 | `Berlin_DE_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Rome | Italy | Csa | 162390-99999 Ciampino | 2009-2023 (15 years) | PVGIS-SARAH3 | `Rome_IT_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Vienna | Austria | Cfb | 110360-99999 Wien Schwechat | 2009-2023 (15 years) | PVGIS-SARAH3 | `Vienna_AT_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Warsaw | Poland | Dfb | 123750-99999 Okecie / Warsaw Chopin | 2009-2023 (15 years) | PVGIS-SARAH3 | `Warsaw_PL_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Stockholm | Sweden | Dfb | 024640-99999 Bromma | 2009-2023 (15 years) | PVGIS-SARAH3 | `Stockholm_SE_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Oslo | Norway | Dfb | 014920-99999 Oslo-Blindern | 2007-2023 (15 years) | PVGIS-SARAH3 | `Oslo_NO_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.42 |
+| Athens | Greece | Csa | 167161-99999 Eleftherios Venizelos Intl | 2009-2023 (15 years) | PVGIS-SARAH3 | `Athens_GR_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Lisbon | Portugal | Csa | 085360-99999 Lisboa | 2009-2023 (15 years) | PVGIS-SARAH3 | `Lisbon_PT_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Dublin | Ireland | Cfb | 039690-99999 Dublin | 2009-2023 (15 years) | PVGIS-SARAH3 | `Dublin_IE_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Reykjavik | Iceland | Cfc | 040300-99999 Reykjavik | 2009-2023 (15 years) | PVGIS-SARAH3 | `Reykjavik_IS_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Bucharest | Romania | Dfa | 154200-99999 Baneasa Aurel Vlaicu | 2009-2023 (15 years) | PVGIS-SARAH3 | `Bucharest_RO_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+
+### Middle East and Central Asia (8)
+
+| City | Country | Climate (Köppen) | NOAA station | AMY years | Solar | File | Global warming (K) |
+|---|---|---|---|---|---|---|---|
+| Ankara | Turkey | BSk | 171280-99999 Esenboga | 2009-2023 (15 years) | PVGIS-SARAH3 | `Ankara_TR_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Amman | Jordan | BSh | 402700-99999 Marka Intl | 2009-2023 (15 years) | PVGIS-SARAH3 | `Amman_JO_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Kuwait City | Kuwait | BWh | 405820-99999 Kuwait Intl | 2009-2023 (15 years) | PVGIS-SARAH3 | `Kuwait_City_KW_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Doha | Qatar | BWh | 411700-99999 Doha Intl | 2009-2023 (15 years) | PVGIS-SARAH3 | `Doha_QA_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Muscat | Oman | BWh | 412560-99999 Seeb Intl / Muscat Intl | 2009-2023 (15 years) | PVGIS-SARAH3 | `Muscat_OM_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Tashkent | Uzbekistan | Csa | 384570-99999 Yuzhny / Tashkent Islam Karimov Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Tashkent_UZ_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Astana | Kazakhstan | Dfb | 351880-99999 Astana Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Astana_KZ_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Baku | Azerbaijan | BSk | 378640-99999 Heydar Aliyev | 2009-2023 (15 years) | PVGIS-SARAH3 | `Baku_AZ_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+
+### Africa (9)
+
+| City | Country | Climate (Köppen) | NOAA station | AMY years | Solar | File | Global warming (K) |
+|---|---|---|---|---|---|---|---|
+| Algiers | Algeria | Csa | 603900-99999 Houari Boumediene | 2009-2023 (15 years) | PVGIS-SARAH3 | `Algiers_DZ_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Rabat | Morocco | Csa | 601350-99999 Rabat Sale Intl | 2007-2023 (15 years) | PVGIS-SARAH3 | `Rabat_MA_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.42 |
+| Tunis | Tunisia | Csa | 607150-99999 Carthage | 2009-2023 (15 years) | PVGIS-SARAH3 | `Tunis_TN_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Dakar | Senegal | BSh | 616410-99999 Leopold Sedar Senghor Intl | 2009-2023 (15 years) | PVGIS-SARAH3 | `Dakar_SN_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Accra | Ghana | Aw | 654720-99999 Kotoka Intl | 2010-2023 (11 years) | PVGIS-SARAH3 | `Accra_GH_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.37 |
+| Kinshasa | DR Congo | Aw | 642100-99999 Ndjili Intl | 2011-2023 (10 years) | PVGIS-SARAH3 | `Kinshasa_CD_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.33 |
+| Kampala | Uganda | Af | 637050-99999 Entebbe Intl | 2007-2023 (10 years) | PVGIS-SARAH3 | `Kampala_UG_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.42 |
+| Antananarivo | Madagascar | Cwb | 670830-99999 Ivato | 2009-2023 (15 years) | PVGIS-SARAH3 | `Antananarivo_MG_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Maputo | Mozambique | Aw | 673410-99999 Maputo | 2007-2023 (11 years) | PVGIS-SARAH3 | `Maputo_MZ_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.42 |
+
+### Asia-Pacific (10)
+
+| City | Country | Climate (Köppen) | NOAA station | AMY years | Solar | File | Global warming (K) |
+|---|---|---|---|---|---|---|---|
+| Seoul | South Korea | Dwa | 471100-99999 Gimpo | 2009-2023 (15 years) | PVGIS-ERA5 | `Seoul_KR_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Ulaanbaatar | Mongolia | Dwc | 442920-99999 Chinggis Khaan Intl / Buyant Ukhaa Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Ulaanbaatar_MN_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Taipei | Taiwan | Cfa | 466960-99999 Songshan | 2009-2023 (15 years) | PVGIS-ERA5 | `Taipei_TW_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Hanoi | Vietnam | Cwa | 488200-99999 Noibai Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Hanoi_VN_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Manila | Philippines | Aw | 984290-99999 Ninoy Aquino Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Manila_PH_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Kuala Lumpur | Malaysia | Af | 486470-99999 Sultan Abdul Aziz Shah Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Kuala_Lumpur_MY_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Jakarta | Indonesia | Am | 967490-99999 Soekarno Hatta Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Jakarta_ID_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Canberra | Australia | Cfb | 949260-99999 Canberra | 2009-2023 (15 years) | PVGIS-ERA5 | `Canberra_AU_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Wellington | New Zealand | Cfb | 934360-00488 Wellington Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Wellington_NZ_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+| Phnom Penh | Cambodia | Aw | 489910-99999 Phnom Penh Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Phnom_Penh_KH_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.38 |
+
+### Americas (11)
+
+| City | Country | Climate (Köppen) | NOAA station | AMY years | Solar | File | Global warming (K) |
+|---|---|---|---|---|---|---|---|
+| Havana | Cuba | Aw | 782240-99999 Jose Marti Intl | 2010-2024 (15 years) | NSRDB | `Havana_CU_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.33 |
+| Ottawa | Canada | Dfb | 716280-99999 Ottawa Macdonald Cartier Intl | 2010-2024 (15 years) | NSRDB | `Ottawa_CA_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.33 |
+| Guatemala City | Guatemala | Cwb | 786410-99999 La Aurora | 2010-2024 (15 years) | NSRDB | `Guatemala_City_GT_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.33 |
+| Panama City | Panama | Am | 787920-99999 Tocumen Intl | 2009-2024 (15 years) | NSRDB | `Panama_City_PA_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.37 |
+| Bogota | Colombia | Cfb | 802220-99999 El Dorado Intl | 2009-2024 (15 years) | NSRDB | `Bogota_CO_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.37 |
+| Lima | Peru | BWh | 846280-99999 Jorge Chavez Intl | 2007-2024 (15 years) | NSRDB | `Lima_PE_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.42 |
+| Brasilia | Brazil | Aw | 833780-99999 Presidente Juscelino Kubitschek | 2010-2024 (15 years) | NSRDB | `Brasilia_BR_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.33 |
+| Santo Domingo | Dominican Republic | Am | 784850-99999 De Las Americas Intl | 2009-2024 (15 years) | NSRDB | `Santo_Domingo_DO_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.37 |
+| Santiago | Chile | Csb | 855740-99999 Arturo Merino Benitez Intl | 2007-2022 (15 years) | PVGIS-ERA5 | `Santiago_CL_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.47 |
+| Montevideo | Uruguay | Cfa | 865800-99999 Carrasco Intl | 2008-2022 (15 years) | PVGIS-SARAH3 | `Montevideo_UY_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.43 |
+| Asuncion | Paraguay | Cfa | 862180-99999 Silvio Pettirossi Intl | 2008-2022 (15 years) | PVGIS-SARAH3 | `Asuncion_PY_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.43 |
+
+## US state capitals (20)
+
+Twenty state capitals not already listed above, spread over ASHRAE climate zones 1A to 7, with NSRDB solar
+radiation. Baton Rouge has 14 usable years (its station record starts in late 2010); the others have 15.
+
+| City | Zone | File | Global warming (K) |
+|---|---|---|---|
+| Honolulu HI | 1A | `Honolulu_HI_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.33 |
+| Austin TX | 2A | `Austin_TX_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.33 |
+| Baton Rouge LA | 2A | `Baton_Rouge_LA_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.32 |
+| Tallahassee FL | 2A | `Tallahassee_FL_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.33 |
+| Oklahoma City OK | 3A | `Oklahoma_City_OK_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.33 |
+| Sacramento CA | 3B | `Sacramento_CA_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.33 |
+| Nashville TN | 4A | `Nashville_TN_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.33 |
+| Richmond VA | 4A | `Richmond_VA_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.33 |
+| Salem OR | 4C | `Salem_OR_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.33 |
+| Columbus OH | 5A | `Columbus_OH_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.33 |
+| Indianapolis IN | 5A | `Indianapolis_IN_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.33 |
+| Des Moines IA | 5A | `Des_Moines_IA_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.37 |
+| Albany NY | 5A | `Albany_NY_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.37 |
+| Salt Lake City UT | 5B | `Salt_Lake_City_UT_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.33 |
+| Boise ID | 5B | `Boise_ID_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.33 |
+| Santa Fe NM | 5B | `Santa_Fe_NM_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.33 |
+| Madison WI | 6A | `Madison_WI_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.33 |
+| Bismarck ND | 6A | `Bismarck_ND_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.33 |
+| Cheyenne WY | 6B | `Cheyenne_WY_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.33 |
+| Juneau AK | 7 | `Juneau_AK_FRMY_2050_SSP2-4.5_CanESM5.epw` | +1.33 |
+
+## Quality assurance
+
+Every city's AMYs, TMY, RMY and FRMY pass about 85 checks; see [`../QA.md`](../QA.md) for the method, the findings
+(including the cold-climate RMY mean shift and station representativeness) and the per-city CSVs.
 
 ## Updates
 
