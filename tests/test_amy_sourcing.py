@@ -395,3 +395,38 @@ def test_dew_point_above_dry_bulb_is_capped():
     assert report == {'dew_point_capped_hours': 2, 'dew_point_capped_max_excess_C': 9.6}
     assert surface['DP'].tolist()[:3] == [-40.0, -36.1, 2.0]
     assert np.isnan(surface['DB'].iloc[3]) and surface['DP'].iloc[3] == 1.0   # missing values left alone
+
+
+def _noaa_frame(times_utc, temps):
+    return pd.DataFrame({'DATE': pd.to_datetime(times_utc, utc=True), 'SOURCE': '4', 'REPORT_TYPE': 'FM-15',
+                         'TMP': [f'{int(round(t * 10)):+05d},1' for t in temps]})
+
+
+def test_reports_are_grouped_by_local_standard_hour_in_half_hour_zones():
+    # India (+5:30): METARs at :00 and :30 UTC fall at :30 and :00 local time.
+    d = _noaa_frame(['2021-06-01 00:00', '2021-06-01 00:30', '2021-06-01 01:00'], [30.0, 31.0, 32.0])
+    h = ga.extract_hourly(d, 5.5)
+    assert list(h.index) == [pd.Timestamp('2021-06-01 05:00'), pd.Timestamp('2021-06-01 06:00')]
+    assert h.DB.iloc[0] == 30.0                         # 05:30 local is in the 05:00-06:00 hour
+    # Nepal (+5:45)
+    h = ga.extract_hourly(_noaa_frame(['2021-06-01 00:20'], [25.0]), 5.75)
+    assert list(h.index) == [pd.Timestamp('2021-06-01 06:00')]
+
+
+def test_whole_hour_zones_give_the_same_hours_as_before():
+    # floor(UTC) + offset (old) equals floor(UTC + offset) (new) for whole-hour offsets
+    times = pd.date_range('2021-03-01 00:10', periods=200, freq='37min', tz='UTC')
+    d = _noaa_frame(times, np.linspace(-5, 20, len(times)))
+    for tz in (-8, -5, 0, 1, 9):
+        new = ga.extract_hourly(d, tz)
+        old = ga.extract_hourly(d, 0)
+        old.index = old.index + pd.Timedelta(hours=tz)
+        pd.testing.assert_series_equal(new.DB, old.DB, check_names=False, check_index_type=False)
+
+
+def test_hourly_reanalysis_is_interpolated_to_half_hour_zones():
+    s = pd.Series([0.0, 10.0, np.nan, 30.0], index=pd.date_range('2021-01-01', periods=4, freq='h'))
+    q = pd.DatetimeIndex(['2021-01-01 00:00', '2021-01-01 00:30', '2021-01-01 00:45', '2021-01-01 01:30', '2021-01-01 05:30'])
+    out = ga._reindex_time(s, q).to_numpy()
+    np.testing.assert_allclose(out[:3], [0.0, 5.0, 7.5])
+    assert np.isnan(out[3]) and np.isnan(out[4])        # never across a missing value or past the end

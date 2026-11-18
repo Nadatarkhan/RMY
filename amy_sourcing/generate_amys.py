@@ -336,17 +336,21 @@ def noaa_csv(session, station_id, year, cache_dir):
     return d
 
 
-def extract_hourly(d):
+def extract_hourly(d, tz_offset=0.0):
     """Caltech-style per-hour per-variable NOAA best-quality selection.
 
     Includes wind type and AA precipitation period provenance, with no
     undocumentable substitutions of wind directions for variable winds.
+    Reports are grouped by the clock hour of local standard time (UTC + tz_offset) in which
+    they were made, so half-hour and 45-minute offsets (India +5:30, Nepal +5:45) work as
+    whole-hour ones do. With tz_offset=0 the index is UTC hours.
     """
+    shift = pd.Timedelta(hours=float(tz_offset))
     variables=['DB','DP','WS','WD','PR','CEIL','VIS','TC_GF1','OC_GF1','TC_GA_PROXY','SNOW_CM']
     best={}; columns=list(d.columns)
     for values in d.itertuples(index=False,name=None):
         row=dict(zip(columns,values))
-        ts=row['DATE'].floor('h').tz_localize(None)
+        ts=(row['DATE']+shift).floor('h').tz_localize(None)
         entry=best.setdefault(ts,{})
         wtype=wind_type(row)
         if wtype in ('C','V'):
@@ -411,23 +415,20 @@ def caltech_linear_fill(s):
 
 def required_surface(session, station_id, year, cache_dir, tz_offset):
     target_idx = pd.date_range(f'{year}-01-01',f'{year+1}-01-01',freq='h',inclusive='left')
-    if abs(tz_offset - round(tz_offset)) > 1e-8:
-        raise ValueError('Half-hour / fractional standard timezones require subhourly resampling; not yet supported')
     needed = [year]
     if tz_offset < 0: needed.append(year+1)
     if tz_offset > 0: needed.append(year-1)
     chunks = []
     for y in needed:
         try:
-            chunks.append(extract_hourly(noaa_csv(session, station_id, y, cache_dir)))
+            chunks.append(extract_hourly(noaa_csv(session, station_id, y, cache_dir), tz_offset))
         except Exception as exc:
             if y == year: raise
             print(f'[WARN] NOAA adjacent year {y} unavailable: {exc}')
     if not chunks: raise RuntimeError('No NOAA observation years downloaded')
-    utc = pd.concat(chunks).sort_index()
-    utc = utc[~utc.index.duplicated(keep='first')]
-    utc.index = utc.index + pd.to_timedelta(tz_offset,unit='h')
-    local = utc.reindex(target_idx)
+    local = pd.concat(chunks).sort_index()                 # already in local standard hours
+    local = local[~local.index.duplicated(keep='first')]
+    local = local.reindex(target_idx)
     local.index.name='local_standard_time'
     return local
 
@@ -1509,6 +1510,26 @@ def _era5_open_dataset_from_archive(download_path):
     return xr.merge(datasets,compat='override',join='outer')
 
 
+def _reindex_time(series, index):
+    """Values of an hourly series at `index`. Exact matches are taken as they are; times between two
+    hourly values (half-hour and 45-minute time zones) are interpolated linearly in time, never
+    across a missing value."""
+    series = series.sort_index()
+    out = series.reindex(index)
+    if out.notna().all() or len(series) < 2:
+        return out
+    t = series.index.asi8.astype(float); v = series.to_numpy(dtype=float)
+    q = pd.DatetimeIndex(index).asi8.astype(float)
+    pos = np.searchsorted(t, q)
+    ok = (pos > 0) & (pos < len(t))
+    lo = np.clip(pos - 1, 0, len(t) - 1); hi = np.clip(pos, 0, len(t) - 1)
+    gap = t[hi] - t[lo]
+    ok &= (gap > 0) & (gap <= 3600e9) & np.isfinite(v[lo]) & np.isfinite(v[hi])
+    w = np.where(gap > 0, (q - t[lo]) / np.where(gap > 0, gap, 1), 0)
+    interp = np.where(ok, v[lo] + w * (v[hi] - v[lo]), np.nan)
+    return pd.Series(np.where(out.notna().to_numpy(), out.to_numpy(dtype=float), interp), index=index)
+
+
 def parse_era5_timeseries_file(download_path,year,st):
     """Surface longwave J/m2 over PRIOR hour, indexed at hour end (UTC).
 
@@ -1541,7 +1562,7 @@ def parse_era5_timeseries_file(download_path,year,st):
     ir=pd.Series(watts,index=t-pd.Timedelta(hours=1)+offset)
     ir=ir[~ir.index.duplicated(keep='last')].sort_index()
     idx=expected_local_index(year)
-    ir=ir.reindex(idx).where(lambda x:x.between(100,700))
+    ir=_reindex_time(ir,idx).where(lambda x:x.between(100,700))
     return ir,{'era5_response_fields':sorted(ds.data_vars),
                'era5_valid_longwave_hours':int(ir.notna().sum()),
                'era5_raw_longwave_units':str(ds[longwave_key].attrs.get('units','J m-2')),
@@ -1981,7 +2002,7 @@ def era5_infill(surface, st, cache_dir, min_gap=ERA5_INFILL_MIN_GAP, max_share=E
         report['era5_infill_status'] = f'ERA5 unavailable, gaps left: {type(exc).__name__}: {exc}'[:300]
         return s, report
     def aligned(series, lag):
-        return series[~series.index.duplicated()].reindex(utc + pd.Timedelta(hours=lag)).to_numpy(dtype=float)
+        return _reindex_time(series[~series.index.duplicated()], utc + pd.Timedelta(hours=lag)).to_numpy(dtype=float)
     hour, month = s.index.hour.to_numpy(), s.index.month.to_numpy()
     def corrected(obs, est):
         """est plus the mean (obs - est) of the same month and hour of day (whole-month mean if sparse)."""
