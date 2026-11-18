@@ -69,3 +69,17 @@ classes are the approximate Köppen-Geiger class of each city.
 | Beijing | China | Dwa | 545110-99999 Beijing - Capital International Airport | 2009-2023 (15 years) | PVGIS-ERA5 | `Beijing_CN_RMY_2009-2023.epw` |
 | Moscow | Russia | Dfb | 275155-99999 Sheremetyevo | 2009-2023 (15 years) | PVGIS-SARAH3 | `Moscow_RU_RMY_2009-2023.epw` |
 | Helsinki | Finland | Dfb | 029740-99999 Helsinki Vantaa | 2009-2023 (15 years) | PVGIS-SARAH3 | `Helsinki_FI_RMY_2009-2023.epw` |
+
+## Updates
+
+**Sky cover filled (November 2026).** In 8 cities (Bangkok, Buenos Aires, Lagos, London, Moscow, Nairobi, Riyadh,
+Singapore) 13 to 153 hours had no total or opaque sky cover (EPW code 99). The AMY builder filled long cloud gaps
+only from NSRDB cloud types, which PVGIS-based years do not have. These hours are now filled with the AMY
+builder's own method (`amy_sourcing`):
+- gaps of up to 12 hours by linear interpolation;
+- longer gaps by an estimate blended to the recorded values at both ends.
+  - By day, the estimate is the file's typical cover for the same clearness index.
+  - By night, it is the typical cover for the same month and hour.
+
+The EPW source flag of each filled hour is set to B, C or E. No other field changed, and each RMY and its FRMY carry
+identical sky cover. New builds fill these hours when the AMYs are made.
