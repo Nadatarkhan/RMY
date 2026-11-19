@@ -1,14 +1,17 @@
 # Quality assurance of the published RMYs and FRMYs
 
-This report covers two groups of cities:
+This report covers three groups of cities:
 - **New**: 56 world capitals and 20 US state capitals.
+- **More**: 100 more capitals and major cities (see the last section).
 - **Published**: the 40 cities published earlier, checked again with the same QA for comparison.
 
-Each city gets about 85 checks across its AMYs, TMY, RMY and FRMY. Each check is graded PASS, WARN or FAIL, and the result records the measured value. The per-city results are in [`QA_summary_capitals.csv`](QA_summary_capitals.csv), and every individual check is in [`QA_all_checks_capitals.csv`](QA_all_checks_capitals.csv).
+Each city gets about 85 checks across its AMYs, TMY, RMY and FRMY. Each check is graded PASS, WARN or FAIL, and the result records the measured value. The per-city results are in [`QA_summary_capitals.csv`](QA_summary_capitals.csv), and every individual check is in [`QA_all_checks_capitals.csv`](QA_all_checks_capitals.csv). For the 100 more cities they are in
+[`QA_summary_cities100.csv`](QA_summary_cities100.csv) and [`QA_all_checks_cities100.csv`](QA_all_checks_cities100.csv).
 
 | | Cities | PASS | WARN | FAIL |
 |---|---|---|---|---|
 | New: 56 world capitals and 20 US state capitals | 76 | 6,081 | 562 | 14 |
+| More: 100 capitals and major cities | 100 | 8,045 | 686 | 8 |
 | Published: the original 40 cities, checked again | 40 | 3,198 | 320 | 5 |
 
 ## What is checked
@@ -31,6 +34,10 @@ The PVGIS comparisons are for review only. A PVGIS TMY takes one year per month 
    - None of the 70 new cities has a missing sky-cover hour.
 2. **Corrupt temperature reports** are removed before gap filling. These are dry bulbs below the same hour's dew point, and short dips that come back while the dew point moves too (e.g. Paris-Orly 2020: 2 °C readings in 15-24 °C afternoons).
    - A screen of 1,159 station-years flagged 15 hours, all of them corrupt. Fronts, storms and dry downslope events are kept.
+3. **Sky cover at stations without cloud reports.** Some automatic stations report no cloud for whole years (Bern-Zollikofen
+   in most years, Budapest-Lőrinc in some months), so the year's own cover gave no estimate. Those hours are now filled from
+   ERA5 cloud cover at the station: total cloud for total cover, and low and medium cloud for opaque cover. The QA now fails
+   a published file with more than 24 missing sky-cover hours; none of the 216 cities has any.
 
 ## Findings to keep in mind when using the files
 
@@ -74,3 +81,36 @@ showing the hours are in local standard time:
 
 Kabul's record ends in November 2021 (years 2006-2020). Kathmandu has 10 usable years, because 2013 and 2014 are
 missing. Kathmandu's and Yangon's worst years have 52% and 64% of their hours observed.
+
+## 100 more capitals and major cities
+
+121 candidate cities were built and checked; 100 were kept. All 8 FAILs among them are in the raw annual files
+(AMYs), not in the published RMYs and FRMYs, which pass the hourly checks:
+- **One sparse year** at Khartoum (56% of hours observed), Libreville, Hyderabad (61%) and Suva (66%). The gaps are
+  filled from ERA5 as for every city.
+- **Temperature jumps and one-hour spikes** in a few AMY years at Dushanbe, Baghdad and Fukuoka (one 19 °C jump in
+  2022), and one calm hour with a wind direction at Dar es Salaam. None of these hours is in the RMY or FRMY.
+
+Other findings:
+- **Cold-climate RMY shift**, as above: Saint Petersburg −1.3 °C, Detroit −0.9, Yerevan −0.7, Toronto −0.6.
+- **Station distance and elevation.**
+  - Port Louis and Georgetown use airports 35 km from the centre; Harbin, Guangzhou, Bengaluru, Shenzhen and Hong
+    Kong 26-30 km.
+  - The largest elevation differences are Urumqi −186 m, Chongqing +171 m, Monterrey −154 m, Bishkek −121 m and
+    Prague +119 m.
+- **Solar against PVGIS** differs by 8-11% at Port Louis, Abidjan, Vancouver, Guadalajara, San Antonio (higher) and
+  Calgary and Georgetown (lower), within the usual spread between satellite products.
+- **Lahore's** station stopped reporting regularly in 2019 while its NOAA record stays open, so the builder's
+  most recent years were empty; it was built with the window ending in 2018 (2006-2018, 12 years).
+- **Córdoba** is outside SARAH-3 coverage and uses PVGIS-ERA5.
+
+Not kept:
+- **Too few years:** Conakry (6 complete years) and Yaoundé (8); Tripoli, Nouakchott, Djibouti and Lilongwe have no
+  station with 10 near-hourly years.
+- **Station elevation:** the only long-record stations for Caracas (−813 m), San Salvador (−687 m), Medellín
+  (+654 m), La Paz (El Alto, +440 m) and Johannesburg (Lanseria, −372 m) are too far above or below the city.
+- **Built but left out** for sparse records, QA FAILs or regional balance (Europe already had the most cities):
+  - Port Moresby, Casablanca, Surabaya, Vientiane and Chittagong (worst years 44-62% observed);
+  - Winnipeg (RMY monthly balance), Almaty (station 194 m below the city, AMY spikes), Cotonou (diurnal lag
+    against ERA5), San José (GHI 19% above PVGIS, station 240 m below the city);
+  - Minsk, Munich, Manchester, Bratislava, Ljubljana, Skopje and Tallinn.

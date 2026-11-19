@@ -1,6 +1,6 @@
-# Representative Meteorological Years (RMYs): 116 cities
+# Representative Meteorological Years (RMYs): 216 cities
 
-20 US cities, one per US climate zone (ASHRAE 169, 1A to 8), 20 international cities, 56 world capitals and 20 US state capitals. Each is the city's ISO 15927-4 TMY with the heat
+20 US cities, one per US climate zone (ASHRAE 169, 1A to 8), 20 international cities, 56 world capitals, 20 US state capitals and 100 more capitals and major cities. Each is the city's ISO 15927-4 TMY with the heat
 waves and cold spells of its peak years inserted (Tarkhan et al. 2025), built end to end from a NOAA
 station number with this repository's code:
 
@@ -191,6 +191,171 @@ radiation. Baton Rouge has 14 usable years (its station record starts in late 20
 | Bismarck ND | 6A | 727640-24011 Bismarck Municipal Airport | 2010-2024 (15 years) | NSRDB | `Bismarck_ND_RMY_2010-2024.epw` |
 | Cheyenne WY | 6B | 725640-24018 Cheyenne Airport | 2010-2024 (15 years) | NSRDB | `Cheyenne_WY_RMY_2010-2024.epw` |
 | Juneau AK | 7 | 703810-25309 Juneau International | 2010-2024 (15 years) | NSRDB | `Juneau_AK_RMY_2010-2024.epw` |
+
+## More capitals and major cities (100)
+
+Built in November 2026 with the same code and QA as the world capitals above: national capitals not yet listed and
+large cities, including 8 US metros outside the state-capital list. For each city, the NOAA stations within 45 km
+with records from 2009 were scored on how many of their last 15 years have near-hourly reports. The nearest station
+with at least 13 such years was used, and each choice was reviewed:
+- In the US metros this gives the city airports (e.g. Dallas Love Field, Detroit City, St. Louis Downtown), nearer
+  the urban core than the main airports.
+- Toronto (Billy Bishop City Centre), Montreal (St-Hubert), Vancouver (Vancouver Intl), Prague (Ruzyně), Fukuoka and
+  Monterrey use the best-scored station instead of the nearest.
+- Brussels uses Brussels National: the Uccle city station has a year with only 25% of hours observed.
+- Shenzhen uses its own airport (Bao'an), not Hong Kong's.
+
+Solar radiation is PVGIS-SARAH3 or PVGIS-ERA5, and NSRDB in the Americas north of 20°S; Rio de Janeiro and Porto
+Alegre use PVGIS-SARAH3 and Córdoba PVGIS-ERA5 (outside NSRDB, and for Córdoba outside SARAH-3). Most cities have 15
+usable years. Lahore's station stopped reporting regularly in 2019, so its years are 2006-2018 (12 years); Kigali and
+Bengaluru also have 12, Baghdad and Khartoum 13, Abu Dhabi, Tegucigalpa and Dallas 14.
+
+Not included (see [`../QA.md`](../QA.md)): Conakry and Yaoundé (fewer than 10 complete years); Tripoli, Nouakchott,
+Djibouti and Lilongwe (no station with 10 near-hourly years); Caracas, Medellín, San Salvador, La Paz and
+Johannesburg, whose only long-record stations are 370-810 m above or below the city. Sixteen further cities were
+built but left out to keep 100 with a regional balance, mostly for sparse records.
+
+### Europe (17)
+
+| City | Country | Climate (Köppen) | NOAA station | AMY years | Solar | File |
+|---|---|---|---|---|---|---|
+| Amsterdam | Netherlands | Cfb | 062400-99999 Schiphol | 2009-2023 (15 years) | PVGIS-SARAH3 | `Amsterdam_NL_RMY_2009-2023.epw` |
+| Barcelona | Spain | Csa | 081810-99999 Barcelona | 2009-2023 (15 years) | PVGIS-SARAH3 | `Barcelona_ES_RMY_2009-2023.epw` |
+| Belgrade | Serbia | Cfa | 132720-99999 Beograd | 2009-2023 (15 years) | PVGIS-SARAH3 | `Belgrade_RS_RMY_2009-2023.epw` |
+| Bern | Switzerland | Cfb | 066310-99999 Bern-Zollikofen | 2009-2023 (15 years) | PVGIS-SARAH3 | `Bern_CH_RMY_2009-2023.epw` |
+| Brussels | Belgium | Cfb | 064510-99999 Brussels Natl | 2009-2023 (15 years) | PVGIS-SARAH3 | `Brussels_BE_RMY_2009-2023.epw` |
+| Budapest | Hungary | Cfa | 128430-99999 Budapest/Pestszentlorinc | 2009-2023 (15 years) | PVGIS-SARAH3 | `Budapest_HU_RMY_2009-2023.epw` |
+| Copenhagen | Denmark | Cfb | 061800-99999 Kastrup | 2009-2023 (15 years) | PVGIS-SARAH3 | `Copenhagen_DK_RMY_2009-2023.epw` |
+| Hamburg | Germany | Cfb | 101470-99999 Hamburg | 2009-2023 (15 years) | PVGIS-SARAH3 | `Hamburg_DE_RMY_2009-2023.epw` |
+| Istanbul | Turkey | Csa | 170600-99999 Ataturk | 2009-2023 (15 years) | PVGIS-SARAH3 | `Istanbul_TR_RMY_2009-2023.epw` |
+| Milan | Italy | Cfa | 160800-99999 Milano Linate | 2009-2023 (15 years) | PVGIS-SARAH3 | `Milan_IT_RMY_2009-2023.epw` |
+| Prague | Czechia | Cfb | 115180-99999 Ruzyne | 2009-2023 (15 years) | PVGIS-SARAH3 | `Prague_CZ_RMY_2009-2023.epw` |
+| Riga | Latvia | Dfb | 264225-99999 Riga | 2009-2023 (15 years) | PVGIS-SARAH3 | `Riga_LV_RMY_2009-2023.epw` |
+| Saint Petersburg | Russia | Dfb | 260630-99999 Pulkovo | 2009-2023 (15 years) | PVGIS-SARAH3 | `Saint_Petersburg_RU_RMY_2009-2023.epw` |
+| Sofia | Bulgaria | Cfb | 156140-99999 Sofia | 2009-2023 (15 years) | PVGIS-SARAH3 | `Sofia_BG_RMY_2009-2023.epw` |
+| Tirana | Albania | Csa | 136150-99999 Tirana Rinas | 2009-2023 (15 years) | PVGIS-SARAH3 | `Tirana_AL_RMY_2009-2023.epw` |
+| Vilnius | Lithuania | Dfb | 267300-99999 Vilnius Intl | 2009-2023 (15 years) | PVGIS-SARAH3 | `Vilnius_LT_RMY_2009-2023.epw` |
+| Zagreb | Croatia | Cfb | 142400-99999 Zagreb\Maksimir | 2009-2023 (15 years) | PVGIS-SARAH3 | `Zagreb_HR_RMY_2009-2023.epw` |
+
+### Middle East and Central Asia (13)
+
+| City | Country | Climate (Köppen) | NOAA station | AMY years | Solar | File |
+|---|---|---|---|---|---|---|
+| Abu Dhabi | United Arab Emirates | BWh | 412160-99999 Al Bateen Executive | 2010-2023 (14 years) | PVGIS-SARAH3 | `Abu_Dhabi_AE_RMY_2010-2023.epw` |
+| Ashgabat | Turkmenistan | BWk | 388800-99999 Ashgabat | 2009-2023 (15 years) | PVGIS-ERA5 | `Ashgabat_TM_RMY_2009-2023.epw` |
+| Baghdad | Iraq | BWh | 406500-99999 Baghdad Intl Airport | 2011-2023 (13 years) | PVGIS-SARAH3 | `Baghdad_IQ_RMY_2011-2023.epw` |
+| Beirut | Lebanon | Csa | 401000-99999 Rafic Hariri Intl | 2009-2023 (15 years) | PVGIS-SARAH3 | `Beirut_LB_RMY_2009-2023.epw` |
+| Bishkek | Kyrgyzstan | Dsa | 383531-99999 Manas | 2008-2023 (15 years) | PVGIS-ERA5 | `Bishkek_KG_RMY_2008-2023.epw` |
+| Dushanbe | Tajikistan | Csa | 388360-99999 Dushanbe | 2009-2023 (15 years) | PVGIS-ERA5 | `Dushanbe_TJ_RMY_2009-2023.epw` |
+| Isfahan | Iran | BWk | 408000-99999 Esfahan Shahid Beheshti Intl | 2009-2023 (15 years) | PVGIS-SARAH3 | `Isfahan_IR_RMY_2009-2023.epw` |
+| Izmir | Turkey | Csa | 172190-99999 Adnan Menderes | 2009-2023 (15 years) | PVGIS-SARAH3 | `Izmir_TR_RMY_2009-2023.epw` |
+| Jeddah | Saudi Arabia | BWh | 410240-99999 King Abdulaziz Intl | 2009-2023 (15 years) | PVGIS-SARAH3 | `Jeddah_SA_RMY_2009-2023.epw` |
+| Manama | Bahrain | BWh | 411500-99999 Bahrain Intl | 2009-2023 (15 years) | PVGIS-SARAH3 | `Manama_BH_RMY_2009-2023.epw` |
+| Mashhad | Iran | BSk | 407450-99999 Mashhad Intl / Shahid Hashemi Nejad Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Mashhad_IR_RMY_2009-2023.epw` |
+| Tel Aviv | Israel | Csa | 401800-99999 Ben Gurion | 2009-2023 (15 years) | PVGIS-SARAH3 | `Tel_Aviv_IL_RMY_2009-2023.epw` |
+| Yerevan | Armenia | Dsa | 353946-99999 Zvartnots | 2009-2023 (15 years) | PVGIS-SARAH3 | `Yerevan_AM_RMY_2009-2023.epw` |
+
+### Africa (13)
+
+| City | Country | Climate (Köppen) | NOAA station | AMY years | Solar | File |
+|---|---|---|---|---|---|---|
+| Abidjan | Cote d'Ivoire | Aw | 655780-99999 Abidjan Felix Houphouet Boigny Intl | 2008-2023 (15 years) | PVGIS-SARAH3 | `Abidjan_CI_RMY_2008-2023.epw` |
+| Alexandria | Egypt | BWh | 623180-99999 Alexandria Intl | 2008-2022 (15 years) | PVGIS-SARAH3 | `Alexandria_EG_RMY_2008-2022.epw` |
+| Bamako | Mali | BSh | 612910-99999 Senou / President Modibo Keita | 2009-2023 (15 years) | PVGIS-SARAH3 | `Bamako_ML_RMY_2009-2023.epw` |
+| Dar es Salaam | Tanzania | Aw | 638940-99999 Mwalimu Julius K Nyerere Intl | 2007-2023 (15 years) | PVGIS-SARAH3 | `Dar_es_Salaam_TZ_RMY_2007-2023.epw` |
+| Gaborone | Botswana | BSh | 682400-99999 Sir Seretse Khama Intl | 2008-2023 (15 years) | PVGIS-SARAH3 | `Gaborone_BW_RMY_2008-2023.epw` |
+| Khartoum | Sudan | BWh | 627210-99999 Khartoum | 2008-2020 (13 years) | PVGIS-SARAH3 | `Khartoum_SD_RMY_2008-2020.epw` |
+| Kigali | Rwanda | Aw | 643870-99999 Kigali Intl | 2010-2023 (12 years) | PVGIS-SARAH3 | `Kigali_RW_RMY_2010-2023.epw` |
+| Libreville | Gabon | Am | 645000-99999 Leon M Ba | 2009-2023 (15 years) | PVGIS-SARAH3 | `Libreville_GA_RMY_2009-2023.epw` |
+| Lomé | Togo | Aw | 653870-99999 Gnassingbe Eyadema Intl | 2009-2023 (15 years) | PVGIS-SARAH3 | `Lome_TG_RMY_2009-2023.epw` |
+| Mombasa | Kenya | As | 638200-99999 Mombasa Moi Intl | 2009-2023 (15 years) | PVGIS-SARAH3 | `Mombasa_KE_RMY_2009-2023.epw` |
+| Niamey | Niger | BWh | 610520-99999 Diori Hamani | 2009-2023 (15 years) | PVGIS-SARAH3 | `Niamey_NE_RMY_2009-2023.epw` |
+| Ouagadougou | Burkina Faso | BSh | 655030-99999 Ouagadougou | 2009-2023 (15 years) | PVGIS-SARAH3 | `Ouagadougou_BF_RMY_2009-2023.epw` |
+| Port Louis | Mauritius | Am | 619900-99999 Sir Seewoosagur Ramgoolam Intl | 2009-2023 (15 years) | PVGIS-SARAH3 | `Port_Louis_MU_RMY_2009-2023.epw` |
+
+### South Asia (8)
+
+| City | Country | Climate (Köppen) | NOAA station | AMY years | Solar | File |
+|---|---|---|---|---|---|---|
+| Ahmedabad | India | BSh | 426470-99999 Ahmedabad / Sardar Vallabhbhai Patel Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Ahmedabad_IN_RMY_2009-2023.epw` |
+| Bengaluru | India | Aw | 427056-99999 Bangaluru Intl Airport / Kempegowda Intl | 2009-2023 (12 years) | PVGIS-ERA5 | `Bengaluru_IN_RMY_2009-2023.epw` |
+| Chennai | India | As | 432790-99999 Chennai Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Chennai_IN_RMY_2009-2023.epw` |
+| Hyderabad | India | BSh | 431280-99999 Begumpet Airport / Hyderabad Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Hyderabad_IN_RMY_2009-2023.epw` |
+| Kolkata | India | Aw | 428090-99999 Netaji Subhash Chandra Bose Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Kolkata_IN_RMY_2009-2023.epw` |
+| Lahore | Pakistan | BSh | 416410-99999 Allama Iqbal Intl | 2006-2018 (12 years) | PVGIS-ERA5 | `Lahore_PK_RMY_2006-2018.epw` |
+| Malé | Maldives | Am | 435550-99999 Male Intl / Velana Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Male_MV_RMY_2009-2023.epw` |
+| Mumbai | India | Am | 430030-99999 Chhatrapati Shivaji Maharaj Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Mumbai_IN_RMY_2009-2023.epw` |
+
+### East Asia (14)
+
+| City | Country | Climate (Köppen) | NOAA station | AMY years | Solar | File |
+|---|---|---|---|---|---|---|
+| Busan | South Korea | Cfa | 471530-99999 Gimhae Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Busan_KR_RMY_2009-2023.epw` |
+| Chengdu | China | Cwa | 562940-99999 Shuangliu | 2009-2023 (15 years) | PVGIS-ERA5 | `Chengdu_CN_RMY_2009-2023.epw` |
+| Chongqing | China | Cfa | 575160-99999 Jiangbei | 2009-2023 (15 years) | PVGIS-ERA5 | `Chongqing_CN_RMY_2009-2023.epw` |
+| Fukuoka | Japan | Cfa | 478080-99999 Fukuoka | 2009-2023 (15 years) | PVGIS-ERA5 | `Fukuoka_JP_RMY_2009-2023.epw` |
+| Guangzhou | China | Cfa | 592870-99999 Baiyun Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Guangzhou_CN_RMY_2009-2023.epw` |
+| Harbin | China | Dwa | 541611-99999 Taiping | 2009-2023 (15 years) | PVGIS-ERA5 | `Harbin_CN_RMY_2009-2023.epw` |
+| Hong Kong | Hong Kong | Cwa | 450070-99999 Hong Kong Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Hong_Kong_HK_RMY_2009-2023.epw` |
+| Osaka | Japan | Cfa | 477720-99999 Osaka | 2009-2023 (15 years) | PVGIS-ERA5 | `Osaka_JP_RMY_2009-2023.epw` |
+| Sapporo | Japan | Dfa | 474120-99999 Sapporo | 2009-2023 (15 years) | PVGIS-ERA5 | `Sapporo_JP_RMY_2009-2023.epw` |
+| Shanghai | China | Cfa | 583670-99999 Hongqiao Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Shanghai_CN_RMY_2009-2023.epw` |
+| Shenzhen | China | Cwa | 594930-99999 Baoan Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Shenzhen_CN_RMY_2009-2023.epw` |
+| Urumqi | China | BSk | 514635-99999 Diwopu | 2009-2023 (15 years) | PVGIS-ERA5 | `Urumqi_CN_RMY_2009-2023.epw` |
+| Wuhan | China | Cfa | 574940-99999 Tianhe | 2009-2023 (15 years) | PVGIS-ERA5 | `Wuhan_CN_RMY_2009-2023.epw` |
+| Xi'an | China | BSk | 570360-99999 Xianyang | 2009-2023 (15 years) | PVGIS-ERA5 | `Xian_CN_RMY_2009-2023.epw` |
+
+### Southeast Asia and Oceania (10)
+
+| City | Country | Climate (Köppen) | NOAA station | AMY years | Solar | File |
+|---|---|---|---|---|---|---|
+| Adelaide | Australia | Csa | 946720-99999 Adelaide Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Adelaide_AU_RMY_2009-2023.epw` |
+| Auckland | New Zealand | Cfb | 931190-99999 Auckland Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Auckland_NZ_RMY_2009-2023.epw` |
+| Bandar Seri Begawan | Brunei | Af | 963150-99999 Brunei Intl | 2008-2023 (15 years) | PVGIS-ERA5 | `Bandar_Seri_Begawan_BN_RMY_2008-2023.epw` |
+| Brisbane | Australia | Cfa | 945780-99999 Brisbane Airport | 2009-2023 (15 years) | PVGIS-ERA5 | `Brisbane_AU_RMY_2009-2023.epw` |
+| Cebu | Philippines | Am | 986460-99999 Mactan Cebu Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Cebu_PH_RMY_2009-2023.epw` |
+| Darwin | Australia | Aw | 941200-99999 Darwin Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Darwin_AU_RMY_2009-2023.epw` |
+| Ho Chi Minh City | Vietnam | Aw | 489000-99999 Tan Son Nhat Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Ho_Chi_Minh_City_VN_RMY_2009-2023.epw` |
+| Melbourne | Australia | Cfb | 948660-99999 Melbourne Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Melbourne_AU_RMY_2009-2023.epw` |
+| Perth | Australia | Csa | 946100-99999 Perth Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Perth_AU_RMY_2009-2023.epw` |
+| Suva | Fiji | Af | 916830-99999 Nausori Intl | 2009-2023 (15 years) | PVGIS-ERA5 | `Suva_FJ_RMY_2009-2023.epw` |
+
+### Americas (17)
+
+| City | Country | Climate (Köppen) | NOAA station | AMY years | Solar | File |
+|---|---|---|---|---|---|---|
+| Calgary | Canada | Dfb | 718770-99999 Calgary Intl | 2009-2024 (15 years) | NSRDB | `Calgary_CA_RMY_2009-2024.epw` |
+| Georgetown | Guyana | Af | 810020-10502 Georgetown | 2010-2024 (15 years) | NSRDB | `Georgetown_GY_RMY_2010-2024.epw` |
+| Guadalajara | Mexico | Cwa | 766133-99999 Don Miguel Hidalgo Y Costilla Intl / Guadalajara Intl | 2010-2024 (15 years) | NSRDB | `Guadalajara_MX_RMY_2010-2024.epw` |
+| Kingston | Jamaica | Aw | 783970-99999 Norman Manley Intl | 2010-2024 (15 years) | NSRDB | `Kingston_JM_RMY_2010-2024.epw` |
+| Managua | Nicaragua | Aw | 787410-99999 Managua Intl / Augusto Cesar Sandino Intl | 2009-2024 (15 years) | NSRDB | `Managua_NI_RMY_2009-2024.epw` |
+| Manaus | Brazil | Af | 823320-99999 Campo Ponta Pelada | 2010-2024 (15 years) | NSRDB | `Manaus_BR_RMY_2010-2024.epw` |
+| Monterrey | Mexico | BSh | 763943-99999 General Mariano Escobedo Intl / Monterrey Intl | 2008-2024 (15 years) | NSRDB | `Monterrey_MX_RMY_2008-2024.epw` |
+| Montreal | Canada | Dfb | 713710-99999 Montreal/St Hubert | 2010-2024 (15 years) | NSRDB | `Montreal_CA_RMY_2010-2024.epw` |
+| Port of Spain | Trinidad and Tobago | Aw | 789700-11634 Piarco Intl Ap | 2008-2024 (15 years) | NSRDB | `Port_of_Spain_TT_RMY_2008-2024.epw` |
+| Porto Alegre | Brazil | Cfa | 839710-99999 Salgado Filho | 2008-2022 (15 years) | PVGIS-SARAH3 | `Porto_Alegre_BR_RMY_2008-2022.epw` |
+| Recife | Brazil | As | 828990-99999 Guararapes Gilberto Freyre Intl | 2010-2024 (15 years) | NSRDB | `Recife_BR_RMY_2010-2024.epw` |
+| Rio de Janeiro | Brazil | Aw | 837460-99999 Galeao Antonio Carlos Jobim | 2008-2022 (15 years) | PVGIS-SARAH3 | `Rio_de_Janeiro_BR_RMY_2008-2022.epw` |
+| Salvador | Brazil | Af | 832480-99999 Deputado Luis Eduardo Magalhaes | 2010-2024 (15 years) | NSRDB | `Salvador_BR_RMY_2010-2024.epw` |
+| Tegucigalpa | Honduras | Aw | 787200-99999 Toncontin Intl | 2007-2024 (14 years) | NSRDB | `Tegucigalpa_HN_RMY_2007-2024.epw` |
+| Toronto | Canada | Dfa | 712650-99999 Toronto City Centre / Billy Bishop | 2010-2024 (15 years) | NSRDB | `Toronto_CA_RMY_2010-2024.epw` |
+| Vancouver | Canada | Cfb | 718920-99999 Vancouver Intl | 2010-2024 (15 years) | NSRDB | `Vancouver_CA_RMY_2010-2024.epw` |
+| Córdoba | Argentina | Cwa | 873440-99999 Ambrosio L V Taravella | 2006-2022 (15 years) | PVGIS-ERA5 | `Cordoba_AR_RMY_2006-2022.epw` |
+
+### United States (8)
+
+Large US cities not already listed, with NSRDB solar radiation and their ASHRAE 169 climate zone.
+
+| City | Zone | NOAA station | AMY years | Solar | File |
+|---|---|---|---|---|---|
+| New Orleans LA | 2A | 722315-53917 Lakefront Airport | 2009-2024 (15 years) | NSRDB | `New_Orleans_LA_RMY_2009-2024.epw` |
+| San Antonio TX | 2A | 722523-12970 Stinson Minicipal Airport | 2010-2024 (15 years) | NSRDB | `San_Antonio_TX_RMY_2010-2024.epw` |
+| Dallas TX | 3A | 722580-13960 Dallas Love Field Airport | 2011-2024 (14 years) | NSRDB | `Dallas_TX_RMY_2011-2024.epw` |
+| San Diego CA | 3B | 722900-23188 San Diego International Airport | 2010-2024 (15 years) | NSRDB | `San_Diego_CA_RMY_2010-2024.epw` |
+| Kansas City MO | 4A | 724463-13988 C.R. Wheeler Downtown Arpt | 2010-2024 (15 years) | NSRDB | `Kansas_City_MO_RMY_2010-2024.epw` |
+| Philadelphia PA | 4A | 724080-13739 Philadelphia International Airport | 2010-2024 (15 years) | NSRDB | `Philadelphia_PA_RMY_2010-2024.epw` |
+| St. Louis MO | 4A | 725314-03960 St Louis Downtown Airport | 2010-2024 (15 years) | NSRDB | `St_Louis_MO_RMY_2010-2024.epw` |
+| Detroit MI | 5A | 725375-14822 Detroit City Airport | 2008-2024 (15 years) | NSRDB | `Detroit_MI_RMY_2008-2024.epw` |
 
 ## Quality assurance
 
