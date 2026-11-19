@@ -287,6 +287,42 @@ def test_era5_sky_cover_reads_only_needed_months_and_keeps_opaque_below_total(mo
     np.testing.assert_allclose(opaque[ok], 6.0)                     # 1-(1-.5)^2 = 7.5 tenths, capped at total
 
 
+def _fake_noaa(reports_per_year):
+    """noaa_csv stand-in: `reports_per_year[year]` hourly temperature reports (None = no file)."""
+    def fake(session, station_id, year, cache_dir):
+        n = reports_per_year.get(year)
+        if n is None:
+            raise RuntimeError(f'HTTP 404 from https://example/{year}/{station_id}.csv (request details withheld)')
+        dates = pd.date_range(f'{year}-01-01', periods=n, freq='h', tz='UTC')
+        return pd.DataFrame({'DATE': dates, 'TMP': ['+0215,1'] * n})
+    return fake
+
+
+def test_last_reporting_year_skips_years_a_silent_station_left_in_its_record(monkeypatch):
+    # Lahore: hourly to 2018, then a few reports a year while the NOAA record stays open.
+    years = {y: 8760 for y in range(2005, 2019)}
+    years.update({2019: 40, 2020: 40, 2021: 40, 2022: None, 2023: 30})
+    monkeypatch.setattr(ga, 'noaa_csv', _fake_noaa(years))
+    end, silent = ga.last_reporting_year(None, {'station_id': '41641099999'}, 2023, '/nonexistent')
+    assert end == 2018 and silent == [2023, 2022, 2021, 2020, 2019]
+
+
+def test_last_reporting_year_keeps_a_station_that_reports(monkeypatch):
+    years = {y: 8760 for y in range(2009, 2025)}
+    years[2024] = 5000                                               # 57% of hours: still regular
+    monkeypatch.setattr(ga, 'noaa_csv', _fake_noaa(years))
+    assert ga.last_reporting_year(None, {'station_id': 'x'}, 2024, '/nonexistent') == (2024, [])
+
+
+def test_last_reporting_year_does_not_skip_on_network_errors_or_give_up_silently(monkeypatch):
+    def broken(session, station_id, year, cache_dir):
+        raise RuntimeError('Download failed from https://example: timeout')
+    monkeypatch.setattr(ga, 'noaa_csv', broken)
+    assert ga.last_reporting_year(None, {'station_id': 'x'}, 2024, '/nonexistent') == (2024, [])
+    monkeypatch.setattr(ga, 'noaa_csv', _fake_noaa({}))                # no files at all
+    assert ga.last_reporting_year(None, {'station_id': 'x'}, 2024, '/nonexistent') == (2024, [])
+
+
 def test_isolated_temperature_spikes_are_removed_but_fronts_and_storms_kept():
     db = np.r_[np.full(10, 15.0), 2.0, np.full(10, 15.0),             # corrupt report: T and Td both 2 C
                np.full(5, 15.0), 30.0, np.full(5, 15.5),                # one-hour warm spike

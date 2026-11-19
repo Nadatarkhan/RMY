@@ -2,7 +2,7 @@
 
 `generate_amys.py` builds actual meteorological year (AMY) EPW files for one NOAA weather station, ready for the TMY step (`tmy/`) and RMY generation (`rmy/`).
 
-Give it a station number and it builds one EPW per year for the **15 most recent complete years**. The last complete year is read from the NOAA station record, so the period moves forward as new years are published. Years that fail, or have temperature, dew point or pressure gaps too long to fill, are replaced by earlier years.
+Give it a station number and it builds one EPW per year for the **15 most recent complete years**. The last complete year is read from the NOAA station record, so the period moves forward as new years are published. If the station has stopped reporting regularly while its record stays open (e.g. Lahore after 2018), the period ends in the most recent year with temperature reports in at least half of its hours. Years that fail, or have temperature, dew point or pressure gaps too long to fill, are replaced by earlier years.
 
 ## Run it
 

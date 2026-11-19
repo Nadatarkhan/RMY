@@ -2345,6 +2345,39 @@ def last_complete_year(st, radiation_source='NSRDB', today=None):
     return year
 
 
+MAX_SILENT_YEARS = 10   # how far back last_reporting_year looks for a year with regular reports
+
+
+def last_reporting_year(session, st, end, cache_dir, min_share=None, max_back=MAX_SILENT_YEARS):
+    """Most recent year up to `end` in which the station reported temperature in at least `min_share`
+    of the hours (default SPARSE_OBSERVED_SHARE, 50%).
+
+    Some stations stop reporting, or report only a few times a month, while NOAA's station record
+    stays open (e.g. Lahore after 2018, Kabul after 2021). Starting from those years, every year
+    would fail and the run would stop. Years with no NOAA file count as silent. If a download fails
+    for another reason, or no year within `max_back` years qualifies, the search stops and the year
+    reached so far is returned, so the normal year-by-year checks decide.
+    Returns (year, silent_years) where silent_years lists the skipped years, most recent first.
+    """
+    share = SPARSE_OBSERVED_SHARE if min_share is None else min_share
+    silent = []
+    for year in range(int(end), int(end) - max_back, -1):
+        try:
+            d = noaa_csv(session, st['station_id'], year, cache_dir)
+        except Exception as exc:
+            if 'HTTP 404' in str(exc):
+                silent.append(year)
+                continue
+            return year, silent
+        tmp = d['TMP'].astype(str) if 'TMP' in d else pd.Series('', index=d.index)
+        ok = tmp.str.len().gt(0) & ~tmp.str.match(r'^[+-]?9999')
+        hours = d.loc[ok, 'DATE'].dt.floor('h').nunique()
+        if hours >= share * (8784 if calendar.isleap(year) else 8760):
+            return year, silent
+        silent.append(year)
+    return int(end), []
+
+
 def epw_is_complete(path, year):
     """Row count, 35 fields, the right year and no missing shortwave (as in the notebook)."""
     try:
@@ -2416,6 +2449,10 @@ def generate_amys(station_number, output_dir, nsrdb_api_key=None, nsrdb_email=No
                          'needs your own free NREL API key and email (https://developer.nlr.gov/docs/climate/guide/).')
 
     end = last_complete_year(st, 'NSRDB' if source == 'NSRDB' else 'PVGIS')
+    end, silent = last_reporting_year(session, st, end, cache_dir)
+    if silent:
+        log(f"No regular reports in {', '.join(map(str, silent))}: the AMYs end in {end}, the most recent "
+            f"year with temperature in at least {SPARSE_OBSERVED_SHARE:.0%} of hours.")
     first_allowed = max(int(str(st['begin'])[:4]),
                         NSRDB_YEARS[0] if source == 'NSRDB' else PVGIS5_3_BOUNDS[0] + 1)
     candidates = [y for y in range(end, end - n_years - MAX_EXTRA_YEARS, -1) if y >= first_allowed]
