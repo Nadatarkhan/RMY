@@ -238,6 +238,55 @@ def test_sky_fill_fallback_follows_clearness_index_by_day():
     np.testing.assert_allclose(t[1000:1100][day], np.rint(10 * (1 - kt[1000:1100][day])), atol=1)
 
 
+def test_sky_fill_uses_era5_when_the_year_has_no_cloud_reports():
+    # Automatic stations (e.g. Bern-Zollikofen) can go whole years without cloud reports: the year's
+    # own cover gives no fallback, so ERA5 cover is the estimate of last resort.
+    n = 24 * 60
+    hours = pd.date_range('2021-01-01', periods=n, freq='h')
+    none = np.full(n, np.nan)
+    era_t = np.tile(np.r_[np.full(12, 8.0), np.full(12, 2.0)], 60)
+    era_o = era_t / 2
+    _, _, _, rep0 = ga.infill_sky_cover(none, none, none, month=hours.month.to_numpy(), hour=hours.hour.to_numpy())
+    assert rep0['total_sky_still_missing_hours'] == n
+    t, o, flags, rep = ga.infill_sky_cover(none, none, none, month=hours.month.to_numpy(),
+                                           hour=hours.hour.to_numpy(), era5_total=era_t, era5_opaque=era_o)
+    assert rep['total_sky_still_missing_hours'] == 0 and rep['opaque_sky_still_missing_hours'] == 0
+    np.testing.assert_array_equal(t, era_t); np.testing.assert_array_equal(o, era_o)
+    assert set(flags['total']) == {'E'} and rep['total_sky_estimate_from_era5_hours'] == n
+
+
+def test_era5_sky_estimate_is_shifted_to_the_recorded_cover_and_never_replaces_it():
+    n = 24 * 60
+    rng = np.random.default_rng(1)
+    era_t = rng.integers(0, 9, n).astype(float)
+    cover = np.clip(era_t + 2, 0, 10)                               # the observer reports 2 tenths more
+    cover[200:] = np.nan                                            # 200 recorded hours, then a long gap
+    t, _, flags, rep = ga.infill_sky_cover(cover, cover.copy(), np.full(n, np.nan),
+                                           era5_total=era_t, era5_opaque=era_t)
+    np.testing.assert_array_equal(t[:200], cover[:200])
+    gap = slice(300, n)
+    assert abs(np.mean(t[gap] - era_t[gap]) - 2) < 0.3 and rep['total_sky_estimate_from_era5_hours'] > 0
+
+
+def test_era5_sky_cover_reads_only_needed_months_and_keeps_opaque_below_total(monkeypatch):
+    st = {'tz_offset': 1.0, 'lat': 46.99, 'lon': 7.46}
+    index = pd.date_range('2021-01-01', '2021-02-28 23:00', freq='h')
+    need = np.zeros(len(index), dtype=bool); need[(index.month == 2) & (index.day >= 10)] = True
+    asked = []
+    def fake(fs, ym, field, lat, lon, cache_dir):
+        asked.append((ym, field))
+        utc = pd.date_range(f'{ym[:4]}-{ym[4:]}-01', periods=24 * 28, freq='h')
+        return pd.Series({'tcc': 6.0, 'lcc': 5.0, 'mcc': 5.0}[field], index=utc)
+    monkeypatch.setattr(ga, 'era5_point_month', fake)
+    total, opaque = ga.era5_sky_cover(st, index, need, '/nonexistent', fs=object())
+    assert {ym for ym, _ in asked} == {'202102'}
+    feb = index.month == 2
+    assert np.isnan(total[~feb]).all()
+    ok = feb & np.isfinite(total)
+    np.testing.assert_allclose(total[ok], 6.0)
+    np.testing.assert_allclose(opaque[ok], 6.0)                     # 1-(1-.5)^2 = 7.5 tenths, capped at total
+
+
 def test_isolated_temperature_spikes_are_removed_but_fronts_and_storms_kept():
     db = np.r_[np.full(10, 15.0), 2.0, np.full(10, 15.0),             # corrupt report: T and Td both 2 C
                np.full(5, 15.0), 30.0, np.full(5, 15.5),                # one-hour warm spike

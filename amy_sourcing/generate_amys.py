@@ -1113,13 +1113,15 @@ def _fallback_cover_estimate(cover, kt=None, month=None, hour=None, min_hours=20
     return est, src
 
 
-def _fill_cover(cover, ctype, max_linear=12, max_shaped=36, kt=None, month=None, hour=None):
+def _fill_cover(cover, ctype, max_linear=12, max_shaped=36, kt=None, month=None, hour=None, extra=None):
     """Fill one cover series. Returns (filled values, flag letters, estimate check).
 
     The estimate for gaps longer than `max_linear` hours is the NSRDB cloud-type estimate where a
     cloud type exists; elsewhere (PVGIS radiation, or unknown cloud type) the station-year's own
     cover for the same clearness index or month and hour (_fallback_cover_estimate), if kt or
-    month and hour are given. Without either the gap stays missing, as before.
+    month and hour are given. Where neither gives a value (a station-year without cloud reports), `extra`
+    (ERA5 cover in tenths, see era5_sky_cover) is used, shifted by its mean difference from this year's
+    recorded cover when at least 100 hours overlap. Without any estimate the gap stays missing.
     """
     v = np.asarray(cover, dtype=float).copy()
     ct = np.asarray(ctype, dtype=float)
@@ -1130,13 +1132,21 @@ def _fill_cover(cover, ctype, max_linear=12, max_shaped=36, kt=None, month=None,
     fb, fb_src = _fallback_cover_estimate(v, kt, month, hour)
     est_src = np.where(np.isfinite(est), 'cloud_type', fb_src).astype(object)
     est = np.where(np.isfinite(est), est, fb)
+    if extra is not None:
+        x = np.asarray(extra, dtype=float).copy()
+        overlap = np.isfinite(v) & np.isfinite(x)
+        if overlap.sum() >= 100:
+            x = np.clip(x + float(np.mean(v[overlap] - x[overlap])), 0, 10)
+        use = ~np.isfinite(est) & np.isfinite(x)
+        est = np.where(use, x, est)
+        est_src = np.where(use, 'era5', est_src).astype(object)
 
     # How well the cloud-type estimate matches observed cover at this station (reported).
     both = np.isfinite(v) & np.isfinite(est)
     check = {'estimate_mae_tenths': round(float(np.mean(np.abs(v[both] - est[both]))), 2) if both.any() else None,
              'estimate_compared_hours': int(both.sum()), 'cloud_types_mapped': len(mapping)}
     gaps = ~np.isfinite(v)
-    for label in ('cloud_type', 'clearness', 'month_hour'):
+    for label in ('cloud_type', 'clearness', 'month_hour', 'era5'):
         check[f'estimate_from_{label}_hours'] = int((gaps & (est_src == label)).sum())
 
     missing = ~np.isfinite(v)
@@ -1171,18 +1181,21 @@ def _fill_cover(cover, ctype, max_linear=12, max_shaped=36, kt=None, month=None,
     return v, flags, check
 
 
-def infill_sky_cover(total, opaque, cloud_type, max_linear=12, max_shaped=36, kt=None, month=None, hour=None):
+def infill_sky_cover(total, opaque, cloud_type, max_linear=12, max_shaped=36, kt=None, month=None, hour=None,
+                     era5_total=None, era5_opaque=None):
     """Fill missing total and opaque sky cover (tenths); opaque is kept <= total.
 
     total, opaque: hourly cover in tenths with NaN for missing (surface.TC, surface.OC).
     cloud_type: NSRDB cloud_type for the same hours (NaN if unavailable, e.g. PVGIS).
     kt, month, hour (optional): clearness index and calendar of the same hours, for the
         fallback estimate where no cloud type exists (see _fallback_cover_estimate).
+    era5_total, era5_opaque (optional): ERA5 cover in tenths, the last-resort estimate for
+        station-years with too few cloud reports for the fallback (see era5_sky_cover).
     Recorded values are never changed. Returns (total, opaque, flags, report), where
     flags is a dict of per-hour source letters ('' where unchanged) for each field.
     """
-    t, ft, ct_t = _fill_cover(total, cloud_type, max_linear, max_shaped, kt, month, hour)
-    o, fo, ct_o = _fill_cover(opaque, cloud_type, max_linear, max_shaped, kt, month, hour)
+    t, ft, ct_t = _fill_cover(total, cloud_type, max_linear, max_shaped, kt, month, hour, era5_total)
+    o, fo, ct_o = _fill_cover(opaque, cloud_type, max_linear, max_shaped, kt, month, hour, era5_opaque)
     over = np.isfinite(t) & np.isfinite(o) & (o > t) & (fo != '')
     o[over] = t[over]                                  # only filled opaque values are lowered
     report = {f'{name}_sky_{label}_hours': int((f == letter).sum())
@@ -1192,7 +1205,8 @@ def infill_sky_cover(total, opaque, cloud_type, max_linear=12, max_shaped=36, kt
                    'opaque_sky_still_missing_hours': int((~np.isfinite(o)).sum()),
                    'sky_cover_fill_method': 'linear <=12 h (B); estimate blended to recorded ends for 13-36 h (C); '
                                             'estimate >=37 h (E). Estimate: NSRDB cloud type, else this year\'s cover '
-                                            'for the same clearness index (day) or month and hour'})
+                                            'for the same clearness index (day) or month and hour, else ERA5 '
+                                            'cloud cover'})
     for name, chk in (('total', ct_t), ('opaque', ct_o)):        # flat keys for the QA manifest CSV
         for key, val in chk.items():
             report[f'{name}_sky_{key}'] = val
@@ -1305,7 +1319,8 @@ def clearness_index(rad, index):
     return np.where(np.isfinite(cz) & (cz > 0.1), ghi / (e0 * np.where(cz > 0.1, cz, 1.0)), np.nan)
 
 
-def build_epw(st,year,surface,rad,source_description,cloud_missing_policy='DEFAULT_5',era5_ir=None,era5_mode='FALLBACK'):
+def build_epw(st,year,surface,rad,source_description,cloud_missing_policy='DEFAULT_5',era5_ir=None,era5_mode='FALLBACK',
+              sky_era5=None):
     expected=expected_local_index(year)
     if not surface.index.equals(expected) or not rad.index.equals(expected):
         raise ValueError('Weather/radiation time index mismatch')
@@ -1321,6 +1336,20 @@ def build_epw(st,year,surface,rad,source_description,cloud_missing_policy='DEFAU
         pd.to_numeric(surface.OC,errors='coerce').to_numpy(dtype=float),
         pd.to_numeric(rad.get('CLOUD_TYPE',pd.Series(np.nan,index=expected)),errors='coerce').to_numpy(dtype=float),
         kt=clearness_index(rad,expected),month=expected.month.to_numpy(),hour=expected.hour.to_numpy())
+    need=~np.isfinite(sky_t)|~np.isfinite(sky_o)
+    if need.any() and sky_era5 is not None:
+        # Station-years without cloud reports (e.g. automatic stations): ERA5 cloud cover.
+        try:
+            e_t,e_o=sky_era5(expected,need)
+            sky_t,sky_o,sky_flags,sky_report=infill_sky_cover(
+                pd.to_numeric(surface.TC,errors='coerce').to_numpy(dtype=float),
+                pd.to_numeric(surface.OC,errors='coerce').to_numpy(dtype=float),
+                pd.to_numeric(rad.get('CLOUD_TYPE',pd.Series(np.nan,index=expected)),errors='coerce').to_numpy(dtype=float),
+                kt=clearness_index(rad,expected),month=expected.month.to_numpy(),hour=expected.hour.to_numpy(),
+                era5_total=e_t,era5_opaque=e_o)
+            sky_report['sky_era5_status']='used'
+        except Exception as exc:
+            sky_report['sky_era5_status']=f'ERA5 cloud cover unavailable: {type(exc).__name__}: {exc}'[:300]
     infrared, ir_report=energyplus_infrared(surface.DB,surface.DP,pd.Series(sky_o,index=expected),cloud_missing_policy)
     ir_report.update(sky_report)
     # Fast primary is the existing V5 physical model. ERA5 point time-series
@@ -1853,7 +1882,10 @@ ERA5_INFILL_MIN_GAP = 13          # hours: gaps of up to 12 h are interpolated l
 ERA5_INFILL_MAX_SHARE = 0.05      # at most 5% of the hours of a year from ERA5, per variable
 ERA5_FIELDS = {'2t': ('128_167_2t', 'VAR_2T', -273.15, 1.0), '2d': ('128_168_2d', 'VAR_2D', -273.15, 1.0),
                'msl': ('128_151_msl', 'MSL', 0.0, 0.01), '10u': ('128_165_10u', 'VAR_10U', 0.0, 1.0),
-               '10v': ('128_166_10v', 'VAR_10V', 0.0, 1.0)}
+               '10v': ('128_166_10v', 'VAR_10V', 0.0, 1.0),
+               # cloud cover fractions, read in tenths (sky-cover fallback, era5_sky_cover)
+               'tcc': ('128_164_tcc', 'TCC', 0.0, 10.0), 'lcc': ('128_186_lcc', 'LCC', 0.0, 10.0),
+               'mcc': ('128_187_mcc', 'MCC', 0.0, 10.0)}
 ERA5_FOR = {'DB': ['2t'], 'DP': ['2d'], 'PR': ['msl'], 'WS': ['10u', '10v'], 'WD': ['10u', '10v']}
 
 
@@ -2041,6 +2073,31 @@ def era5_infill(surface, st, cache_dir, min_gap=ERA5_INFILL_MIN_GAP, max_share=E
     return s, report
 
 
+def era5_sky_cover(st, index, need, cache_dir, fs=None):
+    """ERA5 total and opaque sky cover (tenths) at the station for the local-standard-time hours `index`.
+
+    Only the months containing hours where `need` is True are read (NaN elsewhere). Total cover is ERA5
+    total cloud cover; opaque cover is the low and medium cloud combined with random overlap,
+    1 - (1 - low)(1 - medium), since high (mostly cirrus) cloud is largely not opaque; opaque <= total.
+    """
+    tz = float(st['tz_offset'])
+    utc = pd.DatetimeIndex(index) - pd.Timedelta(hours=tz)
+    months = sorted({f'{t.year}{t.month:02d}' for t in utc[np.asarray(need, dtype=bool)]})
+    lat, lon = float(st['lat']), float(st['lon'])
+    fields = ('tcc', 'lcc', 'mcc')
+    if fs is None:
+        _era5_prefetch([(ym, f, lat, lon, str(cache_dir)) for f in fields for ym in months])
+        import fsspec
+        fs = fsspec.filesystem('s3', anon=True)
+    val = {}
+    for f in fields:
+        series = pd.concat([era5_point_month(fs, ym, f, lat, lon, cache_dir) for ym in months])
+        val[f] = np.clip(_reindex_time(series[~series.index.duplicated()], utc).to_numpy(dtype=float), 0, 10)
+    total = val['tcc']
+    opaque = np.minimum(10 * (1 - (1 - val['lcc'] / 10) * (1 - val['mcc'] / 10)), total)
+    return total, opaque
+
+
 def create_station_year(session,st,year,cache_dir,out_dir,key,email,preferred='AUTO',
                         allow_borrowed=False,allow_edge_wrap=False,max_db_gap=24,max_dp_gap=24,
                         max_pr_gap=72,write_flagged=False,cloud_missing_policy='DEFAULT_5',
@@ -2161,8 +2218,10 @@ def create_station_year(session,st,year,cache_dir,out_dir,key,email,preferred='A
         report['qc_grade']='REVIEW_REANALYSIS_SOLAR' if report['qc_grade']=='GOOD' else report['qc_grade']+'+ERA5_SOLAR'
     report.update(cap_dew_point(raw))
     try:
+        sky_era5=((lambda idx,need: era5_sky_cover(st,idx,need,cache_dir,fs=era5_fs))
+                  if era5_infill_gaps else None)
         headers,epw,irprov=build_epw(st,year,raw,rad,prov['radiation_source'],cloud_missing_policy,
-                                      era5_ir=era5_ir,era5_mode=mode)
+                                      era5_ir=era5_ir,era5_mode=mode,sky_era5=sky_era5)
         report.update(irprov)
         headers=[h+observed_share_comment(report['DB_observed_share']) if h.startswith('COMMENTS 2,') else h
                  for h in headers]
