@@ -9,8 +9,8 @@ The morph is the CMIP6 pattern-scaling emulator of [wxbuild](https://github.com/
 (Krane & Giani, MIT): for each month, local change = pattern-scaling slope × the model's global-mean
 warming from the baseline (the RMY's years) to 2043-2057. Dry-bulb temperature (with the change in
 daily range), relative humidity, pressure and wind are shifted; dew point is recalculated; solar
-radiation, cloud and precipitation are not changed. The FRMY code is not public yet. Design conditions are left blank (one composite year is too short for the ASHRAE
-statistics); ground temperatures and typical/extreme weeks are recalculated.
+radiation, cloud and precipitation are not changed. Design conditions are left blank (one composite year
+is too short for the ASHRAE statistics); ground temperatures and typical/extreme weeks are recalculated.
 
 CanESM5 is a high-sensitivity model: its 2050 global warming is about twice that of other CMIP6
 models (e.g. MPI-ESM1-2-LR), so these files are toward the warm end of SSP2-4.5 projections.
