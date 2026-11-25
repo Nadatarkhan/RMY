@@ -60,7 +60,7 @@ data/
 │       ├── AMY/        ← AMY EPWs, one per year (the year must be in the file name)
 │       ├── TMY/        ← exactly one base TMY EPW
 │       └── RMY/        ← RMY outputs for this city: RMY EPW, event CSVs, timeline plot, log
-├── RMY/                ← published RMYs: 316 cities: 20 US (one per climate zone), 20 international, 56 world capitals, 20 US state capitals, 100 more capitals and major cities, 100 more US major cities (see its README)
+├── RMY/                ← published RMYs: 500 cities: 20 US (one per climate zone), 20 international, 56 world capitals, 20 US state capitals, 100 more capitals and major cities, 100 more US major cities, 184 more US cities (see its README)
 └── FRMY/               ← published FRMYs: the same 216 cities in 2050, SSP2-4.5, CanESM5 (see its README); QA in data/QA.md
 amy_sourcing/           ← AMY generation from a NOAA station number (NOAA + NSRDB)
 examples/               ← Google Colab notebooks

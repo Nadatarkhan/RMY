@@ -1,6 +1,6 @@
-# Representative Meteorological Years (RMYs): 316 cities
+# Representative Meteorological Years (RMYs): 500 cities
 
-20 US cities, one per US climate zone (ASHRAE 169, 1A to 8), 20 international cities, 56 world capitals, 20 US state capitals, 100 more capitals and major cities, and 100 more US major cities. Each is the city's ISO 15927-4 TMY with the heat
+20 US cities, one per US climate zone (ASHRAE 169, 1A to 8), 20 international cities, 56 world capitals, 20 US state capitals, 100 more capitals and major cities, 100 more US major cities and 184 more US cities. Each is the city's ISO 15927-4 TMY with the heat
 waves and cold spells of its peak years inserted (Tarkhan et al. 2025), built end to end from a NOAA
 station number with this repository's code:
 
@@ -473,6 +473,217 @@ step over 10 °C lies inside observed weather, none at an inserted block. ERA5 f
 | Green Bay WI | 726450-14898 Austin Straubel International Ap | 2010-2024 (15 years) | NSRDB | 2012 / 2014 | `Green_Bay_WI_RMY_2010-2024.epw` |
 | Milwaukee WI | 726400-14839 General Mitchell International Ap | 2010-2024 (15 years) | NSRDB | 2012 / 2014 | `Milwaukee_WI_RMY_2010-2024.epw` |
 | Charleston WV | 724140-13866 Yeager Airport | 2010-2024 (15 years) | NSRDB | 2024 / 2014 | `Charleston_WV_RMY_2010-2024.epw` |
+## More US cities (184)
+
+Built in November 2026 with the current code of this repository (`amy_sourcing`, `tmy`, `rmy`), as in
+`examples/RMY_End_to_End_Colab.ipynb`: the most populous US cities not listed above (GeoNames populations, down to
+71,970), each from the nearest NOAA station within 25 km that no other city here uses, with NSRDB solar radiation.
+Candidates were screened for NOAA records covering 2010-2024 with near-hourly reports in every year. Cities were built
+in population order (210 in all) and the 184 most populous that passed every check were kept. Left out: Chula Vista
+CA, Arlington VA, Rancho Cucamonga CA, Killeen TX, Roseville CA, Chico CA, Round Rock TX, North Charleston SC, Daly
+City CA, Wichita Falls TX, Edinburg TX, Cranston RI, Springdale AR, Auburn WA, Brick NJ, Missouri City TX, Jonesboro
+AR and Temple TX (fewer than 15 usable years); Riverside CA, St. Petersburg FL, Oceanside CA, Fort Collins CO,
+Hollywood FL, Bellevue WA, Sterling Heights MI and Troy MI (single-hour dry-bulb readings 11 to 28 °C away from the
+hours around them, e.g. -35.8 °C at Sterling Heights in December, which the AMY builder keeps as observed). Virginia
+Beach, Norfolk and San Bernardino use their own stations (Oceana NAS, Norfolk NAS, March ARB), not those of the
+metro-area files above. Where a year was too incomplete to fill, the builder replaced it with an earlier one (39
+cities, e.g. New York City, Central Park, 2005-2024); every city has 15 usable years. FRMYs have not been made for
+these cities.
+
+Checks on all 184 (per-city results in the full packages, `QA_summary.csv`): 15 complete AMYs and no high-risk year
+used (one sparse year each at Elizabeth NJ, Appleton WI and Waukesha WI, kept out of event detection and TMY
+selection); solar timing of the TMY and RMY within 1.7 min of solar noon; no missing solar, longwave or sky-cover
+hours; relative humidity consistent with dry bulb and dew point; no dew point above dry bulb; calm hours with
+direction 0; no hourly dry-bulb value more than 10 °C from its 9-hour running median except two fronts (Edmond OK, 1
+January 2022; Kenosha WI, a lake-breeze front in April 2014). ERA5 filled long gaps at 152 stations, at most 1,714
+hours of dry-bulb temperature over 15 years (Bend OR).
+
+| City | NOAA station | AMY years | Solar | Peak heat / cold year | File |
+|---|---|---|---|---|---|
+| Tuscaloosa AL | 722286-93806 Tuscaloosa Municipal Arpt | 2010-2024 (15 years) | NSRDB | 2011 / 2010 | `Tuscaloosa_AL_RMY_2010-2024.epw` |
+| Fort Smith AR | 723440-13964 Fort Smith Regional Airport | 2010-2024 (15 years) | NSRDB | 2011 / 2014 | `Fort_Smith_AR_RMY_2010-2024.epw` |
+| Glendale AZ | 722785-23111 Luke Afb Airport | 2009-2024 (15 years) | NSRDB | 2023 / 2011 | `Glendale_AZ_RMY_2009-2024.epw` |
+| Mesa AZ | 722786-23104 Williams Gateway Airport | 2009-2024 (15 years) | NSRDB | 2020 / 2013 | `Mesa_AZ_RMY_2009-2024.epw` |
+| Peoria AZ | 722784-03184 Phoenix Deer Valley Arpt | 2010-2024 (15 years) | NSRDB | 2023 / 2013 | `Peoria_AZ_RMY_2010-2024.epw` |
+| Scottsdale AZ | 722789-03192 Scottsdale Airport | 2010-2024 (15 years) | NSRDB | 2020 / 2013 | `Scottsdale_AZ_RMY_2010-2024.epw` |
+| Yuma AZ | 740035-03145 Yuma Mcas | 2010-2024 (15 years) | NSRDB | 2023 / 2011 | `Yuma_AZ_RMY_2010-2024.epw` |
+| Anaheim CA | 722976-03166 Fullerton Municipal Arpt | 2010-2024 (15 years) | NSRDB | 2012 / 2011 | `Anaheim_CA_RMY_2010-2024.epw` |
+| Carlsbad CA | 722926-03154 Marine Corps Air Station | 2007-2024 (15 years) | NSRDB | 2020 / 2013 | `Carlsbad_CA_RMY_2007-2024.epw` |
+| El Cajon CA | 722903-03131 Montgomery Field Airport | 2010-2024 (15 years) | NSRDB | 2020 / 2013 | `El_Cajon_CA_RMY_2010-2024.epw` |
+| Escondido CA | 722927-03177 Mcclellan-Palomar Airport | 2009-2024 (15 years) | NSRDB | 2022 / 2013 | `Escondido_CA_RMY_2009-2024.epw` |
+| Fairfield CA | 745160-23202 Travis Air Force Base | 2010-2024 (15 years) | NSRDB | 2024 / 2013 | `Fairfield_CA_RMY_2010-2024.epw` |
+| Fontana CA | 722899-03179 Chino Airport | 2010-2024 (15 years) | NSRDB | 2020 / 2013 | `Fontana_CA_RMY_2010-2024.epw` |
+| Fremont CA | 724927-23285 Livermore Municipal Arpt | 2010-2024 (15 years) | NSRDB | 2024 / 2013 | `Fremont_CA_RMY_2010-2024.epw` |
+| Glendale CA | 722880-23152 Burbank-Glendale-Pasa Arpt | 2010-2024 (15 years) | NSRDB | 2016 / 2011 | `Glendale_CA_RMY_2010-2024.epw` |
+| Huntington Beach CA | 722975-53141 Los Alamitos Aaf Airport | 2009-2024 (15 years) | NSRDB | 2016 / 2013 | `Huntington_Beach_CA_RMY_2009-2024.epw` |
+| Indio CA | 747187-03104 Desert Resorts Rgnl Arpt | 2009-2024 (15 years) | NSRDB | 2019 / 2013 | `Indio_CA_RMY_2009-2024.epw` |
+| Lancaster CA | 723816-03159 General William J. Fox Airfield Airport | 2010-2024 (15 years) | NSRDB | 2021 / 2013 | `Lancaster_CA_RMY_2010-2024.epw` |
+| Long Beach CA | 722970-23129 Long Beach / Daugherty Field / Airport | 2010-2024 (15 years) | NSRDB | 2015 / 2013 | `Long_Beach_CA_RMY_2010-2024.epw` |
+| Merced CA | 724815-23257 Mrcd Muni/Macready Fld Apt | 2010-2024 (15 years) | NSRDB | 2024 / 2013 | `Merced_CA_RMY_2010-2024.epw` |
+| Oakland CA | 724930-23230 Metro Oakland Intl Airport | 2010-2024 (15 years) | NSRDB | 2020 / 2013 | `Oakland_CA_RMY_2010-2024.epw` |
+| Palmdale CA | 723820-23182 Pdle Prodn Flt/Tst Af Plt | 2010-2024 (15 years) | NSRDB | 2024 / 2013 | `Palmdale_CA_RMY_2010-2024.epw` |
+| Redding CA | 725920-24257 Redding Municipal Airport | 2010-2024 (15 years) | NSRDB | 2024 / 2013 | `Redding_CA_RMY_2010-2024.epw` |
+| San Bernardino CA | 722860-23119 March Air Reserve Base | 2010-2024 (15 years) | NSRDB | 2024 / 2013 | `San_Bernardino_CA_RMY_2010-2024.epw` |
+| Santa Ana CA | 722977-93184 J. Wayne Apt-Orange Co Apt | 2010-2024 (15 years) | NSRDB | 2020 / 2013 | `Santa_Ana_CA_RMY_2010-2024.epw` |
+| Santa Barbara CA | 723925-23190 Santa Barbara Municipal Airport | 2010-2024 (15 years) | NSRDB | 2017 / 2013 | `Santa_Barbara_CA_RMY_2010-2024.epw` |
+| Santa Clarita CA | 722886-23130 Van Nuys Airport | 2010-2024 (15 years) | NSRDB | 2023 / 2013 | `Santa_Clarita_CA_RMY_2010-2024.epw` |
+| Santa Maria CA | 723940-23273 Santa Maria Pub/Capt G A Hancock Ap | 2010-2024 (15 years) | NSRDB | 2020 / 2013 | `Santa_Maria_CA_RMY_2010-2024.epw` |
+| Thousand Oaks CA | 723926-23136 Camarillo Airport | 2010-2024 (15 years) | NSRDB | 2020 / 2013 | `Thousand_Oaks_CA_RMY_2010-2024.epw` |
+| Torrance CA | 722885-93197 Santa Monica Muni Airport | 2010-2024 (15 years) | NSRDB | 2017 / 2011 | `Torrance_CA_RMY_2010-2024.epw` |
+| Vacaville CA | 724828-93241 Nut Tree Airport | 2010-2024 (15 years) | NSRDB | 2017 / 2013 | `Vacaville_CA_RMY_2010-2024.epw` |
+| Vallejo CA | 724955-93227 Napa County Airport | 2010-2024 (15 years) | NSRDB | 2020 / 2013 | `Vallejo_CA_RMY_2010-2024.epw` |
+| Ventura CA | 723910-93111 Point Mugu | 2010-2024 (15 years) | NSRDB | 2017 / 2011 | `Ventura_CA_RMY_2010-2024.epw` |
+| Visalia CA | 723896-93144 Visalia Municipal Airport | 2008-2024 (15 years) | NSRDB | 2024 / 2013 | `Visalia_CA_RMY_2008-2024.epw` |
+| Aurora CO | 724695-23036 Buckley Air Force Base | 2008-2024 (15 years) | NSRDB | 2012 / 2014 | `Aurora_CO_RMY_2008-2024.epw` |
+| Centennial CO | 724666-93067 Centennial Airport | 2010-2024 (15 years) | NSRDB | 2012 / 2014 | `Centennial_CO_RMY_2010-2024.epw` |
+| Greeley CO | 724768-24051 Greeley-Weld County Arpt | 2007-2024 (15 years) | NSRDB | 2012 / 2007 | `Greeley_CO_RMY_2007-2024.epw` |
+| Lakewood CO | 724699-03065 Atct Rocky Mountain Metro | 2008-2024 (15 years) | NSRDB | 2012 / 2014 | `Lakewood_CO_RMY_2008-2024.epw` |
+| Pueblo CO | 724640-93058 Pueblo Memorial Airport | 2010-2024 (15 years) | NSRDB | 2012 / 2011 | `Pueblo_CO_RMY_2010-2024.epw` |
+| Danbury CT | 725086-54734 Danbury Municipal Airport | 2010-2024 (15 years) | NSRDB | 2022 / 2015 | `Danbury_CT_RMY_2010-2024.epw` |
+| New Britain CT | 725087-14752 Hartford-Brainard Airport | 2010-2024 (15 years) | NSRDB | 2016 / 2015 | `New_Britain_CT_RMY_2010-2024.epw` |
+| Waterbury CT | 725029-64707 Waterbury-Oxford Airport | 2008-2024 (15 years) | NSRDB | 2021 / 2015 | `Waterbury_CT_RMY_2008-2024.epw` |
+| Cape Coral FL | 722106-12835 Page Field Airport | 2010-2024 (15 years) | NSRDB | 2010 / 2010 | `Cape_Coral_FL_RMY_2010-2024.epw` |
+| Clearwater FL | 722116-12873 St Pete-Clwtr Intl Airport | 2010-2024 (15 years) | NSRDB | 2023 / 2010 | `Clearwater_FL_RMY_2010-2024.epw` |
+| Coral Springs FL | 722049-92805 Pompano Beach Airpark Arpt | 2009-2024 (15 years) | NSRDB | 2023 / 2010 | `Coral_Springs_FL_RMY_2009-2024.epw` |
+| Doral FL | 722029-12888 Kendall-Tamiami Exec Arpt | 2010-2024 (15 years) | NSRDB | 2023 / 2010 | `Doral_FL_RMY_2010-2024.epw` |
+| Fort Lauderdale FL | 747830-12849 Ft Laud/Hollywood Intl Apt | 2010-2024 (15 years) | NSRDB | 2023 / 2010 | `Fort_Lauderdale_FL_RMY_2010-2024.epw` |
+| Hialeah FL | 722024-12882 Opa Locka Airport | 2010-2024 (15 years) | NSRDB | 2024 / 2010 | `Hialeah_FL_RMY_2010-2024.epw` |
+| Homestead FL | 722026-12826 Homestead Afb Airport | 2010-2024 (15 years) | NSRDB | 2023 / 2010 | `Homestead_FL_RMY_2010-2024.epw` |
+| Palm Bay FL | 747950-12867 Patrick Afb Airport | 2007-2023 (15 years) | NSRDB | 2023 / 2018 | `Palm_Bay_FL_RMY_2007-2023.epw` |
+| Pembroke Pines FL | 722037-92809 North Perry Airport | 2009-2024 (15 years) | NSRDB | 2024 / 2010 | `Pembroke_Pines_FL_RMY_2009-2024.epw` |
+| Port Saint Lucie FL | 722103-12895 St Lucie County Intl Arpt | 2010-2024 (15 years) | NSRDB | 2023 / 2010 | `Port_Saint_Lucie_FL_RMY_2010-2024.epw` |
+| West Palm Beach FL | 722030-12844 Palm Beach International Airport | 2010-2024 (15 years) | NSRDB | 2011 / 2010 | `West_Palm_Beach_FL_RMY_2010-2024.epw` |
+| Albany GA | 722160-13869 Sw Georgia Regional Arpt | 2010-2024 (15 years) | NSRDB | 2011 / 2010 | `Albany_GA_RMY_2010-2024.epw` |
+| Athens GA | 723110-13873 Athens/Ben Epps Airport | 2010-2024 (15 years) | NSRDB | 2011 / 2010 | `Athens_GA_RMY_2010-2024.epw` |
+| Columbus GA | 722255-93842 Columbus Metro Airport | 2010-2024 (15 years) | NSRDB | 2011 / 2010 | `Columbus_GA_RMY_2010-2024.epw` |
+| Macon GA | 722170-03813 Middle Georgia Regional Airport | 2010-2024 (15 years) | NSRDB | 2011 / 2010 | `Macon_GA_RMY_2010-2024.epw` |
+| Roswell GA | 722270-13864 Dobbins Air Reserve Base Airport | 2010-2024 (15 years) | NSRDB | 2011 / 2010 | `Roswell_GA_RMY_2010-2024.epw` |
+| Sandy Springs GA | 722196-53863 Dekalb-Peachtree Airport | 2010-2024 (15 years) | NSRDB | 2010 / 2010 | `Sandy_Springs_GA_RMY_2010-2024.epw` |
+| South Fulton GA | 722195-03888 Fulton Co-Brown Fld Arpt | 2010-2024 (15 years) | NSRDB | 2010 / 2010 | `South_Fulton_GA_RMY_2010-2024.epw` |
+| Cedar Rapids IA | 725450-14990 Eastern Iowa Regional Airport | 2010-2024 (15 years) | NSRDB | 2012 / 2014 | `Cedar_Rapids_IA_RMY_2010-2024.epw` |
+| Davenport IA | 725440-14923 Quad City International Airport | 2010-2024 (15 years) | NSRDB | 2012 / 2014 | `Davenport_IA_RMY_2010-2024.epw` |
+| Iowa City IA | 725462-14937 Iowa City Municipal Arpt | 2010-2024 (15 years) | NSRDB | 2012 / 2014 | `Iowa_City_IA_RMY_2010-2024.epw` |
+| Sioux City IA | 725570-14943 Sioux Gateway/Col Bud Day Field Ap | 2010-2024 (15 years) | NSRDB | 2012 / 2014 | `Sioux_City_IA_RMY_2010-2024.epw` |
+| Arlington Heights IL | 744665-04838 Palwaukee Municipal Arpt | 2010-2024 (15 years) | NSRDB | 2012 / 2014 | `Arlington_Heights_IL_RMY_2010-2024.epw` |
+| Aurora IL | 744655-04808 Aurora Municipal Airport | 2010-2024 (15 years) | NSRDB | 2012 / 2014 | `Aurora_IL_RMY_2010-2024.epw` |
+| Bloomington IL | 724397-54831 Central Illinois Regional Airport | 2010-2024 (15 years) | NSRDB | 2012 / 2014 | `Bloomington_IL_RMY_2010-2024.epw` |
+| Bolingbrook IL | 725348-04831 Lewis University Airport | 2009-2024 (15 years) | NSRDB | 2012 / 2014 | `Bolingbrook_IL_RMY_2009-2024.epw` |
+| Champaign IL | 725315-94870 Universi Of Il Willard Apt | 2010-2024 (15 years) | NSRDB | 2012 / 2014 | `Champaign_IL_RMY_2010-2024.epw` |
+| Decatur IL | 725316-03887 Decatur Airport | 2010-2024 (15 years) | NSRDB | 2012 / 2014 | `Decatur_IL_RMY_2010-2024.epw` |
+| Joliet IL | 725345-14834 Joliet Regional Airport | 2009-2024 (15 years) | NSRDB | 2012 / 2014 | `Joliet_IL_RMY_2009-2024.epw` |
+| Naperville IL | 725305-94892 Dupage Airport | 2010-2024 (15 years) | NSRDB | 2012 / 2014 | `Naperville_IL_RMY_2010-2024.epw` |
+| Springfield IL | 724390-93822 Abraham Lincoln Capital Airport | 2010-2024 (15 years) | NSRDB | 2012 / 2014 | `Springfield_IL_RMY_2010-2024.epw` |
+| Waukegan IL | 725347-14880 Waukegan Regional Airport | 2010-2024 (15 years) | NSRDB | 2012 / 2014 | `Waukegan_IL_RMY_2010-2024.epw` |
+| Bloomington IN | 724375-03893 Monroe County Airport | 2009-2024 (15 years) | NSRDB | 2012 / 2014 | `Bloomington_IN_RMY_2009-2024.epw` |
+| Carmel IN | 724384-53842 Eagle Creek Airpark Arpt | 2010-2024 (15 years) | NSRDB | 2012 / 2014 | `Carmel_IN_RMY_2010-2024.epw` |
+| Evansville IN | 724320-93817 Evansville Regional Airport | 2010-2024 (15 years) | NSRDB | 2012 / 2014 | `Evansville_IN_RMY_2010-2024.epw` |
+| Hammond IN | 722126-04879 Lansing Municipal Ap | 2008-2024 (15 years) | NSRDB | 2012 / 2014 | `Hammond_IN_RMY_2008-2024.epw` |
+| South Bend IN | 725350-14848 South Bend Regional Airport | 2010-2024 (15 years) | NSRDB | 2012 / 2014 | `South_Bend_IN_RMY_2010-2024.epw` |
+| Kansas City KS | 724460-03947 Kansas City International Airport | 2010-2024 (15 years) | NSRDB | 2012 / 2014 | `Kansas_City_KS_RMY_2010-2024.epw` |
+| Lawrence KS | 724508-03997 Lawrence Municipal Airport | 2010-2024 (15 years) | NSRDB | 2012 / 2014 | `Lawrence_KS_RMY_2010-2024.epw` |
+| Olathe KS | 724475-93909 New Century Aircenter Arpt | 2010-2024 (15 years) | NSRDB | 2012 / 2014 | `Olathe_KS_RMY_2010-2024.epw` |
+| Overland Park KS | 724468-03967 Johnson Co Executive Arpt | 2010-2024 (15 years) | NSRDB | 2012 / 2014 | `Overland_Park_KS_RMY_2010-2024.epw` |
+| Topeka KS | 724560-13996 Philip Billard Municipal Airport | 2010-2024 (15 years) | NSRDB | 2012 / 2014 | `Topeka_KS_RMY_2010-2024.epw` |
+| Lake Charles LA | 722404-13941 Chennault International Ap | 2009-2024 (15 years) | NSRDB | 2023 / 2014 | `Lake_Charles_LA_RMY_2009-2024.epw` |
+| Brockton MA | 725068-54777 Taunton Municipal Airport | 2008-2024 (15 years) | NSRDB | 2020 / 2015 | `Brockton_MA_RMY_2008-2024.epw` |
+| Cambridge MA | 725059-14702 Laurence G Hanscom Fld Apt | 2010-2024 (15 years) | NSRDB | 2022 / 2015 | `Cambridge_MA_RMY_2010-2024.epw` |
+| Fall River MA | 725079-14787 Newport State Airport | 2010-2024 (15 years) | NSRDB | 2018 / 2015 | `Fall_River_MA_RMY_2010-2024.epw` |
+| Lowell MA | 744904-94723 Lawrence Municipal Airport | 2010-2024 (15 years) | NSRDB | 2022 / 2015 | `Lowell_MA_RMY_2010-2024.epw` |
+| Lynn MA | 725088-54733 Beverly Municipal Airport | 2010-2024 (15 years) | NSRDB | 2022 / 2015 | `Lynn_MA_RMY_2010-2024.epw` |
+| New Bedford MA | 725065-94726 New Bedford Rgnl Airport | 2010-2024 (15 years) | NSRDB | 2022 / 2015 | `New_Bedford_MA_RMY_2010-2024.epw` |
+| Springfield MA | 744910-14703 Westover Afb/Metropolitan Airport | 2010-2024 (15 years) | NSRDB | 2010 / 2015 | `Springfield_MA_RMY_2010-2024.epw` |
+| Ann Arbor MI | 725374-94889 Ann Arbor Municipal Arpt | 2010-2024 (15 years) | NSRDB | 2012 / 2014 | `Ann_Arbor_MI_RMY_2010-2024.epw` |
+| Dearborn MI | 725370-94847 Detroit Metro Wayne County Airport | 2010-2024 (15 years) | NSRDB | 2012 / 2014 | `Dearborn_MI_RMY_2010-2024.epw` |
+| Flint MI | 726370-14826 Bishop International Airport | 2010-2024 (15 years) | NSRDB | 2016 / 2014 | `Flint_MI_RMY_2010-2024.epw` |
+| Kalamazoo MI | 726357-94815 Klmazo/Btl Creek Intl Arpt | 2010-2024 (15 years) | NSRDB | 2012 / 2014 | `Kalamazoo_MI_RMY_2010-2024.epw` |
+| Livonia MI | 725376-14853 Willow Run Airport | 2010-2024 (15 years) | NSRDB | 2012 / 2014 | `Livonia_MI_RMY_2010-2024.epw` |
+| Warren MI | 720113-54829 Oakland/Troy Airport | 2010-2024 (15 years) | NSRDB | 2012 / 2014 | `Warren_MI_RMY_2010-2024.epw` |
+| Bloomington MN | 726579-94963 Flying Cloud Airport | 2010-2024 (15 years) | NSRDB | 2012 / 2014 | `Bloomington_MN_RMY_2010-2024.epw` |
+| Brooklyn Park MN | 726575-94960 Crystal Airport | 2010-2024 (15 years) | NSRDB | 2021 / 2014 | `Brooklyn_Park_MN_RMY_2010-2024.epw` |
+| Plymouth MN | 726577-94974 Anoka Co-Blne Ap(Jns Fd) Ap | 2009-2024 (15 years) | NSRDB | 2021 / 2014 | `Plymouth_MN_RMY_2009-2024.epw` |
+| Rochester MN | 726440-14925 Rochester International Airport | 2010-2024 (15 years) | NSRDB | 2012 / 2014 | `Rochester_MN_RMY_2010-2024.epw` |
+| Saint Paul MN | 726584-14927 St Paul Dwtwn Holman Fd Ap | 2010-2024 (15 years) | NSRDB | 2021 / 2014 | `Saint_Paul_MN_RMY_2010-2024.epw` |
+| Independence MO | 720306-53879 Lee'S Summit Municipal Apt | 2010-2024 (15 years) | NSRDB | 2012 / 2014 | `Independence_MO_RMY_2010-2024.epw` |
+| O'Fallon MO | 724345-03966 Spirit Of St Louis Airport | 2010-2024 (15 years) | NSRDB | 2012 / 2014 | `OFallon_MO_RMY_2010-2024.epw` |
+| Saint Joseph MO | 724490-13993 Rosecrans Memorial Airport | 2009-2024 (15 years) | NSRDB | 2012 / 2014 | `Saint_Joseph_MO_RMY_2009-2024.epw` |
+| Concord NC | 722132-63801 Concord Regional Airport | 2008-2024 (15 years) | NSRDB | 2011 / 2015 | `Concord_NC_RMY_2008-2024.epw` |
+| Fayetteville NC | 723035-93740 Fayett Rgnl/Grannis Fld Ap | 2010-2024 (15 years) | NSRDB | 2011 / 2010 | `Fayetteville_NC_RMY_2010-2024.epw` |
+| Gastonia NC | 723147-53870 Gastonia Municipal Airport | 2010-2024 (15 years) | NSRDB | 2015 / 2010 | `Gastonia_NC_RMY_2010-2024.epw` |
+| Greenville NC | 723065-13783 Pitt-Greenville Airport | 2010-2024 (15 years) | NSRDB | 2019 / 2010 | `Greenville_NC_RMY_2010-2024.epw` |
+| Manchester NH | 743945-14710 Manchester Airport | 2010-2024 (15 years) | NSRDB | 2020 / 2015 | `Manchester_NH_RMY_2010-2024.epw` |
+| Nashua NH | 743946-54754 Boire Field Airport | 2010-2024 (15 years) | NSRDB | 2010 / 2015 | `Nashua_NH_RMY_2010-2024.epw` |
+| Camden NJ | 724085-94732 Ne Philadelphia Airport | 2010-2024 (15 years) | NSRDB | 2010 / 2015 | `Camden_NJ_RMY_2010-2024.epw` |
+| Edison NJ | 722247-54785 Somerset Airport | 2010-2024 (15 years) | NSRDB | 2022 / 2015 | `Edison_NJ_RMY_2010-2024.epw` |
+| Elizabeth NJ | 724097-54738 Morristown Municipal Airport | 2010-2024 (15 years) | NSRDB | 2021 / 2015 | `Elizabeth_NJ_RMY_2010-2024.epw` |
+| Jersey City NJ | 725025-94741 Teterboro Airport | 2010-2024 (15 years) | NSRDB | 2010 / 2015 | `Jersey_City_NJ_RMY_2010-2024.epw` |
+| Newark NJ | 725020-14734 Newark Liberty International Ap | 2010-2024 (15 years) | NSRDB | 2010 / 2015 | `Newark_NJ_RMY_2010-2024.epw` |
+| Paterson NJ | 724094-54743 Essex County Airport | 2010-2024 (15 years) | NSRDB | 2021 / 2015 | `Paterson_NJ_RMY_2010-2024.epw` |
+| Trenton NJ | 724095-14792 Trenton Mercer Airport | 2010-2024 (15 years) | NSRDB | 2010 / 2015 | `Trenton_NJ_RMY_2010-2024.epw` |
+| Las Cruces NM | 722695-93041 Las Cruces Intl Airport | 2008-2024 (15 years) | NSRDB | 2023 / 2011 | `Las_Cruces_NM_RMY_2008-2024.epw` |
+| Rio Rancho NM | 723647-03034 Double Eagle Ii Airport | 2010-2024 (15 years) | NSRDB | 2023 / 2011 | `Rio_Rancho_NM_RMY_2010-2024.epw` |
+| Henderson NV | 746140-23112 Nellis Afb Airport | 2010-2024 (15 years) | NSRDB | 2023 / 2011 | `Henderson_NV_RMY_2010-2024.epw` |
+| North Las Vegas NV | 724846-53123 North Las Vegas Airport | 2010-2024 (15 years) | NSRDB | 2024 / 2013 | `North_Las_Vegas_NV_RMY_2010-2024.epw` |
+| Amherst NY | 725287-04724 Niagara Falls Intl Airport | 2010-2024 (15 years) | NSRDB | 2016 / 2015 | `Amherst_NY_RMY_2010-2024.epw` |
+| New York City NY | 725053-94728 Central Park | 2005-2024 (15 years) | NSRDB | 2010 / 2015 | `New_York_City_NY_RMY_2005-2024.epw` |
+| Yonkers NY | 725037-94745 Westchester County Airport | 2010-2024 (15 years) | NSRDB | 2012 / 2015 | `Yonkers_NY_RMY_2010-2024.epw` |
+| Parma OH | 725245-04853 Cleveland Burke Lakefnt Ap | 2009-2024 (15 years) | NSRDB | 2024 / 2014 | `Parma_OH_RMY_2009-2024.epw` |
+| Broken Arrow OK | 723564-53908 Richard Lloyd Jones Jr Apt | 2010-2024 (15 years) | NSRDB | 2011 / 2011 | `Broken_Arrow_OK_RMY_2010-2024.epw` |
+| Edmond OK | 723544-03954 Wiley Post Airport | 2009-2024 (15 years) | NSRDB | 2011 / 2022 | `Edmond_OK_RMY_2009-2024.epw` |
+| Lawton OK | 723550-13945 Henry Post Aaf Airport | 2008-2023 (15 years) | NSRDB | 2011 / 2014 | `Lawton_OK_RMY_2008-2023.epw` |
+| Norman OK | 723570-03948 University Of Oklahoma Westheimer Airport | 2010-2024 (15 years) | NSRDB | 2011 / 2022 | `Norman_OK_RMY_2010-2024.epw` |
+| Bend OR | 720638-00224 Bend Municipal Airport | 2010-2024 (15 years) | NSRDB | 2021 / 2013 | `Bend_OR_RMY_2010-2024.epw` |
+| Gresham OR | 726985-24242 Portland-Troutdale Airport | 2010-2024 (15 years) | NSRDB | 2015 / 2013 | `Gresham_OR_RMY_2010-2024.epw` |
+| Hillsboro OR | 726986-94261 Portland-Hillsboro Airport | 2010-2024 (15 years) | NSRDB | 2015 / 2013 | `Hillsboro_OR_RMY_2010-2024.epw` |
+| Bethlehem PA | 720324-64753 Quakertown Airport | 2006-2023 (15 years) | NSRDB | 2016 / 2015 | `Bethlehem_PA_RMY_2006-2023.epw` |
+| Erie PA | 725260-14860 Erie Intl/T. Ridge Field Airport | 2010-2024 (15 years) | NSRDB | 2018 / 2014 | `Erie_PA_RMY_2010-2024.epw` |
+| Reading PA | 725103-14712 Rdng Rgnl/C A Spaatz Fd Ap | 2010-2024 (15 years) | NSRDB | 2010 / 2015 | `Reading_PA_RMY_2010-2024.epw` |
+| Rapid City SD | 726625-24006 Ellsworth Air Force Base | 2010-2024 (15 years) | NSRDB | 2012 / 2014 | `Rapid_City_SD_RMY_2010-2024.epw` |
+| Clarksville TN | 746710-13806 Campbell Aaf Airport | 2010-2024 (15 years) | NSRDB | 2012 / 2010 | `Clarksville_TN_RMY_2010-2024.epw` |
+| Murfreesboro TN | 723273-13827 Smyrna Airport | 2010-2024 (15 years) | NSRDB | 2010 / 2010 | `Murfreesboro_TN_RMY_2010-2024.epw` |
+| Abilene TX | 722660-13962 Abilene Regional Airport | 2010-2024 (15 years) | NSRDB | 2023 / 2014 | `Abilene_TX_RMY_2010-2024.epw` |
+| Arlington TX | 722094-53984 Grand Prairie Municipal Airport | 2009-2024 (15 years) | NSRDB | 2011 / 2022 | `Arlington_TX_RMY_2009-2024.epw` |
+| Beaumont TX | 722410-12917 Southeast Texas Regional Airport | 2010-2024 (15 years) | NSRDB | 2023 / 2010 | `Beaumont_TX_RMY_2010-2024.epw` |
+| College Station TX | 747460-03904 Easterwood Field Airport | 2010-2024 (15 years) | NSRDB | 2023 / 2014 | `College_Station_TX_RMY_2010-2024.epw` |
+| Denton TX | 722589-03991 Denton Municipal Airport | 2010-2024 (15 years) | NSRDB | 2023 / 2022 | `Denton_TX_RMY_2010-2024.epw` |
+| Fort Worth TX | 747390-13961 Ft Worth Meacham Intl Arpt | 2009-2024 (15 years) | NSRDB | 2023 / 2022 | `Fort_Worth_TX_RMY_2009-2024.epw` |
+| Garland TX | 720291-53970 Mesquite Metropolitan Arpt | 2010-2024 (15 years) | NSRDB | 2023 / 2022 | `Garland_TX_RMY_2010-2024.epw` |
+| Grand Prairie TX | 722599-03971 Dallas Executive Airport | 2010-2024 (15 years) | NSRDB | 2011 / 2022 | `Grand_Prairie_TX_RMY_2010-2024.epw` |
+| Irving TX | 722590-03927 Dallas/Ft Worth International Ap | 2010-2024 (15 years) | NSRDB | 2011 / 2014 | `Irving_TX_RMY_2010-2024.epw` |
+| Longview TX | 722470-03901 East Texas Regional Arpt | 2010-2024 (15 years) | NSRDB | 2011 / 2022 | `Longview_TX_RMY_2010-2024.epw` |
+| McKinney TX | 722541-53914 Mckinney Municipal Arpt | 2010-2024 (15 years) | NSRDB | 2011 / 2011 | `McKinney_TX_RMY_2010-2024.epw` |
+| Mesquite TX | 722143-53975 Lancaster Airport | 2009-2024 (15 years) | NSRDB | 2011 / 2014 | `Mesquite_TX_RMY_2009-2024.epw` |
+| Odessa TX | 722648-03031 Odessa-Schlemeyer Fld Arpt | 2008-2023 (15 years) | NSRDB | 2023 / 2011 | `Odessa_TX_RMY_2008-2023.epw` |
+| Pasadena TX | 722440-12918 William P. Hobby Airport | 2010-2024 (15 years) | NSRDB | 2023 / 2010 | `Pasadena_TX_RMY_2010-2024.epw` |
+| Pearland TX | 722427-12975 Clover Field Airport | 2010-2024 (15 years) | NSRDB | 2023 / 2010 | `Pearland_TX_RMY_2010-2024.epw` |
+| Pharr TX | 722159-12980 Mid Valley Airport | 2008-2023 (15 years) | NSRDB | 2009 / 2022 | `Pharr_TX_RMY_2008-2023.epw` |
+| Plano TX | 722598-03970 Addison Airport | 2009-2024 (15 years) | NSRDB | 2011 / 2014 | `Plano_TX_RMY_2009-2024.epw` |
+| San Angelo TX | 722630-23034 San Angelo Regional/Maths Field Ap | 2010-2024 (15 years) | NSRDB | 2023 / 2022 | `San_Angelo_TX_RMY_2010-2024.epw` |
+| Sugar Land TX | 722543-12977 Sugar Land Regional Arpt | 2010-2024 (15 years) | NSRDB | 2023 / 2010 | `Sugar_Land_TX_RMY_2010-2024.epw` |
+| Tyler TX | 722448-13972 Tyler Pounds Regional Arpt | 2010-2024 (15 years) | NSRDB | 2011 / 2022 | `Tyler_TX_RMY_2010-2024.epw` |
+| Layton UT | 725755-24101 Hill Afb Airport | 2010-2024 (15 years) | NSRDB | 2021 / 2013 | `Layton_UT_RMY_2010-2024.epw` |
+| Ogden UT | 725750-24126 Ogden-Hinckley Airport | 2010-2024 (15 years) | NSRDB | 2024 / 2013 | `Ogden_UT_RMY_2010-2024.epw` |
+| Provo UT | 725724-24174 Provo Municipal Airport | 2008-2024 (15 years) | NSRDB | 2020 / 2013 | `Provo_UT_RMY_2008-2024.epw` |
+| Alexandria VA | 724037-93728 Davison Aaf Airport | 2010-2024 (15 years) | NSRDB | 2010 / 2015 | `Alexandria_VA_RMY_2010-2024.epw` |
+| Chesapeake VA | 724006-03701 Chesapeake Regional Arpt | 2009-2024 (15 years) | NSRDB | 2010 / 2010 | `Chesapeake_VA_RMY_2009-2024.epw` |
+| Hampton VA | 723086-93741 Nwpt News/Wimburg Intl Apt | 2010-2024 (15 years) | NSRDB | 2010 / 2022 | `Hampton_VA_RMY_2010-2024.epw` |
+| Lynchburg VA | 724100-13733 Lynchburg Rgnl/Preston Glenn Fld Ap | 2010-2024 (15 years) | NSRDB | 2010 / 2010 | `Lynchburg_VA_RMY_2010-2024.epw` |
+| Newport News VA | 745980-13702 Langley Afb Airport | 2010-2024 (15 years) | NSRDB | 2010 / 2015 | `Newport_News_VA_RMY_2010-2024.epw` |
+| Norfolk VA | 723085-13750 Norfolk Nas | 2010-2024 (15 years) | NSRDB | 2010 / 2015 | `Norfolk_VA_RMY_2010-2024.epw` |
+| Suffolk VA | 724007-03719 Suffolk Municipal Airport | 2009-2024 (15 years) | NSRDB | 2010 / 2010 | `Suffolk_VA_RMY_2009-2024.epw` |
+| Virginia Beach VA | 723075-13769 Oceana Nas | 2010-2024 (15 years) | NSRDB | 2016 / 2010 | `Virginia_Beach_VA_RMY_2010-2024.epw` |
+| Bellingham WA | 727976-24217 Bellingham Intl Airport | 2010-2024 (15 years) | NSRDB | 2021 / 2022 | `Bellingham_WA_RMY_2010-2024.epw` |
+| Everett WA | 727937-24222 Snohomish Co (Paine Fd) Ap | 2010-2024 (15 years) | NSRDB | 2021 / 2017 | `Everett_WA_RMY_2010-2024.epw` |
+| Federal Way WA | 742060-24207 Mcchord Afb Airport | 2010-2024 (15 years) | NSRDB | 2021 / 2014 | `Federal_Way_WA_RMY_2010-2024.epw` |
+| Kennewick WA | 727845-24163 Tri-Cities Airport | 2010-2024 (15 years) | NSRDB | 2021 / 2017 | `Kennewick_WA_RMY_2010-2024.epw` |
+| Kent WA | 727934-94248 Renton Municipal Airport | 2010-2024 (15 years) | NSRDB | 2022 / 2013 | `Kent_WA_RMY_2010-2024.epw` |
+| Spokane Valley WA | 727856-94176 Felts Field Airport | 2010-2024 (15 years) | NSRDB | 2021 / 2017 | `Spokane_Valley_WA_RMY_2010-2024.epw` |
+| Tacoma WA | 727938-94274 Tacoma Narrows Airport | 2010-2024 (15 years) | NSRDB | 2021 / 2022 | `Tacoma_WA_RMY_2010-2024.epw` |
+| Vancouver WA | 726836-04201 Scappoose Indus Airpk Arpt | 2009-2023 (15 years) | NSRDB | 2021 / 2009 | `Vancouver_WA_RMY_2009-2023.epw` |
+| Yakima WA | 727810-24243 Yakima Air Terminal/Mcalsr Field Ap | 2010-2024 (15 years) | NSRDB | 2015 / 2022 | `Yakima_WA_RMY_2010-2024.epw` |
+| Appleton WI | 726457-04825 Outagamie Co Rgnl Airport | 2010-2024 (15 years) | NSRDB | 2012 / 2014 | `Appleton_WI_RMY_2010-2024.epw` |
+| Kenosha WI | 726505-04845 Kenosha Regional Airport | 2010-2024 (15 years) | NSRDB | 2012 / 2014 | `Kenosha_WI_RMY_2010-2024.epw` |
+| Racine WI | 726424-94818 John H Batten Airport | 2010-2024 (15 years) | NSRDB | 2012 / 2014 | `Racine_WI_RMY_2010-2024.epw` |
+| Waukesha WI | 726409-04897 Waukesha County Airport | 2010-2024 (15 years) | NSRDB | 2012 / 2014 | `Waukesha_WI_RMY_2010-2024.epw` |
 
 ## Quality assurance
 
