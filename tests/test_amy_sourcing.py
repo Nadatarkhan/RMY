@@ -515,3 +515,25 @@ def test_hourly_reanalysis_is_interpolated_to_half_hour_zones():
     out = ga._reindex_time(s, q).to_numpy()
     np.testing.assert_allclose(out[:3], [0.0, 5.0, 7.5])
     assert np.isnan(out[3]) and np.isnan(out[4])        # never across a missing value or past the end
+
+
+def _noaa_fields_frame(tmp, dew, slp, wnd, n=48):
+    dates = pd.date_range('2020-06-01', periods=n, freq='h')
+    return pd.DataFrame({'DATE': dates, 'TMP': [tmp] * n, 'DEW': [dew] * n, 'SLP': [slp] * n, 'WND': [wnd] * n})
+
+
+def test_required_field_coverage_finds_fields_a_station_never_reports():
+    uscrn = _noaa_fields_frame('+0251,1', '+9999,9', '99999,9', '999,9,9,9999,9')
+    share = ga.required_field_coverage(uscrn, 2020)
+    assert share['dry-bulb temperature'] > 0
+    assert share['dew point'] == 0 and share['pressure'] == 0 and share['wind speed'] == 0
+    airport = _noaa_fields_frame('+0251,1', '+0150,1', '10132,1', '270,1,N,0046,1')
+    assert all(v > 0 for v in ga.required_field_coverage(airport, 2020).values())
+
+
+def test_station_without_dew_point_or_pressure_stops_with_a_clear_message(monkeypatch):
+    monkeypatch.setattr(ga, 'noaa_csv', lambda *a, **k: _noaa_fields_frame('+0251,1', '+9999,9', '99999,9', '999,9,9,0030,1', n=8760))
+    with pytest.raises(ValueError, match='reports no dew point, no pressure'):
+        ga.check_required_fields(None, {'station_id': '99999923802', 'name': 'THOMASVILLE 2 S'}, 2020, '.')
+    monkeypatch.setattr(ga, 'noaa_csv', lambda *a, **k: _noaa_fields_frame('+0251,1', '+0150,1', '10132,1', '270,1,N,0046,1', n=8760))
+    ga.check_required_fields(None, {'station_id': '72509014739'}, 2020, '.')       # no error

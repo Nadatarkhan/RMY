@@ -2378,6 +2378,50 @@ def last_reporting_year(session, st, end, cache_dir, min_share=None, max_back=MA
     return int(end), []
 
 
+REQUIRED_NOAA_FIELDS = {'dry-bulb temperature': ('TMP',), 'dew point': ('DEW',),
+                        'pressure': ('SLP', 'MA1'), 'wind speed': ('WND',)}
+MIN_FIELD_SHARE = 0.01   # a field reported in fewer than 1% of a year's hours counts as absent
+
+
+def required_field_coverage(d, year):
+    """Share of the hours of `year` in which a NOAA Global Hourly frame reports each required field.
+
+    Pressure counts if either sea-level pressure (SLP) or the altimeter group (MA1) is reported;
+    wind speed is the fourth token of WND. Missing codes (+9999, 99999, 9999) do not count.
+    """
+    hours = 8784 if calendar.isleap(int(year)) else 8760
+    date = pd.to_datetime(d['DATE'], errors='coerce').dt.floor('h') if 'DATE' in d else pd.Series(dtype='datetime64[ns]')
+    def valid(col, token, missing):
+        if col not in d:
+            return pd.Series(False, index=d.index)
+        t = d[col].astype(str).str.split(',').str[token].fillna('').str.strip()
+        return t.ne('') & ~t.str.lstrip('+-').str.fullmatch(missing)
+    masks = {'dry-bulb temperature': valid('TMP', 0, '9999'), 'dew point': valid('DEW', 0, '9999'),
+             'pressure': valid('SLP', 0, '99999') | valid('MA1', 0, '99999'), 'wind speed': valid('WND', 3, '9999')}
+    return {name: float(date[m].nunique()) / hours for name, m in masks.items()}
+
+
+def check_required_fields(session, st, year, cache_dir, min_share=MIN_FIELD_SHARE):
+    """Stop early, with a clear message, if the station does not report a field every AMY needs.
+
+    Some stations in NOAA Global Hourly never report dew point or pressure: the US Climate Reference
+    Network stations (USAF 999999) report temperature only, and some report no wind either. Every year
+    would then fail with a generic error after the downloads. A year that cannot be read is left to
+    the normal year-by-year checks.
+    """
+    try:
+        d = noaa_csv(session, st['station_id'], year, cache_dir)
+    except Exception:
+        return
+    share = required_field_coverage(d, year)
+    absent = [name for name, s in share.items() if s < min_share]
+    if absent:
+        raise ValueError(f"Station {st['station_id']} ({st.get('name', '')}) reports no {', no '.join(absent)} in "
+                         f"NOAA Global Hourly in {year}, and an AMY needs dry-bulb temperature, dew point, pressure "
+                         "and wind speed. US Climate Reference Network stations (numbers starting 999999) are like "
+                         "this; choose a nearby airport station instead.")
+
+
 def epw_is_complete(path, year):
     """Row count, 35 fields, the right year and no missing shortwave (as in the notebook)."""
     try:
@@ -2450,6 +2494,7 @@ def generate_amys(station_number, output_dir, nsrdb_api_key=None, nsrdb_email=No
 
     end = last_complete_year(st, 'NSRDB' if source == 'NSRDB' else 'PVGIS')
     end, silent = last_reporting_year(session, st, end, cache_dir)
+    check_required_fields(session, st, end, cache_dir)
     if silent:
         log(f"No regular reports in {', '.join(map(str, silent))}: the AMYs end in {end}, the most recent "
             f"year with temperature in at least {SPARSE_OBSERVED_SHARE:.0%} of hours.")

@@ -115,8 +115,12 @@ def test_generated_tmy_keeps_source_data_outside_the_joins(boston):
         a = a[(a[1].astype(int) == m) & ~((m == 2) & (a[2].astype(int) == 29))].reset_index(drop=True)
         gm = g[month == m].reset_index(drop=True)
         # Radiation, illuminance and all other unsmoothed fields are the source month's text.
-        other = [c for c in range(35) if c not in tm.DEFAULT_SMOOTH_COLS]
+        other = [c for c in range(35) if c not in tm.DEFAULT_SMOOTH_COLS and c != tm.WD_COL]
         assert (gm[other].values == a[other].values).all(), m
+        # Wind direction too, except that calm hours get direction 0.
+        calm = gm[tm.WS_COL].astype(float).values == 0
+        assert (gm.loc[~calm, tm.WD_COL].values == a.loc[~calm, tm.WD_COL].values).all(), m
+        assert (gm.loc[calm, tm.WD_COL].astype(float) == 0).all(), m
         # Smoothed fields only change near the joins or where the source was missing.
         changed = (gm[tm.DEFAULT_SMOOTH_COLS].values != a[tm.DEFAULT_SMOOTH_COLS].values).any(axis=1)
         far = changed & ~near[month == m]
@@ -225,3 +229,22 @@ def test_observed_share_is_read_from_comments_2():
     header = ['LOCATION,X\n', 'COMMENTS 2,NOAA station weather; observed dry-bulb share 0.329 (sparse record)\n']
     assert tm.observed_share(header) == pytest.approx(0.329)
     assert tm.observed_share(['COMMENTS 2,no share here\n']) is None
+
+
+def test_calm_hours_in_the_tmy_have_direction_zero(tmp_path):
+    # Make hour 3 of the 15th of every month calm, but with a 270-degree direction, in every AMY.
+    amy = tmp_path / 'AMY'; amy.mkdir()
+    for f in sorted(AMY_DIR.glob('*.epw')):
+        lines = f.read_text().splitlines(keepends=True)
+        for i in range(8, len(lines)):
+            p = lines[i].split(',')
+            if p[2] == '15' and p[3] == '3':
+                p[tm.WD_COL], p[tm.WS_COL] = '270', '0.0'
+                lines[i] = ','.join(p)
+        (amy / f.name).write_text(''.join(lines))
+    out = tmp_path / 'TMY.epw'
+    tm.generate_tmy_from_amys(amy, out, HEADER_EPW, years=(2009, 2023), verbose=False)
+    g = pd.read_csv(out, skiprows=8, header=None)
+    calm = g[tm.WS_COL] == 0
+    assert calm.sum() >= 12
+    assert (g.loc[calm, tm.WD_COL] == 0).all()

@@ -696,6 +696,15 @@ def generate_tmy_from_amys(
         code, _, _, fmt = FIELDS[c]
         text = [fmt.format(v) if np.isfinite(v) else fmt.format(code) for v in values[c][mask]]
         out.iloc[np.flatnonzero(mask), c] = text
+    # Calm hours have wind direction 0, as in the AMYs. Gap filling or the month-join adjustment can
+    # bring the wind speed to 0 while the hour keeps its original direction.
+    if WS_COL in values and WD_COL < out.shape[1]:
+        wd = pd.to_numeric(out.iloc[:, WD_COL], errors='coerce').to_numpy(dtype=float)
+        calm = (np.round(values[WS_COL], 1) == 0) & np.isfinite(wd) & (wd != 0) & (wd < 999)   # as written (0.1 m/s)
+        if calm.any():
+            out.iloc[np.flatnonzero(calm), WD_COL] = '0'
+            if verbose:
+                print(f'Calm hours given wind direction 0: {int(calm.sum())}')
     if set_year is not None:
         out.iloc[:, YEAR_COL] = str(int(set_year))
 
