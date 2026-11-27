@@ -33,6 +33,7 @@ label.chk{display:flex;gap:6px;align-items:center;color:var(--ink2);cursor:point
 .card p{margin:2px 4px 0;color:var(--ink2);font-size:12.5px}
 .plot{height:360px}
 .plot.tall{height:330px}
+#A{height:455px}
 .sel{margin:6px 4px 8px;padding:8px 10px;border-radius:8px;background:var(--panel);border:1px solid var(--line);font-size:12.5px;color:var(--ink2);min-height:52px}
 .sel b{color:var(--ink)}
 .sel .x{float:right;border:0;background:none;color:var(--ink3);cursor:pointer;font:inherit}
@@ -58,8 +59,8 @@ label.chk{display:flex;gap:6px;align-items:center;color:var(--ink2);cursor:point
   <div class="kpi acc"><div class="v" id="k4"></div><div class="l" id="k4l"></div></div>
 </div>
 <div class="grid">
-  <div class="card"><h2>A. How rare is an event this extreme?</h2><p id="pA"></p><div class="plot" id="A"></div></div>
-  <div class="card"><h2>B. Every event, year by year</h2><p>Circle size: duration. Heat waves shaded by heat index, cold spells by wind speed. <b>Click an event</b> to pin it and see its statistics in every panel.</p><div class="plot tall" id="B"></div><div class="sel" id="sel"></div></div>
+  <div class="card"><h2>A. Every event, year by year</h2><p>Circle size: duration. Heat waves shaded by heat index, cold spells by wind speed. <b>Click an event</b> to pin it and see its statistics here and in the other panels.</p><div class="plot tall" id="B"></div><div class="sel" id="sel"></div></div>
+  <div class="card"><h2>B. How rare is an event this extreme?</h2><p id="pA"></p><div class="plot" id="A"></div></div>
   <div class="card"><h2>C. How many events in a year?</h2><p id="pC"></p><div class="plot" id="C"></div></div>
   <div class="card"><h2>D. When do they start?</h2><p id="pD"></p><div class="plot" id="D"></div></div>
 </div>
@@ -141,7 +142,7 @@ function drawB(){
     const other = kind!==S.kind;
     tr.push({x:ev.map(xMonth), y:ev.map(e=>e.year), mode:'markers', customdata:ev.map(e=>[kind,e.id]),
       hovertemplate:ev.map(e=>hoverText(e,kind)),
-      marker:{size:ev.map(e=>5+5.2*Math.sqrt(e.duration)), color:vals, cmin, cmax, colorscale:SCALE[kind],
+      marker:{size:ev.map(e=>3+3.2*Math.sqrt(e.duration)), color:vals, cmin, cmax, colorscale:SCALE[kind],
         opacity: other?0.45:0.9, line:{color:ev.map(e=>e.rmy&&S.rmy?'#222':'rgba(60,60,60,0.55)'), width:ev.map(e=>e.rmy&&S.rmy?1.6:0.6)},
         colorbar:{title:{text:kind==='heat'?'Heat index (°C)':'Wind (m/s)', side:'right', font:{size:11}}, thickness:8, len:0.42, y:kind==='heat'?0.76:0.24, x:1.01, tickfont:{size:10}, outlinewidth:0}}});
   }
@@ -155,7 +156,7 @@ function drawB(){
 }
 function showSel(){
   const box=document.getElementById('sel'), r=rec(), e=S.sel===null?null:r.events.find(x=>x.id===S.sel);
-  if(!e){ box.innerHTML='No event selected. Click a circle above (or a dot in A) to pin it.'; return; }
+  if(!e){ box.innerHTML='No event selected. Click a circle above (or a dot in B) to pin it.'; return; }
   const m=M(), lab=DATA.labels[S.kind], v=e.vals, T=m.T_fit[e.id], To=m.T_emp[e.id];
   const z=r.events.map(x=>m.sign*x.vals[S.measure]), rank=1+z.filter(q=>q>m.sign*v[S.measure]).length;
   const rows=Object.keys(lab).map(k=>`<span>${lab[k]}: <b>${fmt(v[k])}</b></span>`).join('');
@@ -215,7 +216,7 @@ function highlight(ids){
   const n = S.view==='annual'?1:S.N, flip=S.view!=='T', P=T=>100*(1-Math.exp(-n/T));
   Plotly.restyle('A', {x:[ev.map(e=>flip?e.vals[S.measure]:m.T_emp[e.id])], y:[ev.map(e=>flip?P(m.T_emp[e.id]):e.vals[S.measure])]}, [5]);
   const bIdx = document.getElementById('B').data.length-1;
-  Plotly.restyle('B', {x:[ev.map(xMonth)], y:[ev.map(e=>e.year)], 'marker.size':[ev.map(e=>11+5.2*Math.sqrt(e.duration))]}, [bIdx]);
+  Plotly.restyle('B', {x:[ev.map(xMonth)], y:[ev.map(e=>e.year)], 'marker.size':[ev.map(e=>8+3.2*Math.sqrt(e.duration))]}, [bIdx]);
   const years_ = new Set(ev.map(e=>e.year)), ks=[...new Set(r.years.map((y,i)=>years_.has(y)?r.per_year[i]:null).filter(k=>k!==null))];
   const obs = k => 100*r.per_year.filter(n=>n===k).length/r.per_year.length;
   Plotly.restyle('C', {x:[ks], y:[ks.map(obs)]}, [2]);

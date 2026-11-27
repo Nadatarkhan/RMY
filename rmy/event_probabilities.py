@@ -2,9 +2,9 @@
 intensity occur at a station, from the events detected in its AMYs, and how rare the RMY's events are.
 
 One interactive page (Plotly) with four linked panels:
-  A. return period (or chance in a year / in N years) of an event at least this extreme;
-  B. every event on a month-by-year timeline (circle size: duration; colour: heat index or wind
-     speed); clicking one pins it and shows its statistics, and marks it in the other panels;
+  A. every event on a month-by-year timeline (circle size: duration; colour: heat index or wind
+     speed); clicking one pins it, shows its statistics and marks it in the other panels;
+  B. return period (or chance in a year / in N years) of an event at least this extreme;
   C. number of events in a year, with a Poisson fit;
   D. when in the year events start (half-month bins).
 Toggles switch heat waves / cold spells, the intensity measure, the probability shown, the
