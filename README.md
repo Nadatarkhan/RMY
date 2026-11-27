@@ -100,6 +100,11 @@ rmy_path = run_full_rmy_pipeline("data/cities/Boston/AMY", "data/cities/Boston/T
 
 visualize_extreme_events("output/Boston/hotspells/heatwave_events.csv",
                          "output/Boston/coldspells/coldspells_events.csv")
+
+# interactive: how rare each event is (return periods, chance per year or in N years), events per
+# year and season; click an event on the timeline to see its statistics. Writes event_probabilities.html
+from rmy.event_probabilities import event_probability_explorer
+event_probability_explorer("output/Boston", amy_dir="data/cities/Boston/AMY")
 ```
 
 To use your own city, create a folder with the same layout and run it the same way:

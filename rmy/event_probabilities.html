@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Event Probability Explorer</title>
+<!--PLOTLY-->
+<style>
+:root{--bg:#ffffff;--panel:#fafafa;--line:#e4e3df;--ink:#222;--ink2:#555;--ink3:#8a8a8a;--accent:#0086b3;--accent2:#1aaacb;--tint:rgba(26,170,203,.14)}
+body.heat{--accent:#B22C42;--accent2:#DC7284;--tint:rgba(207,57,82,.12)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 16px 28px}
+h1{font-size:20px;font-weight:600;margin:0 0 2px}
+.sub{color:var(--ink2);margin:0 0 14px}
+.controls{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);margin-bottom:14px}
+.ctl{display:flex;align-items:center;gap:8px}
+.ctl>span{color:var(--ink3);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+.seg{display:inline-flex;border:1px solid #cfcfcf;border-radius:8px;overflow:hidden;background:#fff}
+.seg button{border:0;background:transparent;padding:6px 11px;font:inherit;color:var(--ink2);cursor:pointer}
+.seg button+button{border-left:1px solid #e2e2e2}
+.seg button.on{background:var(--accent);color:#fff}
+select{font:inherit;padding:5px 8px;border:1px solid #cfcfcf;border-radius:8px;background:#fff;color:var(--ink)}
+input[type=range]{accent-color:var(--accent);width:130px}
+.nval{min-width:58px;font-variant-numeric:tabular-nums;color:var(--ink)}
+label.chk{display:flex;gap:6px;align-items:center;color:var(--ink2);cursor:pointer}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px}
+.kpi{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff}
+.kpi .v{font-size:24px;font-weight:600;color:var(--ink)}
+.kpi .v small{font-size:13px;font-weight:500;color:var(--ink2)}
+.kpi .l{color:var(--ink2);font-size:12.5px}
+.kpi.acc{border-left:4px solid var(--accent)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.card{border:1px solid var(--line);border-radius:10px;background:#fff;padding:10px 10px 4px}
+.card h2{font-size:14px;font-weight:600;margin:2px 4px 0}
+.card p{margin:2px 4px 0;color:var(--ink2);font-size:12.5px}
+.plot{height:360px}
+.plot.tall{height:330px}
+.sel{margin:6px 4px 8px;padding:8px 10px;border-radius:8px;background:var(--panel);border:1px solid var(--line);font-size:12.5px;color:var(--ink2);min-height:52px}
+.sel b{color:var(--ink)}
+.sel .x{float:right;border:0;background:none;color:var(--ink3);cursor:pointer;font:inherit}
+.sel .stats{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:3px}
+.note{color:var(--ink3);font-size:12px;margin-top:12px}
+@media (max-width:820px){.grid{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}}
+</style></head>
+<body class="cold"><div class="wrap">
+<h1 id="title"></h1>
+<p class="sub" id="subtitle"></p>
+<div class="controls">
+  <div class="ctl"><span>Events</span><div class="seg" id="kind"><button data-v="cold" class="on">Cold spells</button><button data-v="heat">Heat waves</button></div></div>
+  <div class="ctl"><span>Intensity</span><select id="measure"></select></div>
+  <div class="ctl"><span>Probability</span><div class="seg" id="view"><button data-v="T" class="on">Return period</button><button data-v="annual">Chance per year</button><button data-v="life">Chance in N years</button></div></div>
+  <div class="ctl"><span>N</span><input id="N" type="range" min="1" max="50" value="30"><span class="nval" id="Nval">30 years</span></div>
+  <div class="ctl"><span>Years</span><div class="seg" id="period"></div></div>
+  <label class="chk"><input type="checkbox" id="rmy" checked> RMY events</label>
+</div>
+<div class="kpis">
+  <div class="kpi"><div class="v" id="k1"></div><div class="l" id="k1l"></div></div>
+  <div class="kpi"><div class="v" id="k2"></div><div class="l" id="k2l"></div></div>
+  <div class="kpi acc"><div class="v" id="k3"></div><div class="l" id="k3l"></div></div>
+  <div class="kpi acc"><div class="v" id="k4"></div><div class="l" id="k4l"></div></div>
+</div>
+<div class="grid">
+  <div class="card"><h2>A. How rare is an event this extreme?</h2><p id="pA"></p><div class="plot" id="A"></div></div>
+  <div class="card"><h2>B. Every event, year by year</h2><p>Circle size: duration. Heat waves shaded by heat index, cold spells by wind speed. <b>Click an event</b> to pin it and see its statistics in every panel.</p><div class="plot tall" id="B"></div><div class="sel" id="sel"></div></div>
+  <div class="card"><h2>C. How many events in a year?</h2><p id="pC"></p><div class="plot" id="C"></div></div>
+  <div class="card"><h2>D. When do they start?</h2><p id="pD"></p><div class="plot" id="D"></div></div>
+</div>
+<p class="note" id="note"></p>
+</div>
+<script>
+const DATA = /*DATA*/;
+const S = {sel:null, kind:DATA.kinds[0], measure:'peak', view:'T', N:30, period:'all', rmy:true};
+const INK='#3a3a3a', GRID='#ececec', AX='#8a8a8a';
+const COL = {cold:{dot:'#1aaacb', edge:'#0086b3', star:'#0086b3', band:'rgba(26,170,203,0.16)'},
+             heat:{dot:'#DC7284', edge:'#B22C42', star:'#B22C42', band:'rgba(207,57,82,0.14)'}};
+const FR = {'1':'#c9c9c9','2':'#a3a3a3','5':'#727272','10':'#3a3a3a'};
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const CFG = {displayModeBar:false, responsive:true};
+const fmt = (v,d=1)=>Number(v).toFixed(d);
+const pct = p => p>=0.995 ? '>99%' : p<0.01 ? '<1%' : (p<0.1 ? fmt(100*p,1) : fmt(100*p,0))+'%';
+const rp = T => !isFinite(T)||T>=999 ? '>100' : T<1 ? fmt(T,1) : fmt(T,T<10?1:0);
+const often = T => T<1 ? `about ${fmt(1/T, 1/T<10?1:0)} a year` : `1-in-${rp(T)} yr`;
+
+function rec(kind=S.kind){return DATA.periods[S.period][kind]}
+function M(){return rec().measures[S.measure]}
+function base(extra){return Object.assign({margin:{l:58,r:14,t:10,b:46}, paper_bgcolor:'#fff', plot_bgcolor:'#fff', font:{family:'system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif', size:12, color:'#555'}, showlegend:false, hovermode:'closest', hoverlabel:{bgcolor:'#fff', bordercolor:'#cfcfcf', font:{color:'#222'}}}, extra)}
+function hoverText(e, kind=S.kind){
+  const ms=kind===S.kind?S.measure:'peak', m=rec(kind).measures[ms], lab=DATA.labels[kind][ms];
+  return `<b>${e.start} – ${e.end}</b><br>${e.duration} days · ${lab}: ${fmt(e.vals[ms])}`+
+    `<br>Observed: ${often(m.T_emp[e.id])}<br>Fitted: ${often(m.T_fit[e.id])}`+(e.rmy?'<br><b>Inserted in the RMY</b>':'')+'<extra></extra>';
+}
+
+function drawA(){
+  const r=rec(), m=M(), c=COL[S.kind], Y=r.Y, lab=DATA.labels[S.kind][S.measure];
+  const flip = S.view!=='T', n = S.view==='annual'?1:S.N, P = T => 100*(1-Math.exp(-n/T));
+  const rev = m.sign<0 && S.measure!=='severity';
+  const split = m.T.findIndex(t=>t>2*Y); const sI = split<0?m.T.length:split;
+  // return-period view: x = T, y = intensity; chance views: x = intensity, y = chance (%)
+  const XY = (T, v) => flip ? [v, P(T)] : [T, v];
+  const pts = (Ts, vs) => { const o={x:[],y:[]}; Ts.forEach((T,i)=>{const [x,y]=XY(T,vs[i]); o.x.push(x); o.y.push(y);}); return o; };
+  const hiP = pts(m.T, m.hi), loP = pts(m.T, m.lo), L1 = pts(m.T.slice(0,sI+1), m.level.slice(0,sI+1)), L2 = pts(m.T.slice(sI), m.level.slice(sI));
+  const tip = flip ? `%{x:.1f}: %{y:.0f}% chance${n>1?' in '+n+' yr':' a year'}` : `%{y:.1f} once in %{x:.1f} yr`;
+  const tr = [
+    {x:hiP.x.concat(loP.x.slice().reverse()), y:hiP.y.concat(loP.y.slice().reverse()), fill:'toself', fillcolor:c.band, line:{width:0}, hoverinfo:'skip', type:'scatter'},
+    {x:L1.x, y:L1.y, mode:'lines', line:{color:INK,width:2}, hovertemplate:`Fitted: ${tip}<extra></extra>`},
+    {x:L2.x, y:L2.y, mode:'lines', line:{color:INK,width:2,dash:'dot'}, hovertemplate:`Extrapolated: ${tip}<extra></extra>`},
+  ];
+  const ev = r.events.filter(e=>!(S.rmy&&e.rmy)), rv = r.events.filter(e=>S.rmy&&e.rmy);
+  const E = list => pts(list.map(e=>m.T_emp[e.id]), list.map(e=>e.vals[S.measure]));
+  const e1=E(ev), e2=E(rv);
+  tr.push({x:e1.x, y:e1.y, mode:'markers', marker:{size:9, color:c.dot, line:{color:'#fff',width:1.5}}, customdata:ev.map(e=>e.id), hovertemplate:ev.map(e=>hoverText(e))});
+  tr.push({x:e2.x, y:e2.y, mode:'markers', marker:{size:15, symbol:'star', color:c.star, line:{color:'#fff',width:1.5}}, customdata:rv.map(e=>e.id), hovertemplate:rv.map(e=>hoverText(e))});
+  tr.push({x:[], y:[], mode:'markers', marker:{size:20, color:'rgba(0,0,0,0)', line:{color:INK,width:2}}, hoverinfo:'skip'});
+  const shapes = flip
+    ? [{type:'rect', xref:'paper', yref:'y', x0:0, x1:1, y0:0, y1:P(2*Y), fillcolor:'rgba(0,0,0,0.035)', line:{width:0}, layer:'below'}]
+    : [{type:'rect', xref:'x', yref:'paper', x0:2*Y, x1:100, y0:0, y1:1, fillcolor:'rgba(0,0,0,0.035)', line:{width:0}, layer:'below'}];
+  const ann = [flip ? {xref:'paper', yref:'y', x:0.01, y:P(2*Y), xanchor:'left', yanchor:'top', text:'below this line: extrapolated', showarrow:false, font:{size:11,color:'#8a8a8a'}}
+                    : {xref:'x', yref:'paper', x:Math.log10(2*Y), y:0.98, xanchor:'left', yanchor:'top', text:' extrapolated', showarrow:false, font:{size:11,color:'#8a8a8a'}}];
+  const top = r.events.filter(e=>e.rmy).sort((a,b)=>m.T_fit[b.id]-m.T_fit[a.id])[0];
+  if(S.rmy && top){ const [x,y]=XY(m.T_emp[top.id], top.vals[S.measure]);
+    ann.push({x: flip?x:Math.log10(x), y, text:`RMY: ~1-in-${rp(m.T_fit[top.id])} yr`, ax: flip?(rev?60:-60):-70, ay: flip?45:(m.sign>0?-30:30), arrowcolor:'#8a8a8a', arrowwidth:1, font:{size:12,color:'#222'}, bgcolor:'rgba(255,255,255,0.85)'}); }
+  const intensityAxis = {title:{text:lab}, gridcolor:GRID, zeroline:false, autorange: rev?'reversed':true};
+  const layout = flip
+    ? {xaxis:intensityAxis, yaxis:{title:{text: n>1?`Chance of at least one in ${n} years (%)`:'Chance of at least one in a year (%)'}, range:[0,103], gridcolor:GRID, ticksuffix:'%'}}
+    : {xaxis:{type:'log', title:{text:'Return period (years, log scale)'}, range:[Math.log10(0.8/r.lam), 2], gridcolor:GRID, tickvals:[0.2,0.5,1,2,5,10,20,50,100], ticktext:['0.2','0.5','1','2','5','10','20','50','100']}, yaxis:intensityAxis};
+  Plotly.react('A', tr, base(Object.assign(layout, {shapes, annotations:ann})), CFG);
+  document.getElementById('pA').innerHTML = flip
+    ? `Chance of at least one event at least this extreme ${n>1?'within '+n+' years':'in a year'}. Dots: the ${r.n} events of ${r.years[0]}–${r.years.at(-1)}; line: fit with a 90% band.`+(rev?' Colder to the right.':'')
+    : `Dots: the ${r.n} events of ${r.years[0]}–${r.years.at(-1)}, by rank. Line: Poisson–GPD fit with a 90% bootstrap band.`+(rev?' Colder is higher.':'');
+}
+
+const HI_RANGE=[27,51];
+const SCALE={heat:[[0,'#F7DDE1'],[0.25,'#EBAFB9'],[0.5,'#DC7284'],[0.75,'#CF3952'],[1,'#B22C42']],
+             cold:[[0,'#b3e7f2'],[0.25,'#80d2e6'],[0.5,'#4dbeda'],[0.75,'#1aaacb'],[1,'#0086b3']]};
+const DIM=[31,28,31,30,31,30,31,31,30,31,30,31];
+function xMonth(e){ return e.month+(e.day-1)/DIM[e.month-1]; }
+function drawB(){
+  const P=DATA.periods[S.period], years=P[DATA.kinds[0]].years, tr=[];
+  for(const kind of DATA.kinds){
+    const r=P[kind], ev=r.events; if(!ev.length) continue;
+    const vals = ev.map(e=>e.vals.extra??e.vals.peak);
+    const cmin = kind==='heat'?HI_RANGE[0]:Math.min(...vals), cmax = kind==='heat'?HI_RANGE[1]:Math.max(...vals);
+    const other = kind!==S.kind;
+    tr.push({x:ev.map(xMonth), y:ev.map(e=>e.year), mode:'markers', customdata:ev.map(e=>[kind,e.id]),
+      hovertemplate:ev.map(e=>hoverText(e,kind)),
+      marker:{size:ev.map(e=>5+5.2*Math.sqrt(e.duration)), color:vals, cmin, cmax, colorscale:SCALE[kind],
+        opacity: other?0.45:0.9, line:{color:ev.map(e=>e.rmy&&S.rmy?'#222':'rgba(60,60,60,0.55)'), width:ev.map(e=>e.rmy&&S.rmy?1.6:0.6)},
+        colorbar:{title:{text:kind==='heat'?'Heat index (°C)':'Wind (m/s)', side:'right', font:{size:11}}, thickness:8, len:0.42, y:kind==='heat'?0.76:0.24, x:1.01, tickfont:{size:10}, outlinewidth:0}}});
+  }
+  tr.push({x:[], y:[], mode:'markers', marker:{size:[], color:'rgba(0,0,0,0)', line:{color:'#111',width:2.4}}, hoverinfo:'skip'});
+  Plotly.react('B', tr, base({margin:{l:46,r:60,t:6,b:30},
+    xaxis:{range:[0.8,13.2], tickvals:[...Array(12).keys()].map(i=>i+1.5), ticktext:MON, showgrid:false, zeroline:false,
+           minor:{tickvals:[...Array(13).keys()].map(i=>i+1), showgrid:true, gridcolor:GRID}},
+    yaxis:{tickvals:years, ticktext:years.map(String), range:[years[0]-0.8, years.at(-1)+0.8], gridcolor:'#f1f1f1', zeroline:false, fixedrange:true},
+    shapes:years.map(y=>({type:'line', xref:'x', x0:1, x1:13, y0:y, y1:y, line:{color:'#e2e2e2', width:1, dash:'dot'}, layer:'below'}))}), CFG);
+  showSel();
+}
+function showSel(){
+  const box=document.getElementById('sel'), r=rec(), e=S.sel===null?null:r.events.find(x=>x.id===S.sel);
+  if(!e){ box.innerHTML='No event selected. Click a circle above (or a dot in A) to pin it.'; return; }
+  const m=M(), lab=DATA.labels[S.kind], v=e.vals, T=m.T_fit[e.id], To=m.T_emp[e.id];
+  const z=r.events.map(x=>m.sign*x.vals[S.measure]), rank=1+z.filter(q=>q>m.sign*v[S.measure]).length;
+  const rows=Object.keys(lab).map(k=>`<span>${lab[k]}: <b>${fmt(v[k])}</b></span>`).join('');
+  box.innerHTML=`<button class="x" title="Clear">✕</button><b>${S.kind==='cold'?'Cold spell':'Heat wave'} ${e.start} – ${e.end}</b> · ${e.duration} days${e.rmy?' · <b>inserted in the RMY</b>':''}
+    <div class="stats">${rows}</div>
+    <div class="stats"><span>Rank by ${lab[S.measure].split(' (')[0].toLowerCase()}: <b>${rank} of ${r.n}</b></span><span>Events at least this extreme: <b>${often(T)}</b> (observed ${often(To)})</span>
+    <span>Chance of one at least this extreme: <b>${pct(1-Math.exp(-1/T))}</b> a year, <b>${pct(1-Math.exp(-S.N/T))}</b> in ${S.N} years</span></div>`;
+  box.querySelector('.x').onclick=()=>{ S.sel=null; highlight([]); showSel(); };
+}
+
+function poisson(k,l){let p=Math.exp(-l); for(let i=1;i<=k;i++) p*=l/i; return p}
+function drawC(){
+  const r=rec(), c=COL[S.kind], counts=r.per_year, kmax=Math.max(...counts, Math.ceil(r.lam*2)+1);
+  const ks=[...Array(kmax+1).keys()];
+  const obs = ks.map(k=>counts.filter(n=>n===k).length/counts.length);
+  const yrs = ks.map(k=>r.years.filter((y,i)=>counts[i]===k).join(', ')||'none');
+  const tr=[{x:ks, y:obs.map(v=>100*v), type:'bar', marker:{color:c.dot, line:{color:'#fff',width:2}}, customdata:yrs, hovertemplate:'%{x} events: %{y:.0f}% of years<br>%{customdata}<extra></extra>', name:'Observed'},
+    {x:ks, y:ks.map(k=>100*poisson(k,r.lam)), mode:'lines+markers', line:{color:INK,width:2}, marker:{size:8,color:'#fff',line:{color:INK,width:2}}, hovertemplate:'Poisson: %{y:.0f}% of years with %{x}<extra></extra>', name:'Poisson'},
+    {x:[], y:[], type:'bar', marker:{color:'rgba(0,0,0,0)', line:{color:INK,width:2}}, hoverinfo:'skip', showlegend:false}];
+  Plotly.react('C', tr, base({barmode:'overlay', xaxis:{title:{text:`Number of ${S.kind==='cold'?'cold spells':'heat waves'} in a year`}, dtick:1, gridcolor:'rgba(0,0,0,0)'}, yaxis:{title:{text:'Share of years (%)'}, gridcolor:GRID, rangemode:'tozero'},
+    showlegend:true, legend:{orientation:'h', x:1, xanchor:'right', y:1.02, font:{size:11}}}), CFG);
+  document.getElementById('pC').innerHTML = `Bars: observed share of the ${r.Y} years. Line: Poisson with ${fmt(r.lam)} events a year. Chance of a year with none: <b>${pct(Math.exp(-r.lam))}</b>.`;
+}
+
+function drawD(){
+  const r=rec(), c=COL[S.kind];
+  const bins=[...Array(24).keys()], cnt=bins.map(b=>r.events.filter(e=>e.half===b).length);
+  const theta=bins.map(b=>b*15+7.5), lab=bins.map(b=>`${b%2?'16':'1'}–${b%2?'end':'15'} ${MON[Math.floor(b/2)]}`);
+  const pk=cnt.indexOf(Math.max(...cnt)), rAng=(pk*15+7.5+180)%360;
+  const tr=[{type:'barpolar', r:cnt.map(n=>100*n/r.Y), theta, width:bins.map(()=>14), marker:{color:c.dot, line:{color:'#fff',width:1.5}}, customdata:lab, hovertemplate:'%{customdata}: an event starts here in %{r:.0f}% of years<extra></extra>'},
+    {type:'barpolar', r:[], theta:[], width:[], marker:{color:'rgba(0,0,0,0)', line:{color:INK,width:2}}, hoverinfo:'skip'}];
+  Plotly.react('D', tr, base({margin:{l:30,r:30,t:24,b:24}, polar:{barmode:'overlay', bgcolor:'#fff', angularaxis:{direction:'clockwise', rotation:90, tickvals:MON.map((m,i)=>i*30), ticktext:MON, gridcolor:GRID, linecolor:'#cfcfcf'}, radialaxis:{gridcolor:GRID, ticksuffix:'%', nticks:4, angle:90-rAng, tickangle:90-rAng, tickfont:{size:10}, linecolor:'rgba(0,0,0,0)'}}}), CFG);
+  const peak = cnt.indexOf(Math.max(...cnt));
+  document.getElementById('pD').innerHTML = `Chance that an event starts in each half-month of a year. Most common: <b>${lab[peak]}</b>.`;
+}
+
+function kpis(){
+  const r=rec(), m=M()||{}, lam=r.lam, kind=S.kind==='cold'?'cold spells':'heat waves';
+  document.getElementById('k1').innerHTML = `${fmt(lam)} <small>a year</small>`;
+  document.getElementById('k1l').textContent = `${r.n} ${kind} in ${r.Y} AMY years`;
+  document.getElementById('k2').textContent = pct(1-Math.exp(-lam));
+  document.getElementById('k2l').textContent = 'Chance of at least one in a year';
+  const rmy = !r.n ? null : r.events.filter(e=>e.rmy).sort((a,b)=>m.T_fit[b.id]-m.T_fit[a.id])[0];
+  if(rmy){
+    const T=m.T_fit[rmy.id];
+    document.getElementById('k3').innerHTML = `1-in-${rp(T)} <small>yr</small>`;
+    document.getElementById('k3l').textContent = `RMY's most extreme ${S.kind==='cold'?'cold spell':'heat wave'} by this measure (${rmy.start})`;
+    document.getElementById('k4').textContent = pct(1-Math.exp(-S.N/T));
+    document.getElementById('k4l').textContent = `Chance of one at least as extreme within ${S.N} years`;
+  } else { ['k3','k4'].forEach(k=>document.getElementById(k).textContent='–');
+    document.getElementById('k3l').textContent='No RMY event in these years'; document.getElementById('k4l').textContent='Choose All years to compare with the RMY'; }
+}
+
+function highlight(ids){
+  if(!ids.length && S.sel!==null) ids=[S.sel];
+  const r=rec(), m=M(), set=new Set(ids), ev=r.events.filter(e=>set.has(e.id));
+  const n = S.view==='annual'?1:S.N, flip=S.view!=='T', P=T=>100*(1-Math.exp(-n/T));
+  Plotly.restyle('A', {x:[ev.map(e=>flip?e.vals[S.measure]:m.T_emp[e.id])], y:[ev.map(e=>flip?P(m.T_emp[e.id]):e.vals[S.measure])]}, [5]);
+  const bIdx = document.getElementById('B').data.length-1;
+  Plotly.restyle('B', {x:[ev.map(xMonth)], y:[ev.map(e=>e.year)], 'marker.size':[ev.map(e=>11+5.2*Math.sqrt(e.duration))]}, [bIdx]);
+  const years_ = new Set(ev.map(e=>e.year)), ks=[...new Set(r.years.map((y,i)=>years_.has(y)?r.per_year[i]:null).filter(k=>k!==null))];
+  const obs = k => 100*r.per_year.filter(n=>n===k).length/r.per_year.length;
+  Plotly.restyle('C', {x:[ks], y:[ks.map(obs)]}, [2]);
+  const hs=[...new Set(ev.map(e=>e.half))];
+  Plotly.restyle('D', {r:[hs.map(b=>100*r.events.filter(e=>e.half===b).length/r.Y)], theta:[hs.map(b=>b*15+7.5)], width:[hs.map(()=>14)]}, [1]);
+}
+function pin(kind, id){
+  const same = kind===S.kind && S.sel===id;          // clicking the pinned event again clears it
+  if(kind!==S.kind){ S.kind=kind; document.querySelectorAll('#kind button').forEach(b=>b.classList.toggle('on', b.dataset.v===kind)); }
+  S.sel = same ? null : id;
+  render();
+}
+function wireHover(){
+  for(const id of ['A','B','C','D']){ const el=document.getElementById(id); if(el.removeAllListeners){ el.removeAllListeners('plotly_hover'); el.removeAllListeners('plotly_unhover'); el.removeAllListeners('plotly_click'); } }
+  const a=document.getElementById('A');
+  a.on('plotly_hover', d=>{ const ids=d.points.map(p=>p.customdata).filter(v=>typeof v==='number'); if(ids.length) highlight(ids); });
+  a.on('plotly_unhover', ()=>highlight([]));
+  a.on('plotly_click', d=>{ const p=d.points.find(p=>typeof p.customdata==='number'); if(p) pin(S.kind, p.customdata); });
+  const b=document.getElementById('B');
+  b.on('plotly_hover', d=>{ const p=d.points[0]; if(p && Array.isArray(p.customdata) && p.customdata[0]===S.kind) highlight([p.customdata[1]]); });
+  b.on('plotly_unhover', ()=>highlight([]));
+  b.on('plotly_click', d=>{ const p=d.points[0]; if(p && Array.isArray(p.customdata)) pin(p.customdata[0], p.customdata[1]); });
+  const c=document.getElementById('C');
+  c.on('plotly_hover', d=>{ const p=d.points[0]; if(p.curveNumber!==0) return; const r=rec();
+    const ys=new Set(r.years.filter((y,i)=>r.per_year[i]===p.x)); highlight(r.events.filter(e=>ys.has(e.year)).map(e=>e.id)); });
+  c.on('plotly_unhover', ()=>highlight([]));
+  const dd=document.getElementById('D');
+  dd.on('plotly_hover', d=>{ const p=d.points[0]; if(p.curveNumber!==0) return; const b=p.pointNumber; highlight(rec().events.filter(e=>e.half===b).map(e=>e.id)); });
+  dd.on('plotly_unhover', ()=>highlight([]));
+}
+
+function render(){
+  if(!(S.measure in DATA.labels[S.kind])) S.measure='peak';
+  document.body.className=S.kind;
+  const r=rec();
+  document.getElementById('title').textContent = `Extreme event probabilities: ${DATA.city}`;
+  document.getElementById('subtitle').textContent = `${S.kind==='cold'?'Cold spells':'Heat waves'} detected in the AMYs, ${r.years[0]}–${r.years.at(-1)}. Stars and outlined circles: the events inserted in the RMY. Click any event to pin it; hover a bar or month to find its events.`;
+  const sel=document.getElementById('measure'), labs=DATA.labels[S.kind];
+  sel.innerHTML = Object.entries(labs).map(([k,v])=>`<option value="${k}" ${k===S.measure?'selected':''}>${v}</option>`).join('');
+  if(r.n<3){ for(const id of ['A','B','C','D']){ Plotly.purge(id); document.getElementById(id).innerHTML='<p style="padding:40px 8px;color:#8a8a8a">Fewer than 3 events in these years.</p>'; }
+    for(const id of ['pA','pC','pD']) document.getElementById(id).textContent=''; kpis(); return; }
+  for(const id of ['A','B','C','D']){ const el=document.getElementById(id); if(!el.data) el.innerHTML=''; }
+  if(S.sel!==null && !r.events.some(e=>e.id===S.sel)) S.sel=null;
+  drawA(); drawB(); drawC(); drawD(); kpis(); wireHover(); highlight([]);
+  document.getElementById('note').textContent = `Return periods from ${r.n} events in ${r.Y} years: beyond about ${2*r.Y} years (shaded) the fit is an extrapolation. Observed return period of the k-th most extreme event = years ÷ k. Fit: generalised Pareto tail of the more extreme half of the events, with Poisson arrivals ${M().shape===null?'':'(GPD shape '+fmt(M().shape,2)+')'}; band: 5–95% over ${DATA.n_boot} bootstrap resamples of the events. Severity: degree-days beyond the detection threshold (${S.kind==='cold'?'Tmin < '+DATA.thresholds.cold:'Tmax ≥ '+DATA.thresholds.heat} °C).`;
+}
+function seg(id, key){ const el=document.getElementById(id);
+  el.addEventListener('click', ev=>{ const b=ev.target.closest('button'); if(!b) return;
+    el.querySelectorAll('button').forEach(x=>x.classList.toggle('on', x===b)); S[key]=b.dataset.v; render(); }); }
+(function init(){
+  const P = DATA.periods, per=document.getElementById('period');
+  document.querySelectorAll('#kind button').forEach(b=>{ if(!DATA.kinds.includes(b.dataset.v)) b.style.display='none'; b.classList.toggle('on', b.dataset.v===S.kind); });
+  per.innerHTML = Object.keys(P).map(k=>{ const y=P[k][DATA.kinds[0]].years; return `<button data-v="${k}" class="${k==='all'?'on':''}">${k==='all'?'All':y[0]+'–'+String(y.at(-1)).slice(2)}</button>`}).join('');
+  seg('kind','kind'); seg('view','view'); seg('period','period');
+  document.getElementById('measure').addEventListener('change', e=>{S.measure=e.target.value; render();});
+  document.getElementById('rmy').addEventListener('change', e=>{S.rmy=e.target.checked; render();});
+  document.getElementById('N').addEventListener('input', e=>{S.N=+e.target.value; document.getElementById('Nval').textContent=`${S.N} year${S.N>1?'s':''}`; kpis(); showSel(); if(S.view==='life'){drawA(); highlight([]);} });
+  render();
+})();
+</script></body></html>
