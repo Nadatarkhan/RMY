@@ -1,8 +1,10 @@
 # Representative Meteorological Years (RMYs): 500 cities
 
-20 US cities, one per US climate zone (ASHRAE 169, 1A to 8), 20 international cities, 56 world capitals, 20 US state capitals, 100 more capitals and major cities, 100 more US major cities and 184 more US cities. Each is the city's ISO 15927-4 TMY with the heat
-waves and cold spells of its peak years inserted (Tarkhan et al. 2025), built end to end from a NOAA
-station number with this repository's code:
+20 US cities, one per US climate zone (ASHRAE 169, 1A to 8), 20 international cities, 56 world
+capitals, 20 US state capitals, 100 more capitals and major cities, 100 more US major cities and 184
+more US cities. Each is the city's ISO 15927-4 TMY with the heat waves and cold spells of its peak
+years inserted (Tarkhan et al. 2025), built end to end from a NOAA station number with this
+repository's code:
 
 1. **AMYs**: the 15 most recent complete years of NOAA Global Hourly observations, with NSRDB (GOES
    v4) solar radiation in the US; Anchorage and Fairbanks, outside NSRDB's coverage, use PVGIS-ERA5.
